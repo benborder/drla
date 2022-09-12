@@ -1,0 +1,58 @@
+{
+	"version": 4,
+	"cmakeMinimumRequired": {
+		"major": 3,
+		"minor": 23,
+		"patch": 0
+	},
+	"configurePresets": [
+		{
+			"name": "_base",
+			"hidden": true,
+			"binaryDir": "${sourceParentDir}/build/${presetName}",
+			"installDir": "${sourceParentDir}/install/drla",
+			"cacheVariables": {
+				"Torch_DIR": "/usr/local/libtorch/share/cmake/Torch",
+				"PYTHON_EXECUTABLE": "/usr/bin/python3"
+			}
+		},
+		{
+			"name": "release",
+			"displayName": "Release",
+			"inherits": "_base",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release"
+			}
+		},
+		{
+			"name": "debug",
+			"displayName": "Debug",
+			"inherits": "_base",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Debug"
+			}
+		},
+		{
+			"name": "ci",
+			"displayName": "CI",
+			"inherits": "release"
+		}
+	],
+	"buildPresets": [
+		{
+			"name": "release",
+			"displayName": "Release",
+			"configurePreset": "release"
+		},
+		{
+			"name": "debug",
+			"displayName": "Debug",
+			"configurePreset": "debug"
+		},
+		{
+			"name": "ci",
+			"displayName": "CI",
+			"configurePreset": "ci"
+		}
+	]
+}
