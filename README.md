@@ -20,6 +20,10 @@ Features to be added in the future:
 	- Soft Actor Critic (SAC)
 - Monte-Carlo tree search based agent/algorithms
 
+## Example
+
+See the [drla-atari](https://github.com/benborder/drla-atari) repository for an example on how to use this library.
+
 ## Dependencies
 
 The library has been designed to have as few dependencies as possible with the only dependencies being:
