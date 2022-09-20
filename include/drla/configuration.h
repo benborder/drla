@@ -11,15 +11,6 @@
 namespace drla
 {
 
-/// @brief The type of the agent required for training and/or running the model
-enum class AgentType
-{
-	kAuto,
-	kInteractive,
-	kOnPolicy,
-	kOffPolicy,
-};
-
 namespace Config
 {
 
@@ -88,7 +79,7 @@ struct OffPolicyAgent : public AgentBase
 };
 
 /// @brief The agent configuration
-using Agent = std::variant<InteractiveAgent, OnPolicyAgent, OffPolicyAgent>;
+using Agent = std::variant<AgentBase, InteractiveAgent, OnPolicyAgent, OffPolicyAgent>;
 
 } // namespace Config
 

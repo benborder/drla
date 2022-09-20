@@ -288,24 +288,18 @@ std::unique_ptr<Agent> drla::make_agent(
 		spdlog::warn("No agent defined, using interactive agent");
 		return std::make_unique<InteractiveAgent>(config, environment_manager, callback, data_path);
 	}
-
-	switch (std::visit([](auto& agent) { return agent.model_type; }, config))
+	if (std::holds_alternative<Config::InteractiveAgent>(config))
 	{
-		case AgentPolicyModelType::kRandom:
-		{
-			return std::make_unique<Agent>(config, environment_manager, callback, data_path);
-		}
-		case AgentPolicyModelType::kActorCritic:
-		{
-			return std::make_unique<OnPolicyAgent>(config, environment_manager, callback, data_path);
-		}
-		case AgentPolicyModelType::kQNet:
-		{
-			return std::make_unique<OffPolicyAgent>(config, environment_manager, callback, data_path);
-		}
-		default:
-		{
-			throw std::runtime_error("Invalid model type");
-		}
+		return std::make_unique<InteractiveAgent>(config, environment_manager, callback, data_path);
 	}
+	if (std::holds_alternative<Config::OnPolicyAgent>(config))
+	{
+		return std::make_unique<OnPolicyAgent>(config, environment_manager, callback, data_path);
+	}
+	if (std::holds_alternative<Config::OffPolicyAgent>(config))
+	{
+		return std::make_unique<OffPolicyAgent>(config, environment_manager, callback, data_path);
+	}
+
+	return std::make_unique<Agent>(config, environment_manager, callback, data_path);
 }
