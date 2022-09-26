@@ -1,6 +1,5 @@
 #pragma once
 
-#include "configuration.h"
 #include "drla/configuration.h"
 #include "drla/types.h"
 
