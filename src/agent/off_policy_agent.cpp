@@ -329,7 +329,7 @@ void OffPolicyAgent::train()
 						? 1.0
 						: static_cast<double>(config_.env_count) / static_cast<double>(std::thread::hardware_concurrency());
 		train_update_data.fps_env = horizon_steps * period * env_thread_ratio;
-		train_update_data.fps = train_update_data.fps_env * config_.env_count;
+		train_update_data.fps = horizon_steps * period * config_.env_count;
 
 		if (timestep > learning_starts)
 		{
