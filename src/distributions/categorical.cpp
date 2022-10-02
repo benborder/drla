@@ -83,7 +83,7 @@ const torch::Tensor Categorical::get_action_output() const
 }
 
 MultiCategorical::MultiCategorical(
-		const std::vector<int64_t>& action_shape, std::optional<torch::Tensor> probs, std::optional<torch::Tensor> logits)
+	const std::vector<int64_t>& action_shape, std::optional<torch::Tensor> probs, std::optional<torch::Tensor> logits)
 {
 	if (action_shape.empty())
 	{
@@ -96,28 +96,19 @@ MultiCategorical::MultiCategorical(
 	if (probs.has_value())
 	{
 		auto split = torch::split_with_sizes(*probs, action_shape, 1);
-		for (auto& split_probs : split)
-		{
-			category_dim_.emplace_back(split_probs, std::nullopt);
-		}
+		for (auto& split_probs : split) { category_dim_.emplace_back(split_probs, std::nullopt); }
 	}
 	else
 	{
 		auto split = torch::split_with_sizes(*logits, action_shape, 1);
-		for (auto& split_logits : split)
-		{
-			category_dim_.emplace_back(std::nullopt, split_logits);
-		}
+		for (auto& split_logits : split) { category_dim_.emplace_back(std::nullopt, split_logits); }
 	}
 }
 
 torch::Tensor MultiCategorical::entropy()
 {
 	std::vector<torch::Tensor> entropy;
-	for (auto& category : category_dim_)
-	{
-		entropy.push_back(category.entropy());
-	}
+	for (auto& category : category_dim_) { entropy.push_back(category.entropy()); }
 	return torch::stack(entropy, 1).sum(1);
 }
 
@@ -136,19 +127,13 @@ torch::Tensor MultiCategorical::action_log_prob(torch::Tensor action)
 torch::Tensor MultiCategorical::sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape)
 {
 	std::vector<torch::Tensor> actions;
-	for (auto& category : category_dim_)
-	{
-		actions.push_back(category.sample(deterministic, sample_shape));
-	}
+	for (auto& category : category_dim_) { actions.push_back(category.sample(deterministic, sample_shape)); }
 	return torch::stack(actions, 1);
 }
 
 const torch::Tensor MultiCategorical::get_action_output() const
 {
 	std::vector<torch::Tensor> logits;
-	for (auto& category : category_dim_)
-	{
-		logits.push_back(category.get_action_output());
-	}
+	for (auto& category : category_dim_) { logits.push_back(category.get_action_output()); }
 	return torch::stack(logits, 1);
 }

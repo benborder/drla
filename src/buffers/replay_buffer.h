@@ -25,7 +25,7 @@ class ReplayBuffer
 {
 public:
 	ReplayBuffer(
-			int buffer_size, int n_envs, const EnvironmentConfiguration& env_config, int reward_shape, torch::Device device);
+		int buffer_size, int n_envs, const EnvironmentConfiguration& env_config, int reward_shape, torch::Device device);
 
 	void reset();
 

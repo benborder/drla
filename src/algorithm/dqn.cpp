@@ -13,11 +13,11 @@
 using namespace drla;
 
 DQN::DQN(
-		const Config::AgentTrainAlgorithm& config,
-		const ObservationShapes& observation_shape,
-		ReplayBuffer& buffer,
-		std::shared_ptr<Model> model,
-		torch::Tensor gamma)
+	const Config::AgentTrainAlgorithm& config,
+	const ObservationShapes& observation_shape,
+	ReplayBuffer& buffer,
+	std::shared_ptr<Model> model,
+	torch::Tensor gamma)
 		: config_(std::get<Config::DQN>(config))
 		, buffer_(buffer)
 		, model_(std::dynamic_pointer_cast<QNetModelInterface>(model))
@@ -67,9 +67,9 @@ std::vector<UpdateResult> DQN::update(int timestep)
 	update_exploration(timestep);
 
 	return {
-			{TrainResultType::kLoss, total_loss / config_.gradient_steps},
-			{TrainResultType::kLearningRate, static_cast<float>(lr_param_)},
-			{TrainResultType::kExploration, static_cast<float>(exploration_param_)}};
+		{TrainResultType::kLoss, total_loss / config_.gradient_steps},
+		{TrainResultType::kLearningRate, static_cast<float>(lr_param_)},
+		{TrainResultType::kExploration, static_cast<float>(exploration_param_)}};
 }
 
 void DQN::save(const std::filesystem::path& path) const
@@ -112,7 +112,7 @@ void DQN::update_exploration(int timestep)
 	else
 	{
 		exploration_param_ = config_.exploration_init + progress * (config_.exploration_final - config_.exploration_init) /
-																												config_.exploration_fraction;
+																											config_.exploration_fraction;
 	}
 	model_->set_exploration(exploration_param_);
 }

@@ -13,7 +13,7 @@ using namespace torch;
 using namespace drla;
 
 PolicyActionOutputImpl::PolicyActionOutputImpl(
-		const Config::PolicyActionOutputConfig& config, int inputs, const ActionSpace& action_space, bool use_logits)
+	const Config::PolicyActionOutputConfig& config, int inputs, const ActionSpace& action_space, bool use_logits)
 		: config_(config)
 		, action_space_(action_space)
 		, num_actions_(std::accumulate(action_space_.shape.begin(), action_space_.shape.end(), 0))
@@ -106,8 +106,8 @@ std::unique_ptr<Distribution> PolicyActionOutputImpl::forward(torch::Tensor late
 		default:
 		{
 			throw std::runtime_error(
-					"Invalid action space type for action policy output layer: " +
-					std::to_string(static_cast<int>(action_space_.type)));
+				"Invalid action space type for action policy output layer: " +
+				std::to_string(static_cast<int>(action_space_.type)));
 		}
 	}
 }

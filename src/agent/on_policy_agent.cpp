@@ -16,20 +16,20 @@ using namespace torch;
 using namespace drla;
 
 OnPolicyAgent::OnPolicyAgent(
-		const Config::Agent& config,
-		EnvironmentManager* environment_manager,
-		AgentCallbackInterface* callback,
-		std::filesystem::path data_path)
+	const Config::Agent& config,
+	EnvironmentManager* environment_manager,
+	AgentCallbackInterface* callback,
+	std::filesystem::path data_path)
 		: Agent(config, environment_manager, callback, std::move(data_path))
 		, config_(std::get<Config::OnPolicyAgent>(config))
 {
 }
 
 OnPolicyAgent::OnPolicyAgent(
-		const Config::OnPolicyAgent& config,
-		EnvironmentManager* environment_manager,
-		AgentCallbackInterface* callback,
-		std::filesystem::path data_path)
+	const Config::OnPolicyAgent& config,
+	EnvironmentManager* environment_manager,
+	AgentCallbackInterface* callback,
+	std::filesystem::path data_path)
 		: Agent(config, environment_manager, callback, std::move(data_path)), config_(config)
 {
 }
@@ -58,7 +58,7 @@ void OnPolicyAgent::train()
 	for (int env = 0; env < config_.env_count; env++)
 	{
 		threadpool.queue_task(
-				[&, env]() { step_results[env] = envs_[env]->reset(environment_manager_->get_initial_state()); });
+			[&, env]() { step_results[env] = envs_[env]->reset(environment_manager_->get_initial_state()); });
 	}
 
 	int horizon_steps = 0;
@@ -66,17 +66,17 @@ void OnPolicyAgent::train()
 	int timestep = 0;
 	torch::Tensor gae_lambda = torch::empty({1}, device_);
 	std::visit(
-			[&](auto& config) {
-				using T = std::decay_t<decltype(config)>;
-				if constexpr (std::is_base_of_v<Config::OnPolicyAlgorithm, T>)
-				{
-					horizon_steps = config.horizon_steps;
-					max_steps = config.total_timesteps;
-					timestep = config.start_timestep;
-					gae_lambda[0] = config.gae_lambda;
-				}
-			},
-			config_.train_algorithm);
+		[&](auto& config) {
+			using T = std::decay_t<decltype(config)>;
+			if constexpr (std::is_base_of_v<Config::OnPolicyAlgorithm, T>)
+			{
+				horizon_steps = config.horizon_steps;
+				max_steps = config.total_timesteps;
+				timestep = config.start_timestep;
+				gae_lambda[0] = config.gae_lambda;
+			}
+		},
+		config_.train_algorithm);
 
 	// Block and wait for envs to initialise
 	threadpool.wait_queue_empty();
@@ -331,9 +331,9 @@ void OnPolicyAgent::train()
 		train_update_data.env_duration = std::chrono::steady_clock::now() - start;
 		double period = 1.0 / train_update_data.env_duration.count();
 		double env_thread_ratio =
-				config_.env_count <= static_cast<int>(std::thread::hardware_concurrency())
-						? 1.0
-						: static_cast<double>(config_.env_count) / static_cast<double>(std::thread::hardware_concurrency());
+			config_.env_count <= static_cast<int>(std::thread::hardware_concurrency())
+				? 1.0
+				: static_cast<double>(config_.env_count) / static_cast<double>(std::thread::hardware_concurrency());
 		train_update_data.fps_env = horizon_steps * period * env_thread_ratio;
 		train_update_data.fps = horizon_steps * period * config_.env_count;
 

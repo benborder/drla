@@ -42,10 +42,10 @@ public:
 	/// step updates.
 	/// @param data_path The save/load path for config, models and training optimiser state.
 	Agent(
-			const Config::Agent& config,
-			EnvironmentManager* environment_manager,
-			AgentCallbackInterface* callback,
-			std::filesystem::path data_path);
+		const Config::Agent& config,
+		EnvironmentManager* environment_manager,
+		AgentCallbackInterface* callback,
+		std::filesystem::path data_path);
 	virtual ~Agent();
 
 	/// @brief Creates/Resets environments and runs the agent for a max number of steps or until the environment
@@ -121,9 +121,9 @@ protected:
 /// @param data_path The path to use to load/save configuration and model data
 /// @return An owning interface pointer to the created agent
 std::unique_ptr<Agent> make_agent(
-		const Config::Agent& config,
-		EnvironmentManager* environment_manager,
-		AgentCallbackInterface* callback,
-		const std::filesystem::path& data_path);
+	const Config::Agent& config,
+	EnvironmentManager* environment_manager,
+	AgentCallbackInterface* callback,
+	const std::filesystem::path& data_path);
 
 } // namespace drla

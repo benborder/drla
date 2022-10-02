@@ -38,7 +38,7 @@ CnnExtractor::CnnExtractor(const Config::FeatureExtractorConfig& config, const O
 			if (in_channels != config_in_channels && config_in_channels != 0)
 			{
 				spdlog::error(
-						"The environment has {} channels, but the network was configured for {}.", in_channels, config_in_channels);
+					"The environment has {} channels, but the network was configured for {}.", in_channels, config_in_channels);
 				throw std::runtime_error("Invalid input channels");
 			}
 			size_t l = 0;
@@ -46,10 +46,10 @@ CnnExtractor::CnnExtractor(const Config::FeatureExtractorConfig& config, const O
 			for (const auto& layer_config : conv_layer_config)
 			{
 				conv_net.emplace_back(
-						torch::nn::Conv2d(torch::nn::Conv2dOptions(in_channels, layer_config.out_channels, layer_config.kernel_size)
-																	.stride(layer_config.stride)));
+					torch::nn::Conv2d(torch::nn::Conv2dOptions(in_channels, layer_config.out_channels, layer_config.kernel_size)
+															.stride(layer_config.stride)));
 				register_module(
-						"conv" + std::to_string(conv_index) + std::to_string(l++), std::get<torch::nn::Conv2d>(conv_net.back()));
+					"conv" + std::to_string(conv_index) + std::to_string(l++), std::get<torch::nn::Conv2d>(conv_net.back()));
 
 				torch::nn::init::orthogonal_(std::get<torch::nn::Conv2d>(conv_net.back())->weight, layer_config.init_weight);
 				torch::nn::init::constant_(std::get<torch::nn::Conv2d>(conv_net.back())->bias, layer_config.init_bias);
@@ -58,12 +58,12 @@ CnnExtractor::CnnExtractor(const Config::FeatureExtractorConfig& config, const O
 				h = (h - layer_config.kernel_size + 2 * layer_config.padding) / layer_config.stride + 1;
 
 				auto cnn_layer = fmt::format(
-						"[ {}, {}, {}, {}, {} ]",
-						in_channels,
-						layer_config.out_channels,
-						layer_config.kernel_size,
-						layer_config.padding,
-						layer_config.stride);
+					"[ {}, {}, {}, {}, {} ]",
+					in_channels,
+					layer_config.out_channels,
+					layer_config.kernel_size,
+					layer_config.padding,
+					layer_config.stride);
 				spdlog::debug("{:<24}[{} {}]", cnn_layer, w, h);
 
 				in_channels = layer_config.out_channels;
@@ -87,7 +87,7 @@ CnnExtractor::CnnExtractor(const Config::FeatureExtractorConfig& config, const O
 			if (config_in_channels != 0 && in_channels != config_in_channels)
 			{
 				spdlog::error(
-						"The environment has {} channels, but the network was configured for {}.", in_channels, config_in_channels);
+					"The environment has {} channels, but the network was configured for {}.", in_channels, config_in_channels);
 				throw std::runtime_error("Invalid input channels");
 			}
 			size_t i = 0;
@@ -95,10 +95,10 @@ CnnExtractor::CnnExtractor(const Config::FeatureExtractorConfig& config, const O
 			for (const auto& layer_config : conv_layer_config)
 			{
 				conv_net.emplace_back(
-						torch::nn::Conv3d(torch::nn::Conv3dOptions(in_channels, layer_config.out_channels, layer_config.kernel_size)
-																	.stride(layer_config.stride)));
+					torch::nn::Conv3d(torch::nn::Conv3dOptions(in_channels, layer_config.out_channels, layer_config.kernel_size)
+															.stride(layer_config.stride)));
 				register_module(
-						"conv" + std::to_string(conv_index) + std::to_string(i++), std::get<torch::nn::Conv3d>(conv_net.back()));
+					"conv" + std::to_string(conv_index) + std::to_string(i++), std::get<torch::nn::Conv3d>(conv_net.back()));
 
 				torch::nn::init::orthogonal_(std::get<torch::nn::Conv3d>(conv_net.back())->weight, layer_config.init_weight);
 				torch::nn::init::constant_(std::get<torch::nn::Conv3d>(conv_net.back())->bias, layer_config.init_bias);
@@ -108,12 +108,12 @@ CnnExtractor::CnnExtractor(const Config::FeatureExtractorConfig& config, const O
 				l = (l - layer_config.kernel_size + 2 * layer_config.padding) / layer_config.stride + 1;
 
 				auto cnn_layer = fmt::format(
-						"[ {}, {}, {}, {}, {} ]",
-						in_channels,
-						layer_config.out_channels,
-						layer_config.kernel_size,
-						layer_config.padding,
-						layer_config.stride);
+					"[ {}, {}, {}, {}, {} ]",
+					in_channels,
+					layer_config.out_channels,
+					layer_config.kernel_size,
+					layer_config.padding,
+					layer_config.stride);
 				spdlog::debug("{:<24}[{} {} {}]", cnn_layer, w, h, l);
 
 				in_channels = layer_config.out_channels;
@@ -132,7 +132,7 @@ CnnExtractor::CnnExtractor(const Config::FeatureExtractorConfig& config, const O
 
 		output_size_ += elements;
 		spdlog::debug(
-				"{:<24}[{}] -> [{}] -> {}", "Observation:", fmt::join(obs_shape, ", "), fmt::join(out_shape, ", "), elements);
+			"{:<24}[{}] -> [{}] -> {}", "Observation:", fmt::join(obs_shape, ", "), fmt::join(out_shape, ", "), elements);
 	}
 	spdlog::debug("{:<24}[{}]", "Observation features:", output_size_);
 }
@@ -154,8 +154,8 @@ torch::Tensor CnnExtractor::forward(const Observations& observations)
 		}
 		auto fcsize = x.numel() / x.size(0);
 		hidden.index(
-				{torch::indexing::Slice(0, torch::indexing::None),
-				 torch::indexing::Slice(hidden_index, hidden_index + fcsize)}) = x.view({x.size(0), fcsize});
+			{torch::indexing::Slice(0, torch::indexing::None), torch::indexing::Slice(hidden_index, hidden_index + fcsize)}) =
+			x.view({x.size(0), fcsize});
 		hidden_index += fcsize;
 	}
 

@@ -41,13 +41,17 @@ public:
 		}
 
 		const MiniBatch& operator*() const { return minibatch_; }
+
 		pointer operator->() { return &minibatch_; }
+
 		Iterator& operator++()
 		{
 			index_++;
 			return *this;
 		}
+
 		friend bool operator==(const Iterator& a, const Iterator& b) { return a.index_ == b.index_; };
+
 		friend bool operator!=(const Iterator& a, const Iterator& b) { return a.index_ != b.index_; };
 
 	private:

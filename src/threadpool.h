@@ -72,10 +72,7 @@ public:
 	{
 		running_ = false;
 		clear_queued();
-		for (auto& thread : threads_)
-		{
-			thread.join();
-		}
+		for (auto& thread : threads_) { thread.join(); }
 	}
 
 	// Disable copy constructors and operators.

@@ -18,11 +18,12 @@ class QNetModel;
 class DQN final : public Algorithm
 {
 public:
-	DQN(const Config::AgentTrainAlgorithm& config,
-			const ObservationShapes& observation_shape,
-			ReplayBuffer& buffer,
-			std::shared_ptr<Model> model,
-			torch::Tensor gamma);
+	DQN(
+		const Config::AgentTrainAlgorithm& config,
+		const ObservationShapes& observation_shape,
+		ReplayBuffer& buffer,
+		std::shared_ptr<Model> model,
+		torch::Tensor gamma);
 
 	std::vector<UpdateResult> update(int timestep) override;
 

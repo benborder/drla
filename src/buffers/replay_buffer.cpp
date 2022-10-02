@@ -3,16 +3,16 @@
 using namespace drla;
 
 ReplayBuffer::ReplayBuffer(
-		int buffer_size, int n_envs, const EnvironmentConfiguration& env_config, int reward_shape, torch::Device device)
+	int buffer_size, int n_envs, const EnvironmentConfiguration& env_config, int reward_shape, torch::Device device)
 		: device_(device), buffer_size_(buffer_size)
 {
 	for (size_t i = 0; i < env_config.observation_shapes.size(); i++)
 	{
 		std::vector<int64_t> observations_shape{buffer_size_, n_envs};
 		observations_shape.insert(
-				observations_shape.end(), env_config.observation_shapes[i].begin(), env_config.observation_shapes[i].end());
+			observations_shape.end(), env_config.observation_shapes[i].begin(), env_config.observation_shapes[i].end());
 		observations_.push_back(
-				torch::zeros(observations_shape, torch::TensorOptions(torch::kCPU).dtype(env_config.observation_dtypes[i])));
+			torch::zeros(observations_shape, torch::TensorOptions(torch::kCPU).dtype(env_config.observation_dtypes[i])));
 	}
 	rewards_ = torch::zeros({buffer_size_, n_envs, reward_shape}, torch::TensorOptions(device));
 	std::vector<int64_t> action_shape{buffer_size_, n_envs};
@@ -20,10 +20,7 @@ ReplayBuffer::ReplayBuffer(
 	if (is_action_discrete(env_config.action_space))
 	{
 		action_type = torch::kLong;
-		for (size_t i = 0; i < env_config.action_space.shape.size(); i++)
-		{
-			action_shape.push_back(1);
-		}
+		for (size_t i = 0; i < env_config.action_space.shape.size(); i++) { action_shape.push_back(1); }
 	}
 	else
 	{
@@ -37,10 +34,7 @@ ReplayBuffer::ReplayBuffer(
 
 void ReplayBuffer::reset()
 {
-	for (auto& obs : observations_)
-	{
-		obs.zero_();
-	}
+	for (auto& obs : observations_) { obs.zero_(); }
 	rewards_.zero_();
 	actions_.zero_();
 	episode_non_terminal_.fill_(1.0F);
@@ -78,10 +72,7 @@ void ReplayBuffer::add(const TimeStepData& timestep_data)
 	int pos = pos_[0];
 	int next_pos = (pos + 1) % buffer_size_;
 	full_ |= next_pos < pos;
-	for (size_t i = 0; i < observations_.size(); i++)
-	{
-		observations_[i][next_pos].copy_(timestep_data.observations[i]);
-	}
+	for (size_t i = 0; i < observations_.size(); i++) { observations_[i][next_pos].copy_(timestep_data.observations[i]); }
 	actions_[pos].copy_(timestep_data.predict_results.action);
 	if (rewards_.size(2) == 1 && rewards_.size(2) != timestep_data.rewards.size(1))
 	{
@@ -113,10 +104,7 @@ Observations ReplayBuffer::get_observations_head() const
 		auto obs_shape = observation_group.sizes().vec();
 		obs_shape.erase(obs_shape.begin());
 		torch::Tensor obs_grp = torch::empty(obs_shape, device_);
-		for (size_t i = 0; i < pos_.size(); i++)
-		{
-			obs_grp[i] = observation_group[pos_[i]][i].to(device_);
-		}
+		for (size_t i = 0; i < pos_.size(); i++) { obs_grp[i] = observation_group[pos_[i]][i].to(device_); }
 		obs.push_back(obs_grp);
 	}
 	return obs;
@@ -145,7 +133,7 @@ ReplayBufferSamples ReplayBuffer::sample(int sample_size)
 	else
 	{
 		indices = torch::randperm((pos_[0] - 2) * static_cast<int>(pos_.size()), torch::TensorOptions(torch::kLong))
-									.narrow(0, 0, sample_size);
+								.narrow(0, 0, sample_size);
 	}
 	auto next_indicies = (indices + 1) % total_samples;
 

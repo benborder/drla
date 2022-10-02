@@ -25,10 +25,10 @@ public:
 	/// step updates.
 	/// @param data_path The save/load path for config, models and training optimiser state.
 	InteractiveAgent(
-			const Config::Agent& config,
-			EnvironmentManager* environment_manager,
-			AgentCallbackInterface* callback,
-			std::string data_path);
+		const Config::Agent& config,
+		EnvironmentManager* environment_manager,
+		AgentCallbackInterface* callback,
+		std::string data_path);
 	/// @brief Creates and configures the agent.
 	/// @param config The configuration for the agent.
 	/// @param environment_manager A non owning pointer to the environment manager interface, which is responsible for
@@ -37,10 +37,10 @@ public:
 	/// step updates.
 	/// @param data_path The save/load path for config, models and training optimiser state.
 	InteractiveAgent(
-			const Config::InteractiveAgent& config,
-			EnvironmentManager* environment_manager,
-			AgentCallbackInterface* callback,
-			std::string data_path);
+		const Config::InteractiveAgent& config,
+		EnvironmentManager* environment_manager,
+		AgentCallbackInterface* callback,
+		std::string data_path);
 
 	/// @brief Runs the agent deterministically in the environment specified for the max number of steps. The first time
 	/// this is run, a model is loaded based on the configuration if no model has been loaded yet. Subsequent calls to

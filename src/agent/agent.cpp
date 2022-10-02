@@ -15,10 +15,10 @@
 using namespace drla;
 
 Agent::Agent(
-		const Config::Agent& config,
-		EnvironmentManager* environment_manager,
-		AgentCallbackInterface* callback,
-		std::filesystem::path data_path)
+	const Config::Agent& config,
+	EnvironmentManager* environment_manager,
+	AgentCallbackInterface* callback,
+	std::filesystem::path data_path)
 		: base_config_(std::visit([](const auto& config) { return static_cast<const Config::AgentBase>(config); }, config))
 		, device_(torch::kCPU)
 		, model_(nullptr)
@@ -159,10 +159,7 @@ void Agent::run(const std::vector<State>& initial_state, RunOptions options)
 			for (int step = 0; step < options.max_steps; step++)
 			{
 				auto observation = step_data.step_result.observation;
-				for (auto& obs : observation)
-				{
-					obs = obs.unsqueeze(0).to(device_);
-				}
+				for (auto& obs : observation) { obs = obs.unsqueeze(0).to(device_); }
 
 				step_data.step = step;
 				step_data.predict_result = model_->predict(observation, options.deterministic);
@@ -213,10 +210,7 @@ PredictOutput Agent::predict_action(const Observations& input_observations, bool
 	}
 
 	Observations observations;
-	for (auto& obs : input_observations)
-	{
-		observations.push_back(obs.unsqueeze(0).to(device_));
-	}
+	for (auto& obs : input_observations) { observations.push_back(obs.unsqueeze(0).to(device_)); }
 
 	return model_->predict(observations, deterministic);
 }
@@ -277,10 +271,10 @@ void Agent::load_model(bool force_reload)
 }
 
 std::unique_ptr<Agent> drla::make_agent(
-		const Config::Agent& config,
-		EnvironmentManager* environment_manager,
-		AgentCallbackInterface* callback,
-		const std::filesystem::path& data_path)
+	const Config::Agent& config,
+	EnvironmentManager* environment_manager,
+	AgentCallbackInterface* callback,
+	const std::filesystem::path& data_path)
 {
 	// If no agent is defined then use the interactive agent with a warning
 	if (config.valueless_by_exception())

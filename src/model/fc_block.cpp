@@ -35,7 +35,7 @@ FCBlockImpl::FCBlockImpl(const Config::FCConfig& config, int input_size) : confi
 }
 
 FCBlockImpl::FCBlockImpl(
-		const Config::FCConfig& config, int input_size, int output_size, Config::FCConfig::fc_layer output_layer_config)
+	const Config::FCConfig& config, int input_size, int output_size, Config::FCConfig::fc_layer output_layer_config)
 		: config_(configure_output(config, output_size, std::move(output_layer_config)))
 {
 	make_fc(input_size);

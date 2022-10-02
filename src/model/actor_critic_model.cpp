@@ -10,7 +10,7 @@ using namespace drla;
 using namespace torch;
 
 ActorCriticModel::ActorCriticModel(
-		const Config::ModelConfig& config, const EnvironmentConfiguration& env_config, int value_shape, bool predict_values)
+	const Config::ModelConfig& config, const EnvironmentConfiguration& env_config, int value_shape, bool predict_values)
 		: config_(std::get<Config::ActorCriticConfig>(config))
 		, predict_values_(config_.predict_values || predict_values)
 		, action_space_(env_config.action_space)
@@ -40,8 +40,8 @@ ActorCriticModel::ActorCriticModel(
 		spdlog::debug("Constructing {}", config_.actor.name);
 	}
 	policy_action_output_ = register_module(
-			"policy_action_output",
-			PolicyActionOutput(config_.policy_action_output, actor_->get_output_size(), env_config.action_space));
+		"policy_action_output",
+		PolicyActionOutput(config_.policy_action_output, actor_->get_output_size(), env_config.action_space));
 
 	int parameter_size = 0;
 	auto params = parameters();

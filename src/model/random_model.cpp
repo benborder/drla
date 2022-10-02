@@ -9,7 +9,7 @@ RandomModel::RandomModel(const Config::ModelConfig& config, const ActionSpace& a
 		: action_space_(action_space)
 		, value_shape_(value_shape)
 		, policy_action_output_(register_module(
-					"policy_action_output", PolicyActionOutput(Config::PolicyActionOutputConfig(), 1, action_space)))
+				"policy_action_output", PolicyActionOutput(Config::PolicyActionOutputConfig(), 1, action_space)))
 {
 }
 

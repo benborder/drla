@@ -11,22 +11,22 @@
 using namespace drla;
 
 RolloutBuffer::RolloutBuffer(
-		int buffer_size,
-		int n_envs,
-		const EnvironmentConfiguration& env_config,
-		int reward_shape,
-		torch::Tensor gamma,
-		torch::Tensor gae_lambda,
-		torch::Device device)
+	int buffer_size,
+	int n_envs,
+	const EnvironmentConfiguration& env_config,
+	int reward_shape,
+	torch::Tensor gamma,
+	torch::Tensor gae_lambda,
+	torch::Device device)
 		: device_(device), gamma_(gamma), gae_lambda_(gae_lambda), buffer_size_(buffer_size)
 {
 	for (size_t i = 0; i < env_config.observation_shapes.size(); i++)
 	{
 		std::vector<int64_t> observations_shape{buffer_size_ + 1, n_envs};
 		observations_shape.insert(
-				observations_shape.end(), env_config.observation_shapes[i].begin(), env_config.observation_shapes[i].end());
+			observations_shape.end(), env_config.observation_shapes[i].begin(), env_config.observation_shapes[i].end());
 		observations_.push_back(
-				torch::zeros(observations_shape, torch::TensorOptions(torch::kCPU).dtype(env_config.observation_dtypes[i])));
+			torch::zeros(observations_shape, torch::TensorOptions(torch::kCPU).dtype(env_config.observation_dtypes[i])));
 	}
 	rewards_ = torch::zeros({buffer_size_, n_envs, reward_shape}, torch::TensorOptions(device));
 	values_ = torch::zeros({buffer_size_ + 1, n_envs, reward_shape}, torch::TensorOptions(device));
@@ -38,10 +38,7 @@ RolloutBuffer::RolloutBuffer(
 	if (is_action_discrete(env_config.action_space))
 	{
 		action_type = torch::kLong;
-		for (size_t i = 0; i < env_config.action_space.shape.size(); i++)
-		{
-			action_shape.push_back(1);
-		}
+		for (size_t i = 0; i < env_config.action_space.shape.size(); i++) { action_shape.push_back(1); }
 	}
 	else
 	{
@@ -65,10 +62,7 @@ void RolloutBuffer::initialise(const StepData& step_data)
 
 void RolloutBuffer::reset()
 {
-	for (auto& obs : observations_)
-	{
-		obs.zero_();
-	}
+	for (auto& obs : observations_) { obs.zero_(); }
 	rewards_.zero_();
 	values_.zero_();
 	returns_.zero_();
@@ -106,10 +100,7 @@ void RolloutBuffer::add(const StepData& step_data)
 void RolloutBuffer::add(const TimeStepData& timestep_data)
 {
 	int pos = pos_[0];
-	for (size_t i = 0; i < observations_.size(); i++)
-	{
-		observations_[i][pos + 1].copy_(timestep_data.observations[i]);
-	}
+	for (size_t i = 0; i < observations_.size(); i++) { observations_[i][pos + 1].copy_(timestep_data.observations[i]); }
 	actions_[pos].copy_(timestep_data.predict_results.action);
 	action_log_probs_[pos].copy_(timestep_data.predict_results.action_log_probs);
 	values_[pos].copy_(timestep_data.predict_results.values);
@@ -137,8 +128,8 @@ MiniBatchBuffer RolloutBuffer::get(int num_mini_batch)
 	if (batch_size < num_mini_batch)
 	{
 		throw std::runtime_error(
-				"The number of samples '" + std::to_string(env_size * buffer_size_) +
-				"' must be >= to the number of minibatches '" + std::to_string(num_mini_batch) + "'");
+			"The number of samples '" + std::to_string(env_size * buffer_size_) +
+			"' must be >= to the number of minibatches '" + std::to_string(num_mini_batch) + "'");
 	}
 	auto mini_batch_size = batch_size / num_mini_batch;
 	return MiniBatchBuffer(*this, mini_batch_size);
@@ -152,10 +143,7 @@ const Observations& RolloutBuffer::get_observations() const
 Observations RolloutBuffer::get_observations(int step) const
 {
 	Observations obs;
-	for (const auto& observation_group : observations_)
-	{
-		obs.push_back(observation_group[step].to(device_));
-	}
+	for (const auto& observation_group : observations_) { obs.push_back(observation_group[step].to(device_)); }
 	return obs;
 }
 
@@ -173,22 +161,27 @@ torch::Tensor RolloutBuffer::get_rewards() const
 {
 	return rewards_;
 }
+
 torch::Tensor RolloutBuffer::get_values() const
 {
 	return values_;
 }
+
 torch::Tensor RolloutBuffer::get_returns() const
 {
 	return returns_;
 }
+
 torch::Tensor RolloutBuffer::get_advantages() const
 {
 	return advantages_;
 }
+
 torch::Tensor RolloutBuffer::get_action_log_probs() const
 {
 	return action_log_probs_;
 }
+
 torch::Tensor RolloutBuffer::get_actions() const
 {
 	return actions_;
@@ -210,10 +203,7 @@ void RolloutBuffer::compute_returns_and_advantage(const torch::Tensor& last_valu
 
 void RolloutBuffer::prepare_next_batch()
 {
-	for (auto& observation_group : observations_)
-	{
-		observation_group[0].copy_(observation_group[-1]);
-	}
+	for (auto& observation_group : observations_) { observation_group[0].copy_(observation_group[-1]); }
 	episode_non_terminal_[0].copy_(episode_non_terminal_[-1]);
 }
 

@@ -84,26 +84,16 @@ inline std::string get_result_type_name(TrainResultType type)
 {
 	switch (type)
 	{
-		case TrainResultType::kValueLoss:
-			return "value_loss";
-		case TrainResultType::kPolicyLoss:
-			return "policy_loss";
-		case TrainResultType::kEntropyLoss:
-			return "entropy_loss";
-		case TrainResultType::kClipFraction:
-			return "clip_fraction";
-		case TrainResultType::kKLDivergence:
-			return "kl_divergence";
-		case TrainResultType::kLoss:
-			return "loss";
-		case TrainResultType::kExplainedVariance:
-			return "explained_variance";
-		case TrainResultType::kLearningRate:
-			return "learning_rate";
-		case TrainResultType::kExploration:
-			return "exploration";
-		default:
-			return "";
+		case TrainResultType::kValueLoss: return "value_loss";
+		case TrainResultType::kPolicyLoss: return "policy_loss";
+		case TrainResultType::kEntropyLoss: return "entropy_loss";
+		case TrainResultType::kClipFraction: return "clip_fraction";
+		case TrainResultType::kKLDivergence: return "kl_divergence";
+		case TrainResultType::kLoss: return "loss";
+		case TrainResultType::kExplainedVariance: return "explained_variance";
+		case TrainResultType::kLearningRate: return "learning_rate";
+		case TrainResultType::kExploration: return "exploration";
+		default: return "";
 	}
 }
 

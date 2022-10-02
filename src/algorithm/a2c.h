@@ -18,10 +18,11 @@ class ActorCriticModel;
 class A2C final : public Algorithm
 {
 public:
-	A2C(const Config::AgentTrainAlgorithm& config,
-			const ObservationShapes& observation_shape,
-			RolloutBuffer& buffer,
-			std::shared_ptr<Model> model);
+	A2C(
+		const Config::AgentTrainAlgorithm& config,
+		const ObservationShapes& observation_shape,
+		RolloutBuffer& buffer,
+		std::shared_ptr<Model> model);
 
 	std::vector<UpdateResult> update(int batch) override;
 

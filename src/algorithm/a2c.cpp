@@ -13,16 +13,16 @@
 using namespace drla;
 
 A2C::A2C(
-		const Config::AgentTrainAlgorithm& config,
-		const ObservationShapes& observation_shape,
-		RolloutBuffer& buffer,
-		std::shared_ptr<Model> model)
+	const Config::AgentTrainAlgorithm& config,
+	const ObservationShapes& observation_shape,
+	RolloutBuffer& buffer,
+	std::shared_ptr<Model> model)
 		: config_(std::get<Config::A2C>(config))
 		, buffer_(buffer)
 		, model_(std::dynamic_pointer_cast<ActorCriticModelInterface>(model))
 		, optimiser_(
-					model_->parameters(),
-					torch::optim::RMSpropOptions(config_.learning_rate).eps(config_.epsilon).alpha(config_.alpha))
+				model_->parameters(),
+				torch::optim::RMSpropOptions(config_.learning_rate).eps(config_.epsilon).alpha(config_.alpha))
 {
 	model_->train();
 }
@@ -58,7 +58,7 @@ std::vector<UpdateResult> A2C::update(int timestep)
 	auto policy_loss = -(advantages.detach().narrow(0, 0, n_steps) * action_log_probs).mean();
 
 	auto value_loss = torch::nn::functional::mse_loss(
-			buffer_.get_returns().narrow(0, 0, n_steps).view({n_steps, n_envs, evaluate_result.values.size(1)}), values);
+		buffer_.get_returns().narrow(0, 0, n_steps).view({n_steps, n_envs, evaluate_result.values.size(1)}), values);
 
 	// Total loss
 	auto loss = value_loss * config_.value_loss_coef + policy_loss * config_.policy_loss_coef -
@@ -73,12 +73,12 @@ std::vector<UpdateResult> A2C::update(int timestep)
 	auto explained_var = explained_variance(buffer_.get_values(), buffer_.get_returns());
 
 	return {
-			{TrainResultType::kLoss, loss.mean().item<float>()},
-			{TrainResultType::kValueLoss, value_loss.item<float>()},
-			{TrainResultType::kPolicyLoss, policy_loss.item<float>()},
-			{TrainResultType::kEntropyLoss, evaluate_result.dist_entropy.item<float>()},
-			{TrainResultType::kLearningRate, lr_param_},
-			{TrainResultType::kExplainedVariance, explained_var}};
+		{TrainResultType::kLoss, loss.mean().item<float>()},
+		{TrainResultType::kValueLoss, value_loss.item<float>()},
+		{TrainResultType::kPolicyLoss, policy_loss.item<float>()},
+		{TrainResultType::kEntropyLoss, evaluate_result.dist_entropy.item<float>()},
+		{TrainResultType::kLearningRate, lr_param_},
+		{TrainResultType::kExplainedVariance, explained_var}};
 }
 
 void A2C::save(const std::filesystem::path& path) const

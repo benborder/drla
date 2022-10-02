@@ -18,13 +18,13 @@ class RolloutBuffer
 {
 public:
 	RolloutBuffer(
-			int buffer_size,
-			int n_envs,
-			const EnvironmentConfiguration& env_config,
-			int reward_shape,
-			torch::Tensor gamma,
-			torch::Tensor gae_lambda,
-			torch::Device device);
+		int buffer_size,
+		int n_envs,
+		const EnvironmentConfiguration& env_config,
+		int reward_shape,
+		torch::Tensor gamma,
+		torch::Tensor gae_lambda,
+		torch::Device device);
 
 	void initialise(const StepData& step_data);
 	void reset();

@@ -16,10 +16,10 @@
 using namespace drla;
 
 PPO::PPO(
-		const Config::AgentTrainAlgorithm& config,
-		const ObservationShapes& observation_shape,
-		RolloutBuffer& buffer,
-		std::shared_ptr<Model> model)
+	const Config::AgentTrainAlgorithm& config,
+	const ObservationShapes& observation_shape,
+	RolloutBuffer& buffer,
+	std::shared_ptr<Model> model)
 		: config_(std::get<Config::PPO>(config))
 		, buffer_(buffer)
 		, model_(std::dynamic_pointer_cast<ActorCriticModelInterface>(model))
@@ -76,7 +76,7 @@ std::vector<UpdateResult> PPO::update(int timestep)
 			if (config_.clip_vf)
 			{
 				values_pred =
-						mini_batch.old_values + torch::clamp(eval_result.values - mini_batch.old_values, -clip_vf_, clip_vf_);
+					mini_batch.old_values + torch::clamp(eval_result.values - mini_batch.old_values, -clip_vf_, clip_vf_);
 			}
 			else
 			{
@@ -89,8 +89,8 @@ std::vector<UpdateResult> PPO::update(int timestep)
 
 			// Total loss
 			loss =
-					(value_loss * config_.value_loss_coef + policy_loss * config_.policy_loss_coef -
-					 eval_result.dist_entropy * config_.entropy_coef);
+				(value_loss * config_.value_loss_coef + policy_loss * config_.policy_loss_coef -
+				 eval_result.dist_entropy * config_.entropy_coef);
 
 			// Calculate approximate form of reverse KL Divergence for early stopping
 			// see Schulman blog: http://joschu.net/blog/kl-approx.html
@@ -122,14 +122,14 @@ std::vector<UpdateResult> PPO::update(int timestep)
 	clip_fraction /= update_count;
 
 	return {
-			{TrainResultType::kLoss, loss.mean().item<float>()},
-			{TrainResultType::kValueLoss, total_value_loss},
-			{TrainResultType::kPolicyLoss, total_policy_loss},
-			{TrainResultType::kEntropyLoss, total_entropy_loss},
-			{TrainResultType::kClipFraction, clip_fraction},
-			{TrainResultType::kKLDivergence, kl_divergence},
-			{TrainResultType::kLearningRate, lr_},
-			{TrainResultType::kExplainedVariance, explained_var}};
+		{TrainResultType::kLoss, loss.mean().item<float>()},
+		{TrainResultType::kValueLoss, total_value_loss},
+		{TrainResultType::kPolicyLoss, total_policy_loss},
+		{TrainResultType::kEntropyLoss, total_entropy_loss},
+		{TrainResultType::kClipFraction, clip_fraction},
+		{TrainResultType::kKLDivergence, kl_divergence},
+		{TrainResultType::kLearningRate, lr_},
+		{TrainResultType::kExplainedVariance, explained_var}};
 }
 
 void PPO::save(const std::filesystem::path& path) const

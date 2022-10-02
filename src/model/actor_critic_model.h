@@ -20,10 +20,10 @@ class ActorCriticModel : public ActorCriticModelInterface
 {
 public:
 	ActorCriticModel(
-			const Config::ModelConfig& config,
-			const EnvironmentConfiguration& env_config,
-			int value_shape,
-			bool predict_Values = false);
+		const Config::ModelConfig& config,
+		const EnvironmentConfiguration& env_config,
+		int value_shape,
+		bool predict_Values = false);
 
 	PredictOutput predict(const Observations& observations, bool deterministic = true) override;
 

@@ -28,10 +28,10 @@ public:
 	/// step updates.
 	/// @param data_path The save/load path for config, models and training optimiser state.
 	OffPolicyAgent(
-			const Config::Agent& config,
-			EnvironmentManager* environment_manager,
-			AgentCallbackInterface* callback,
-			std::filesystem::path data_path);
+		const Config::Agent& config,
+		EnvironmentManager* environment_manager,
+		AgentCallbackInterface* callback,
+		std::filesystem::path data_path);
 	/// @brief Creates and configures the agent.
 	/// @param config The configuration for the agent.
 	/// @param environment_manager A non owning pointer to the environment manager interface, which is responsible for
@@ -40,10 +40,10 @@ public:
 	/// step updates.
 	/// @param data_path The save/load path for config, models and training optimiser state.
 	OffPolicyAgent(
-			const Config::OffPolicyAgent& config,
-			EnvironmentManager* environment_manager,
-			AgentCallbackInterface* callback,
-			std::filesystem::path data_path);
+		const Config::OffPolicyAgent& config,
+		EnvironmentManager* environment_manager,
+		AgentCallbackInterface* callback,
+		std::filesystem::path data_path);
 	~OffPolicyAgent();
 
 	/// @brief Initiate training the agent, running for the number of epochs defined in the configuration file

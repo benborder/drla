@@ -10,7 +10,7 @@ using namespace drla;
 MiniBatchBuffer::MiniBatchBuffer(const RolloutBuffer& buffer, int mini_batch_size) : buffer_(buffer)
 {
 	indices_ =
-			torch::randperm(buffer_.get_buffer_sample_size(), torch::TensorOptions(torch::kLong)).view({-1, mini_batch_size});
+		torch::randperm(buffer_.get_buffer_sample_size(), torch::TensorOptions(torch::kLong)).view({-1, mini_batch_size});
 }
 
 MiniBatchBuffer::Iterator MiniBatchBuffer::begin()
@@ -40,7 +40,7 @@ void MiniBatchBuffer::Iterator::get_minibatch()
 		observations_shape.erase(observations_shape.begin());
 		observations_shape[0] = -1;
 		minibatch_.observations.push_back(
-				observations[i].narrow(0, 0, steps).view(observations_shape).index({index}).to(buffer_.get_device()));
+			observations[i].narrow(0, 0, steps).view(observations_shape).index({index}).to(buffer_.get_device()));
 	}
 
 	auto action_shape = buffer_.get_actions().sizes().vec();

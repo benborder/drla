@@ -17,10 +17,10 @@ class PolicyActionOutputImpl : public torch::nn::Module
 {
 public:
 	PolicyActionOutputImpl(
-			const Config::PolicyActionOutputConfig& config,
-			int inputs,
-			const ActionSpace& action_space,
-			bool use_logits = true);
+		const Config::PolicyActionOutputConfig& config,
+		int inputs,
+		const ActionSpace& action_space,
+		bool use_logits = true);
 	std::unique_ptr<Distribution> forward(torch::Tensor latent_pi);
 
 private:
@@ -32,6 +32,7 @@ private:
 	torch::nn::Linear action_net_;
 	torch::nn::Linear log_std_;
 };
+
 TORCH_MODULE(PolicyActionOutput);
 
 } // namespace drla

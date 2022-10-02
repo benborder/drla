@@ -48,7 +48,7 @@ torch::Tensor Bernoulli::action_log_prob(torch::Tensor action)
 {
 	auto broadcasted_tensors = torch::broadcast_tensors({logits_, action});
 	return -torch::binary_cross_entropy_with_logits(
-			broadcasted_tensors[0], broadcasted_tensors[1], {}, {}, torch::Reduction::None);
+		broadcasted_tensors[0], broadcasted_tensors[1], {}, {}, torch::Reduction::None);
 }
 
 torch::Tensor Bernoulli::sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape)

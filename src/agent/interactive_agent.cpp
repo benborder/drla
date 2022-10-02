@@ -10,20 +10,20 @@ using namespace torch;
 using namespace drla;
 
 InteractiveAgent::InteractiveAgent(
-		const Config::Agent& config,
-		EnvironmentManager* environment_manager,
-		AgentCallbackInterface* callback,
-		std::string data_path)
+	const Config::Agent& config,
+	EnvironmentManager* environment_manager,
+	AgentCallbackInterface* callback,
+	std::string data_path)
 		: Agent(config, environment_manager, callback, std::move(data_path))
 		, config_(std::get<Config::InteractiveAgent>(config))
 {
 }
 
 InteractiveAgent::InteractiveAgent(
-		const Config::InteractiveAgent& config,
-		EnvironmentManager* environment_manager,
-		AgentCallbackInterface* callback,
-		std::string data_path)
+	const Config::InteractiveAgent& config,
+	EnvironmentManager* environment_manager,
+	AgentCallbackInterface* callback,
+	std::string data_path)
 		: Agent(config, environment_manager, callback, std::move(data_path)), config_(config)
 {
 }

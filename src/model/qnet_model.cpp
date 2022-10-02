@@ -26,9 +26,9 @@ QNetModel::QNetModel(const Config::ModelConfig& config, const EnvironmentConfigu
 	// DQN can not handle multi actions unless they are permuted
 	int action_shape = action_space_.shape[0];
 	q_net_ =
-			register_module(config_.q_net.name, FCBlock(config_.q_net, feature_extractor_->get_output_size(), action_shape));
+		register_module(config_.q_net.name, FCBlock(config_.q_net, feature_extractor_->get_output_size(), action_shape));
 	q_net_target_ = register_module(
-			config_.q_net.name + "_target", FCBlock(config_.q_net, feature_extractor_->get_output_size(), action_shape));
+		config_.q_net.name + "_target", FCBlock(config_.q_net, feature_extractor_->get_output_size(), action_shape));
 
 	int parameter_size = 0;
 	auto params = parameters();
@@ -77,10 +77,7 @@ void QNetModel::update(double tau)
 	const auto current_params = q_net_->parameters();
 	auto target_params = q_net_target_->parameters();
 
-	for (size_t i = 0; i < current_params.size(); i++)
-	{
-		target_params[i].mul_(1.0 - tau).add_(current_params[i], tau);
-	}
+	for (size_t i = 0; i < current_params.size(); i++) { target_params[i].mul_(1.0 - tau).add_(current_params[i], tau); }
 
 	const auto feature_current_params = feature_extractor_->parameters();
 	auto feature_target_params = feature_extractor_target_->parameters();

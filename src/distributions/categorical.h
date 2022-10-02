@@ -32,9 +32,7 @@ class MultiCategorical : public Distribution
 {
 public:
 	MultiCategorical(
-			const std::vector<int64_t>& action_shape,
-			std::optional<torch::Tensor> probs,
-			std::optional<torch::Tensor> logits);
+		const std::vector<int64_t>& action_shape, std::optional<torch::Tensor> probs, std::optional<torch::Tensor> logits);
 
 	torch::Tensor entropy() override;
 	torch::Tensor action_log_prob(torch::Tensor action) override;

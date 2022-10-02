@@ -48,6 +48,7 @@ struct FCConfig
 		// Enable a dense net configuration, which provides the block input to this layer
 		bool use_densenet = false;
 	};
+
 	// The name of the fully conected block
 	std::string name;
 	// Defines each layer in the block. Default to none, passing the original tensor through unmodified.
