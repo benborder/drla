@@ -181,6 +181,7 @@ void OnPolicyAgent::train()
 						step_data.step = step;
 						{
 							torch::NoGradGuard no_grad;
+							for (auto& obs : step_data.step_result.observation) { obs = obs.unsqueeze(0).to(device_); }
 							step_data.predict_result = model->predict(step_data.step_result.observation, false);
 						}
 						step_data.step_result = environment->step(step_data.predict_result.action);
