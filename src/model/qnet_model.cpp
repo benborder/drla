@@ -1,5 +1,7 @@
 #include "qnet_model.h"
 
+#include "model/utils.h"
+
 #include <spdlog/spdlog.h>
 
 #include <filesystem>
@@ -10,8 +12,8 @@ using namespace torch;
 QNetModel::QNetModel(const Config::ModelConfig& config, const EnvironmentConfiguration& env_config, int value_shape)
 		: config_(std::get<Config::QNetModelConfig>(config))
 		, action_space_(env_config.action_space)
-		, feature_extractor_(make_feature_extractor(config_.feature_extractor, env_config.observation_shapes))
-		, feature_extractor_target_(make_feature_extractor(config_.feature_extractor, env_config.observation_shapes))
+		, feature_extractor_(config_.feature_extractor, env_config.observation_shapes)
+		, feature_extractor_target_(config_.feature_extractor, env_config.observation_shapes)
 		, q_net_(nullptr)
 		, q_net_target_(nullptr)
 {
@@ -44,7 +46,7 @@ QNetModel::QNetModel(const Config::ModelConfig& config, const EnvironmentConfigu
 
 torch::Tensor QNetModel::forward(const Observations& observations)
 {
-	auto features = feature_extractor_->forward(observations);
+	auto features = flatten(feature_extractor_->forward(observations));
 	return q_net_(features);
 }
 
@@ -67,7 +69,7 @@ PredictOutput QNetModel::predict(const Observations& observations, bool determin
 
 torch::Tensor QNetModel::forward_target(const Observations& observations)
 {
-	torch::Tensor features = feature_extractor_target_->forward(observations);
+	torch::Tensor features = flatten(feature_extractor_target_->forward(observations));
 	return q_net_target_(features);
 }
 

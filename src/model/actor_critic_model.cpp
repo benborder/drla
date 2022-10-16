@@ -1,6 +1,7 @@
 #include "actor_critic_model.h"
 
 #include "distribution.h"
+#include "model/utils.h"
 
 #include <spdlog/spdlog.h>
 
@@ -14,7 +15,8 @@ ActorCriticModel::ActorCriticModel(
 		: config_(std::get<Config::ActorCriticConfig>(config))
 		, predict_values_(config_.predict_values || predict_values)
 		, action_space_(env_config.action_space)
-		, feature_extractor_(make_feature_extractor(config_.feature_extractor, env_config.observation_shapes))
+		, feature_extractor_(config_.feature_extractor, env_config.observation_shapes)
+		, feature_extractor_critic_(nullptr)
 		, shared_(nullptr)
 		, critic_(nullptr)
 		, actor_(nullptr)
@@ -29,8 +31,8 @@ ActorCriticModel::ActorCriticModel(
 	}
 	else
 	{
-		feature_extractor_critic_ = make_feature_extractor(config_.feature_extractor, env_config.observation_shapes);
-		register_module("feature_extractor_critic", feature_extractor_critic_);
+		feature_extractor_critic_ = register_module(
+			"feature_extractor_critic", FeatureExtractor(config_.feature_extractor, env_config.observation_shapes));
 	}
 
 	critic_ = register_module(config_.critic.name, FCBlock(config_.critic, input_size, value_shape));
@@ -57,7 +59,7 @@ ActorCriticModel::ActorCriticModel(
 
 PredictOutput ActorCriticModel::predict(const Observations& observations, bool deterministic)
 {
-	auto features = feature_extractor_->forward(observations);
+	auto features = flatten(feature_extractor_(observations));
 	torch::Tensor hidden;
 	torch::Tensor values;
 	if (config_.use_shared_extractor)
@@ -73,7 +75,7 @@ PredictOutput ActorCriticModel::predict(const Observations& observations, bool d
 		hidden = features;
 		if (predict_values_)
 		{
-			values = critic_(feature_extractor_critic_->forward(observations));
+			values = critic_(flatten(feature_extractor_critic_(observations)));
 		}
 	}
 	auto dist = policy_action_output_(actor_(hidden));
@@ -104,7 +106,7 @@ PredictOutput ActorCriticModel::predict(const Observations& observations, bool d
 ActionPolicyEvaluation
 ActorCriticModel::evaluate_actions(const Observations& observations, const torch::Tensor& actions)
 {
-	auto features = feature_extractor_->forward(observations);
+	auto features = flatten(feature_extractor_(observations));
 	torch::Tensor hidden;
 	torch::Tensor values;
 	if (config_.use_shared_extractor)
@@ -115,7 +117,7 @@ ActorCriticModel::evaluate_actions(const Observations& observations, const torch
 	else
 	{
 		hidden = features;
-		values = critic_(feature_extractor_critic_->forward(observations));
+		values = critic_(flatten(feature_extractor_critic_(observations)));
 	}
 	auto dist = policy_action_output_(actor_(hidden));
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <string>
@@ -15,6 +16,22 @@ enum class AgentPolicyModelType
 	kRandom,
 	kActorCritic,
 	kQNet,
+};
+
+/// @brief The type of feature extractor. Only used in deserialisation.
+enum class FeatureExtractorType
+{
+	kMLP,
+	kCNN,
+};
+
+/// @brier The layer type of a feature extractor
+enum class LayerType
+{
+	kConv2d,
+	kMaxPool2d,
+	kAvgPool2d,
+	kAdaptiveAvgPool2d,
 };
 
 namespace Config
@@ -50,46 +67,91 @@ struct FCConfig
 	};
 
 	// The name of the fully conected block
-	std::string name;
+	std::string name = "fc";
 	// Defines each layer in the block. Default to none, passing the original tensor through unmodified.
 	std::vector<fc_layer> layers = {};
 };
 
-/// @brief Multi Layer Perceptron feature extractor config. Is identical to the fully connected block config.
+/// @brief Multi Layer Perceptron feature extractor config. Has identical config to the fully connected block config.
 struct MLPConfig : FCConfig
 {
 };
 
+/// @brief Convolutional layer configuration for a feature extractor.
+struct Conv2dConfig
+{
+	// The number of input channels. 0 is used to automatically determine the input channels.
+	int in_channels = 0;
+	// The number of output channels. The same as number of passes of the kernel window over the input tensor.
+	int out_channels;
+	// The size of the kernel window
+	int kernel_size;
+	// The stride of the kernel window
+	int stride;
+	// The padding, defaults to 0
+	int padding = 0;
+	// The weight to initialise
+	float init_weight = std::sqrt(2.0f);
+	// The bias to initialise
+	float init_bias = 0.0f;
+	// Use bias for kernel weights
+	bool use_bias = true;
+	// The activation function used for forward passes
+	Activation activation = Activation::kNone;
+};
+
+/// @brief Max Pooling layer configuration for a feature extractor.
+struct MaxPool2dConfig
+{
+	// The size of the kernel window
+	int kernel_size;
+	// The stride of the kernel window
+	int stride;
+	// The padding, defaults to 0
+	int padding = 0;
+};
+
+/// @brief Average Pooling layer configuration for a feature extractor.
+struct AvgPool2dConfig
+{
+	// The size of the kernel window
+	int kernel_size;
+	// The stride of the kernel window
+	int stride;
+	// The padding, defaults to 0
+	int padding = 0;
+};
+
+/// @brief Adaptive Average Pooling layer configuration for a feature extractor.
+struct AdaptiveAvgPool2dConfig
+{
+	// The output height and width
+	std::array<int64_t, 2> size;
+};
+
+/// @brief The CNN layer config
+using CNNLayerConfig = std::variant<Conv2dConfig, MaxPool2dConfig, AvgPool2dConfig, AdaptiveAvgPool2dConfig>;
+
 /// @brief Convolutional Neural Network feature extractor configuration.
 struct CNNConfig
 {
-	struct conv_layer_config
-	{
-		// The number of input channels. 0 is used to automatically determine the input channels.
-		int in_channels = 0;
-		// The number of output channels. The same as number of passes of the kernel window over the input tensor.
-		int out_channels;
-		// The size of the kernel window
-		int kernel_size;
-		// The stride of the kernel window
-		int stride;
-		// The padding, defaults to 0
-		int padding = 0;
-		// The weight to initialise
-		float init_weight = std::sqrt(2.0f);
-		// The bias to initialise
-		float init_bias = 0.0f;
-	};
-
 	// Defines groups of CNN layers. Each group can have different numbers of input and output channels.
-	std::vector<std::vector<conv_layer_config>> conv_layers = {{{0, 32, 8, 4}, {0, 64, 4, 2}, {0, 64, 3, 1}}};
+	std::vector<CNNLayerConfig> layers = {
+		Conv2dConfig{0, 32, 8, 4}, Conv2dConfig{0, 64, 4, 2}, Conv2dConfig{0, 64, 3, 1}};
 };
 
-///@brief Feature extractor configuration. Either MLP or CNN.
-using FeatureExtractorConfig = std::variant<MLPConfig, CNNConfig>;
+/// @brief A feature extractor group config.
+using FeatureExtractorGroup = std::variant<MLPConfig, CNNConfig>;
 
-/// @brief The policy action output configuration. Used to transform input neural units to match the action space of the
-/// environment.
+///@brief Feature extractor configuration.
+struct FeatureExtractorConfig
+{
+	// The feature extractors for each observation group.
+	std::vector<FeatureExtractorGroup> feature_groups;
+};
+
+/// @brief The policy action output configuration. Used to transform input neural units to match the action space of
+/// the environment.
 struct PolicyActionOutputConfig
 {
 	// The activations function to use for the action head

@@ -47,8 +47,8 @@ private:
 
 	const ActionSpace action_space_;
 
-	std::shared_ptr<FeatureExtractor> feature_extractor_;
-	std::shared_ptr<FeatureExtractor> feature_extractor_target_;
+	FeatureExtractor feature_extractor_;
+	FeatureExtractor feature_extractor_target_;
 	FCBlock q_net_;
 	FCBlock q_net_target_;
 	double exploration_ = 0;

@@ -38,8 +38,8 @@ private:
 
 	const ActionSpace action_space_;
 
-	std::shared_ptr<FeatureExtractor> feature_extractor_;
-	std::shared_ptr<FeatureExtractor> feature_extractor_critic_;
+	FeatureExtractor feature_extractor_;
+	FeatureExtractor feature_extractor_critic_;
 
 	FCBlock shared_;
 	FCBlock critic_;

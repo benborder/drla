@@ -1,5 +1,7 @@
 #include "fc_block.h"
 
+#include "model/utils.h"
+
 #include <spdlog/spdlog.h>
 #include <torch/torch.h>
 
@@ -71,44 +73,7 @@ torch::Tensor FCBlockImpl::forward(const torch::Tensor& input)
 		{
 			x = torch::cat({x, input}, -1);
 		}
-		x = layers_[i](x);
-		switch (layer.activation)
-		{
-			case Config::Activation::kNone:
-			{
-				break;
-			}
-			case Config::Activation::kReLU:
-			{
-				x = torch::relu(x);
-				break;
-			}
-			case Config::Activation::kLeakyReLU:
-			{
-				x = torch::leaky_relu(x);
-				break;
-			}
-			case Config::Activation::kTanh:
-			{
-				x = torch::tanh(x);
-				break;
-			}
-			case Config::Activation::kSigmoid:
-			{
-				x = torch::sigmoid(x);
-				break;
-			}
-			case Config::Activation::kELU:
-			{
-				x = torch::elu(x);
-				break;
-			}
-			case Config::Activation::kSoftplus:
-			{
-				x = torch::softplus(x);
-				break;
-			}
-		}
+		x = make_activation(layer.activation)(layers_[i](x));
 	}
 
 	return x;

@@ -5,26 +5,41 @@
 
 #include <torch/torch.h>
 
+#include <memory>
 #include <variant>
 #include <vector>
 
 namespace drla
 {
 
-class FeatureExtractor : public torch::nn::Module
+class FeatureExtractorGroup : public torch::nn::Module
 {
 public:
-	~FeatureExtractor();
+	~FeatureExtractorGroup();
 
-	virtual torch::Tensor forward(const Observations& observations) = 0;
-	virtual int get_output_size() const = 0;
+	virtual torch::Tensor forward(const torch::Tensor& observation) = 0;
+	virtual std::vector<int64_t> get_output_shape() const = 0;
 };
 
-inline FeatureExtractor::~FeatureExtractor()
+inline FeatureExtractorGroup::~FeatureExtractorGroup()
 {
 }
 
-std::shared_ptr<FeatureExtractor>
-make_feature_extractor(const Config::FeatureExtractorConfig& config, const ObservationShapes& observation_shape);
+class FeatureExtractorImpl : public torch::nn::Module
+{
+public:
+	FeatureExtractorImpl(const Config::FeatureExtractorConfig& config, const ObservationShapes& observation_shape);
+
+	std::vector<torch::Tensor> forward(const Observations& observations);
+	std::vector<std::vector<int64_t>> get_output_shape() const;
+	int get_output_size() const;
+
+private:
+	std::vector<std::shared_ptr<FeatureExtractorGroup>> feature_extractors_;
+	std::vector<std::vector<int64_t>> output_shape_;
+	int output_size_;
+};
+
+TORCH_MODULE(FeatureExtractor);
 
 } // namespace drla

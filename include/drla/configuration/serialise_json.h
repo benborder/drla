@@ -75,6 +75,22 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 	})
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
+	FeatureExtractorType,
+	{
+		{FeatureExtractorType::kMLP, "MLP"},
+		{FeatureExtractorType::kCNN, "CNN"},
+	})
+
+NLOHMANN_JSON_SERIALIZE_ENUM(
+	LayerType,
+	{
+		{LayerType::kConv2d, "Conv2d"},
+		{LayerType::kMaxPool2d, "MaxPool2d"},
+		{LayerType::kAvgPool2d, "AvgPool2d"},
+		{LayerType::kAdaptiveAvgPool2d, "AdaptiveAvgPool2d"},
+	})
+
+NLOHMANN_JSON_SERIALIZE_ENUM(
 	LearningRateScheduleType,
 	{
 		{LearningRateScheduleType::kConstant, "Constant"},
@@ -319,22 +335,26 @@ static inline void from_json(const nlohmann::json& json, MLPConfig& mlp)
 
 static inline void to_json(nlohmann::json& json, const MLPConfig& mlp)
 {
+	json["type"] = FeatureExtractorType::kMLP;
 	to_json(json, static_cast<const FCConfig&>(mlp));
 }
 
-static inline void from_json(const nlohmann::json& json, CNNConfig::conv_layer_config& conv)
+static inline void from_json(const nlohmann::json& json, Conv2dConfig& conv)
 {
 	conv.in_channels << optional_input{json, "in_channels"};
 	conv.out_channels << required_input{json, "out_channels"};
 	conv.kernel_size << required_input{json, "kernel_size"};
 	conv.stride << required_input{json, "stride"};
-	conv.padding << required_input{json, "padding"};
+	conv.padding << optional_input{json, "padding"};
 	conv.init_weight << optional_input{json, "init_weight"};
 	conv.init_bias << optional_input{json, "init_bias"};
+	conv.use_bias << optional_input{json, "use_bias"};
+	conv.activation << optional_input{json, "activation"};
 }
 
-static inline void to_json(nlohmann::json& json, const CNNConfig::conv_layer_config& conv)
+static inline void to_json(nlohmann::json& json, const Conv2dConfig& conv)
 {
+	json["type"] = LayerType::kConv2d;
 	json["in_channels"] = conv.in_channels;
 	json["out_channels"] = conv.out_channels;
 	json["kernel_size"] = conv.kernel_size;
@@ -342,33 +362,134 @@ static inline void to_json(nlohmann::json& json, const CNNConfig::conv_layer_con
 	json["padding"] = conv.padding;
 	json["init_weight"] = conv.init_weight;
 	json["init_bias"] = conv.init_bias;
+	json["use_bias"] = conv.use_bias;
+	json["activation"] = conv.activation;
+}
+
+static inline void from_json(const nlohmann::json& json, MaxPool2dConfig& maxpool)
+{
+	maxpool.kernel_size << required_input{json, "kernel_size"};
+	maxpool.stride << required_input{json, "stride"};
+	maxpool.padding << optional_input{json, "padding"};
+}
+
+static inline void to_json(nlohmann::json& json, const MaxPool2dConfig& maxpool)
+{
+	json["type"] = LayerType::kMaxPool2d;
+	json["kernel_size"] = maxpool.kernel_size;
+	json["stride"] = maxpool.stride;
+	json["padding"] = maxpool.padding;
+}
+
+static inline void from_json(const nlohmann::json& json, AvgPool2dConfig& avgpool)
+{
+	avgpool.kernel_size << required_input{json, "kernel_size"};
+	avgpool.stride << required_input{json, "stride"};
+	avgpool.padding << optional_input{json, "padding"};
+}
+
+static inline void to_json(nlohmann::json& json, const AvgPool2dConfig& avgpool)
+{
+	json["type"] = LayerType::kAvgPool2d;
+	json["kernel_size"] = avgpool.kernel_size;
+	json["stride"] = avgpool.stride;
+	json["padding"] = avgpool.padding;
+}
+
+static inline void from_json(const nlohmann::json& json, AdaptiveAvgPool2dConfig& adaptavgpool)
+{
+	adaptavgpool.size << required_input{json, "size"};
+}
+
+static inline void to_json(nlohmann::json& json, const AdaptiveAvgPool2dConfig& adaptavgpool)
+{
+	json["type"] = LayerType::kAdaptiveAvgPool2d;
+	json["size"] = adaptavgpool.size;
+}
+
+static inline void from_json(const nlohmann::json& json, CNNLayerConfig& cnn_layer_config)
+{
+	LayerType type;
+	type << required_input{json, "type"};
+	switch (type)
+	{
+		case LayerType::kConv2d:
+		{
+			cnn_layer_config = json.get<Conv2dConfig>();
+			break;
+		}
+		case LayerType::kMaxPool2d:
+		{
+			cnn_layer_config = json.get<MaxPool2dConfig>();
+			break;
+		}
+		case LayerType::kAvgPool2d:
+		{
+			cnn_layer_config = json.get<AvgPool2dConfig>();
+			break;
+		}
+		case LayerType::kAdaptiveAvgPool2d:
+		{
+			cnn_layer_config = json.get<AdaptiveAvgPool2dConfig>();
+			break;
+		}
+		default:
+		{
+			spdlog::error("[Config] The CNN layer type is not defined.");
+			throw std::runtime_error("The CNN layer type is not defined");
+			break;
+		}
+	}
+}
+
+static inline void to_json(nlohmann::json& json, const CNNLayerConfig& cnn_layer_config)
+{
+	std::visit([&json](const auto& cnn_layer) { to_json(json, cnn_layer); }, cnn_layer_config);
 }
 
 static inline void from_json(const nlohmann::json& json, CNNConfig& cnn)
 {
-	cnn.conv_layers << required_input{json, "conv_layers"};
+	cnn.layers << optional_input{json, "layers"};
 }
 
 static inline void to_json(nlohmann::json& json, const CNNConfig& cnn)
 {
-	json["conv_layers"] = cnn.conv_layers;
+	json["type"] = FeatureExtractorType::kCNN;
+	json["layers"] = cnn.layers;
+}
+
+static inline void from_json(const nlohmann::json& json, FeatureExtractorGroup& feature_extractor)
+{
+	FeatureExtractorType type;
+	type << required_input{json, "type"};
+	switch (type)
+	{
+		case FeatureExtractorType::kMLP:
+		{
+			feature_extractor = json.get<MLPConfig>();
+			break;
+		}
+		case FeatureExtractorType::kCNN:
+		{
+			feature_extractor = json.get<CNNConfig>();
+			break;
+		}
+	}
+}
+
+static inline void to_json(nlohmann::json& json, const FeatureExtractorGroup& feature_extractor)
+{
+	std::visit([&](auto& feature_extractor) { to_json(json, feature_extractor); }, feature_extractor);
 }
 
 static inline void from_json(const nlohmann::json& json, FeatureExtractorConfig& feature_extractor)
 {
-	if (json.find("conv_layers") != json.end())
-	{
-		feature_extractor = json.get<CNNConfig>();
-	}
-	else
-	{
-		feature_extractor = json.get<MLPConfig>();
-	}
+	feature_extractor.feature_groups = json.get<decltype(feature_extractor.feature_groups)>();
 }
 
 static inline void to_json(nlohmann::json& json, const FeatureExtractorConfig& feature_extractor)
 {
-	std::visit([&](auto& feature_extractor) { to_json(json, feature_extractor); }, feature_extractor);
+	json = feature_extractor.feature_groups;
 }
 
 static inline void from_json(const nlohmann::json& json, PolicyActionOutputConfig& paoc)

@@ -11,20 +11,19 @@
 namespace drla
 {
 
-class CnnExtractor : public FeatureExtractor
+class CNNExtractor : public FeatureExtractorGroup
 {
 public:
-	CnnExtractor(const Config::FeatureExtractorConfig& config, const ObservationShapes& observation_shape);
+	CNNExtractor(const Config::CNNConfig& config, const std::vector<int64_t>& observation_shape);
 
-	torch::Tensor forward(const Observations& observations) override;
-	int get_output_size() const override;
+	torch::Tensor forward(const torch::Tensor& observation) override;
+	std::vector<int64_t> get_output_shape() const override;
 
 private:
-	const Config::CNNConfig config_;
-
-	using CNN = std::variant<torch::nn::Conv2d, torch::nn::Conv3d>;
-	std::vector<std::vector<CNN>> conv_layers_;
-	int output_size_;
+	using Conv2d = std::pair<torch::nn::Conv2d, std::function<torch::Tensor(const torch::Tensor&)>>;
+	using Layer = std::variant<Conv2d, torch::nn::MaxPool2d, torch::nn::AvgPool2d, torch::nn::AdaptiveAvgPool2d>;
+	std::vector<Layer> cnn_layers_;
+	std::vector<int64_t> out_shape_;
 };
 
 } // namespace drla

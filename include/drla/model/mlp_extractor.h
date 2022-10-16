@@ -11,13 +11,13 @@
 namespace drla
 {
 
-class MlpExtractor : public FeatureExtractor
+class MLPExtractor : public FeatureExtractorGroup
 {
 public:
-	MlpExtractor(const Config::FeatureExtractorConfig& config, const ObservationShapes& observation_shape);
+	MLPExtractor(const Config::MLPConfig& config, const std::vector<int64_t>& observation_shape);
 
-	torch::Tensor forward(const Observations& observations) override;
-	int get_output_size() const override;
+	torch::Tensor forward(const torch::Tensor& observation) override;
+	std::vector<int64_t> get_output_shape() const override;
 
 private:
 	FCBlock hidden_;
