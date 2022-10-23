@@ -38,7 +38,7 @@ FeatureExtractorImpl::FeatureExtractorImpl(
 		}
 		else
 		{
-			spdlog::error("Invalid feature extractor type. Only MLP, CNN and Resnet are supported.");
+			spdlog::error("Invalid feature extractor type. Only MLP, CNN and ResNet are supported.");
 			throw std::runtime_error("Invalid feature extractor type");
 		}
 		output_shape_.push_back(feature_extractors_.back()->get_output_shape());

@@ -112,6 +112,13 @@ CNNExtractor::CNNExtractor(const Config::CNNConfig& config, const std::vector<in
 
 					spdlog::debug("{:<28}[{} {}]", "adaptive_avgpool2d", w, h);
 				}
+				if constexpr (std::is_same_v<Config::ResBlock2dConfig, T>)
+				{
+					cnn_layers_.emplace_back(ResBlock2d(in_channels, config));
+					register_module("resnet_resblock" + std::to_string(l++), std::get<ResBlock2d>(cnn_layers_.back()));
+
+					spdlog::debug("{:<28}[{} {}]", "resblock2d", w, h);
+				}
 			},
 			layer_config);
 	}

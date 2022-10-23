@@ -88,6 +88,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 		{LayerType::kMaxPool2d, "MaxPool2d"},
 		{LayerType::kAvgPool2d, "AvgPool2d"},
 		{LayerType::kAdaptiveAvgPool2d, "AdaptiveAvgPool2d"},
+		{LayerType::kResBlock2d, "ResBlock2d"},
 	})
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
@@ -407,6 +408,23 @@ static inline void to_json(nlohmann::json& json, const AdaptiveAvgPool2dConfig& 
 	json["size"] = adaptavgpool.size;
 }
 
+static inline void from_json(const nlohmann::json& json, ResBlock2dConfig& resblock)
+{
+	resblock.layers << optional_input{json, "layers"};
+	resblock.kernel_size << optional_input{json, "kernel_size"};
+	resblock.stride << optional_input{json, "stride"};
+	resblock.normalise << optional_input{json, "normalise"};
+}
+
+static inline void to_json(nlohmann::json& json, const ResBlock2dConfig& resblock)
+{
+	json["type"] = LayerType::kResBlock2d;
+	json["layers"] = resblock.layers;
+	json["kernel_size"] = resblock.kernel_size;
+	json["stride"] = resblock.stride;
+	json["normalise"] = resblock.normalise;
+}
+
 static inline void from_json(const nlohmann::json& json, CNNLayerConfig& cnn_layer_config)
 {
 	LayerType type;
@@ -431,6 +449,11 @@ static inline void from_json(const nlohmann::json& json, CNNLayerConfig& cnn_lay
 		case LayerType::kAdaptiveAvgPool2d:
 		{
 			cnn_layer_config = json.get<AdaptiveAvgPool2dConfig>();
+			break;
+		}
+		case LayerType::kResBlock2d:
+		{
+			cnn_layer_config = json.get<ResBlock2dConfig>();
 			break;
 		}
 		default:

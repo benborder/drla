@@ -2,6 +2,7 @@
 
 #include "drla/configuration/model.h"
 #include "drla/model/feature_extractor.h"
+#include "drla/model/res_block.h"
 
 #include <torch/torch.h>
 
@@ -21,7 +22,8 @@ public:
 
 private:
 	using Conv2d = std::pair<torch::nn::Conv2d, std::function<torch::Tensor(const torch::Tensor&)>>;
-	using Layer = std::variant<Conv2d, torch::nn::MaxPool2d, torch::nn::AvgPool2d, torch::nn::AdaptiveAvgPool2d>;
+	using Layer =
+		std::variant<Conv2d, torch::nn::MaxPool2d, torch::nn::AvgPool2d, torch::nn::AdaptiveAvgPool2d, ResBlock2d>;
 	std::vector<Layer> cnn_layers_;
 	std::vector<int64_t> out_shape_;
 };

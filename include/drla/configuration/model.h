@@ -32,6 +32,7 @@ enum class LayerType
 	kMaxPool2d,
 	kAvgPool2d,
 	kAdaptiveAvgPool2d,
+	kResBlock2d,
 };
 
 namespace Config
@@ -129,8 +130,24 @@ struct AdaptiveAvgPool2dConfig
 	std::array<int64_t, 2> size;
 };
 
+/// @brief Residual Block layer for a feature extractor.
+struct ResBlock2dConfig
+{
+	// The number of convolutional layers
+	int layers = 2;
+	// The size of the kernel window of the convolutional layers
+	int kernel_size = 3;
+	// The stride of the kernel window
+	int stride = 1;
+	// The weight to initialise
+	float init_weight = std::sqrt(2.0f);
+	// Normalise layers
+	bool normalise = false;
+};
+
 /// @brief The CNN layer config
-using CNNLayerConfig = std::variant<Conv2dConfig, MaxPool2dConfig, AvgPool2dConfig, AdaptiveAvgPool2dConfig>;
+using CNNLayerConfig =
+	std::variant<Conv2dConfig, MaxPool2dConfig, AvgPool2dConfig, AdaptiveAvgPool2dConfig, ResBlock2dConfig>;
 
 /// @brief Convolutional Neural Network feature extractor configuration.
 struct CNNConfig
