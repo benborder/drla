@@ -127,6 +127,8 @@ void Agent::run(const std::vector<State>& initial_state, RunOptions options)
 
 	auto env_config = envs_.front()->get_configuration();
 
+	model_->eval();
+
 	for (int env = 0; env < env_count; env++)
 	{
 		threadpool.queue_task([&, env]() {
@@ -155,6 +157,8 @@ void Agent::run(const std::vector<State>& initial_state, RunOptions options)
 			{
 				return;
 			}
+
+			torch::NoGradGuard no_grad;
 
 			for (int step = 0; step < options.max_steps; step++)
 			{
@@ -208,6 +212,8 @@ PredictOutput Agent::predict_action(const Observations& input_observations, bool
 		spdlog::error("No model loaded! Call 'load_model()' at least once before 'predict_action()' is called.");
 		throw std::runtime_error("No model loaded!");
 	}
+
+	torch::NoGradGuard no_grad;
 
 	Observations observations;
 	for (auto& obs : input_observations) { observations.push_back(obs.unsqueeze(0).to(device_)); }
