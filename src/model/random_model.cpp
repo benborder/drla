@@ -16,9 +16,10 @@ RandomModel::RandomModel(const Config::ModelConfig& config, const ActionSpace& a
 PredictOutput RandomModel::predict(const Observations& observations, bool deterministic)
 {
 	// Create an output distribution to select a uniformly random action
-	auto dist = policy_action_output_(torch::ones({1, 1}, observations.front().device()));
-	auto action = dist->sample();
-	return {torch::zeros({1, value_shape_}), action, {}};
+	auto envs = observations.front().size(0);
+	auto dist = policy_action_output_(torch::ones({envs, 1}, observations.front().device()));
+	auto action = dist->sample().unsqueeze(-1);
+	return {torch::zeros({envs, value_shape_}), action, {}};
 }
 
 void RandomModel::save(const std::filesystem::path& path)
