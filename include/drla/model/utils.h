@@ -31,4 +31,19 @@ inline std::function<torch::Tensor(const torch::Tensor&)> make_activation(Config
 	return [](const torch::Tensor& x) { return x; };
 }
 
+inline torch::Tensor activation(torch::Tensor x, Config::Activation activation)
+{
+	switch (activation)
+	{
+		case Config::Activation::kNone: break;
+		case Config::Activation::kReLU: return torch::relu(x);
+		case Config::Activation::kLeakyReLU: return torch::leaky_relu(x);
+		case Config::Activation::kTanh: return torch::tanh(x);
+		case Config::Activation::kSigmoid: return torch::sigmoid(x);
+		case Config::Activation::kELU: return torch::elu(x);
+		case Config::Activation::kSoftplus: return torch::softplus(x);
+	}
+	return x;
+}
+
 } // namespace drla

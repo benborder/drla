@@ -73,7 +73,7 @@ torch::Tensor FCBlockImpl::forward(const torch::Tensor& input)
 		{
 			x = torch::cat({x, input}, -1);
 		}
-		x = make_activation(layer.activation)(layers_[i](x));
+		x = activation(layers_[i](x), layer.activation);
 	}
 
 	return x;
