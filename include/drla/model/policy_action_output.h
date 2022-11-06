@@ -21,7 +21,10 @@ public:
 		int inputs,
 		const ActionSpace& action_space,
 		bool use_logits = true);
+	PolicyActionOutputImpl(const PolicyActionOutputImpl& other, const c10::optional<torch::Device>& device);
+
 	std::unique_ptr<Distribution> forward(torch::Tensor latent_pi);
+	std::shared_ptr<torch::nn::Module> clone(const c10::optional<torch::Device>& device = c10::nullopt) const override;
 
 private:
 	const Config::PolicyActionOutputConfig config_;

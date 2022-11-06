@@ -25,6 +25,17 @@ configure_output(Config::FCConfig config, int output_size, Config::FCConfig::fc_
 	return config;
 }
 
+FCBlockImpl::FCBlockImpl(const FCBlockImpl& other, const c10::optional<torch::Device>& device)
+		: config_(other.config_), output_size_(other.output_size_)
+{
+	int index = 0;
+	for (auto& layer : other.layers_)
+	{
+		layers_.emplace_back(std::dynamic_pointer_cast<torch::nn::LinearImpl>(layer->clone(device)));
+		register_module(other.named_children()[index++].key(), layers_.back());
+	}
+}
+
 FCBlockImpl::FCBlockImpl(const Config::FCConfig& config, int input_size) : config_(config)
 {
 	output_size_ = input_size;
@@ -82,4 +93,10 @@ torch::Tensor FCBlockImpl::forward(const torch::Tensor& input)
 int FCBlockImpl::get_output_size() const
 {
 	return output_size_;
+}
+
+std::shared_ptr<torch::nn::Module> FCBlockImpl::clone(const c10::optional<torch::Device>& device) const
+{
+	torch::NoGradGuard no_grad;
+	return std::make_shared<FCBlockImpl>(static_cast<const FCBlockImpl&>(*this), device);
 }

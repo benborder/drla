@@ -36,6 +36,23 @@ PolicyActionOutputImpl::PolicyActionOutputImpl(
 	spdlog::debug("Output:  {}", num_actions_);
 }
 
+PolicyActionOutputImpl::PolicyActionOutputImpl(
+	const PolicyActionOutputImpl& other, const c10::optional<torch::Device>& device)
+		: config_(other.config_)
+		, action_space_(other.action_space_)
+		, num_actions_(other.num_actions_)
+		, use_logits_(other.use_logits_)
+		, action_net_(std::dynamic_pointer_cast<torch::nn::LinearImpl>(other.action_net_->clone(device)))
+		, log_std_(nullptr)
+{
+	register_module("action_net_output", action_net_);
+	if (action_space_.type == ActionSpaceType::kBox)
+	{
+		log_std_ = std::dynamic_pointer_cast<torch::nn::LinearImpl>(other.log_std_->clone(device));
+		register_module("log_std", log_std_);
+	}
+}
+
 std::unique_ptr<Distribution> PolicyActionOutputImpl::forward(torch::Tensor latent_pi)
 {
 	auto latent_actions = activation(action_net_(latent_pi), config_.activation);
@@ -75,4 +92,10 @@ std::unique_ptr<Distribution> PolicyActionOutputImpl::forward(torch::Tensor late
 				std::to_string(static_cast<int>(action_space_.type)));
 		}
 	}
+}
+
+std::shared_ptr<torch::nn::Module> PolicyActionOutputImpl::clone(const c10::optional<torch::Device>& device) const
+{
+	torch::NoGradGuard no_grad;
+	return std::make_shared<PolicyActionOutputImpl>(static_cast<const PolicyActionOutputImpl&>(*this), device);
 }

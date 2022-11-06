@@ -44,9 +44,31 @@ QNetModel::QNetModel(const Config::ModelConfig& config, const EnvironmentConfigu
 	spdlog::debug("Total parameters: {}", parameter_size);
 }
 
+QNetModel::QNetModel(const QNetModel& other, const c10::optional<torch::Device>& device)
+		: config_(other.config_)
+		, action_space_(other.action_space_)
+		, feature_extractor_(nullptr)
+		, feature_extractor_target_(nullptr)
+		, q_net_(nullptr)
+		, q_net_target_(nullptr)
+{
+	feature_extractor_ = std::dynamic_pointer_cast<FeatureExtractorImpl>(other.feature_extractor_->clone(device));
+	register_module("feature_extractor", feature_extractor_);
+
+	feature_extractor_target_ =
+		std::dynamic_pointer_cast<FeatureExtractorImpl>(other.feature_extractor_target_->clone(device));
+	register_module("feature_extractor_target", feature_extractor_target_);
+
+	q_net_ = std::dynamic_pointer_cast<FCBlockImpl>(other.q_net_->clone(device));
+	register_module(config_.q_net.name, q_net_);
+
+	q_net_target_ = std::dynamic_pointer_cast<FCBlockImpl>(other.q_net_target_->clone(device));
+	register_module(config_.q_net.name + "_target", q_net_target_);
+}
+
 torch::Tensor QNetModel::forward(const Observations& observations)
 {
-	auto features = flatten(feature_extractor_->forward(observations));
+	auto features = flatten(feature_extractor_(observations));
 	return q_net_(features);
 }
 
@@ -121,4 +143,10 @@ void QNetModel::load(const std::filesystem::path& path)
 		torch::load(model, model_path);
 		spdlog::debug("DQN model loaded");
 	}
+}
+
+std::shared_ptr<torch::nn::Module> QNetModel::clone(const c10::optional<torch::Device>& device) const
+{
+	torch::NoGradGuard no_grad;
+	return std::make_shared<QNetModel>(static_cast<const QNetModel&>(*this), device);
 }

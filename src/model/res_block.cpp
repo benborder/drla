@@ -27,6 +27,23 @@ ResBlock2dImpl::ResBlock2dImpl(int channels, Config::ResBlock2dConfig config)
 	}
 }
 
+ResBlock2dImpl::ResBlock2dImpl(const ResBlock2dImpl& other, const c10::optional<torch::Device>& device)
+{
+	int index = 0;
+	for (auto& res_layer : other.res_layers_)
+	{
+		auto layer = ResLayer{std::dynamic_pointer_cast<torch::nn::Conv2dImpl>(res_layer.conv->clone(device)), nullptr};
+		register_module(other.named_children()[index++].key(), layer.conv);
+		if (!res_layer.bn.is_empty())
+		{
+			layer.bn = std::dynamic_pointer_cast<torch::nn::BatchNorm2dImpl>(res_layer.bn->clone(device));
+			register_module(other.named_children()[index++].key(), layer.bn);
+		}
+
+		res_layers_.emplace_back(std::move(layer));
+	}
+}
+
 torch::Tensor ResBlock2dImpl::forward(torch::Tensor x)
 {
 	auto v = x;
@@ -45,4 +62,10 @@ torch::Tensor ResBlock2dImpl::forward(torch::Tensor x)
 		v = torch::relu(v);
 	}
 	return v;
+}
+
+std::shared_ptr<torch::nn::Module> ResBlock2dImpl::clone(const c10::optional<torch::Device>& device) const
+{
+	torch::NoGradGuard no_grad;
+	return std::make_shared<ResBlock2dImpl>(static_cast<const ResBlock2dImpl&>(*this), device);
 }

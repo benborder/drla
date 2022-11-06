@@ -13,6 +13,15 @@ RandomModel::RandomModel(const Config::ModelConfig& config, const ActionSpace& a
 {
 }
 
+RandomModel::RandomModel(const RandomModel& other, const c10::optional<torch::Device>& device)
+		: action_space_(other.action_space_)
+		, value_shape_(other.value_shape_)
+		, policy_action_output_(register_module(
+				"policy_action_output",
+				std::dynamic_pointer_cast<PolicyActionOutputImpl>(other.policy_action_output_->clone(device))))
+{
+}
+
 PredictOutput RandomModel::predict(const Observations& observations, bool deterministic)
 {
 	// Create an output distribution to select a uniformly random action
@@ -28,4 +37,10 @@ void RandomModel::save(const std::filesystem::path& path)
 
 void RandomModel::load(const std::filesystem::path& path)
 {
+}
+
+std::shared_ptr<torch::nn::Module> RandomModel::clone(const c10::optional<torch::Device>& device) const
+{
+	torch::NoGradGuard no_grad;
+	return std::make_shared<RandomModel>(static_cast<const RandomModel&>(*this), device);
 }

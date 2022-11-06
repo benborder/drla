@@ -28,6 +28,7 @@ class QNetModel : public QNetModelInterface
 {
 public:
 	QNetModel(const Config::ModelConfig& config, const EnvironmentConfiguration& env_config, int value_shape);
+	QNetModel(const QNetModel& other, const c10::optional<torch::Device>& device);
 
 	torch::Tensor forward(const Observations& observations);
 	PredictOutput predict(const Observations& observations, bool deterministic) override;
@@ -41,6 +42,8 @@ public:
 
 	void save(const std::filesystem::path& path) override;
 	void load(const std::filesystem::path& path) override;
+
+	std::shared_ptr<torch::nn::Module> clone(const c10::optional<torch::Device>& device = c10::nullopt) const override;
 
 private:
 	const Config::QNetModelConfig config_;

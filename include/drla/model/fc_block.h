@@ -19,9 +19,11 @@ public:
 		int input_size,
 		int output_size,
 		Config::FCConfig::fc_layer output_layer_config = {});
+	FCBlockImpl(const FCBlockImpl& other, const c10::optional<torch::Device>& device);
 
 	torch::Tensor forward(const torch::Tensor& input);
 	int get_output_size() const;
+	std::shared_ptr<torch::nn::Module> clone(const c10::optional<torch::Device>& device = c10::nullopt) const override;
 
 private:
 	void make_fc(int input_size);

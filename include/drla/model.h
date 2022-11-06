@@ -14,7 +14,7 @@ class Model : public torch::nn::Module
 {
 public:
 	/// @brief Virtual destructor
-	virtual ~Model();
+	virtual ~Model() = default;
 
 	/// @brief Model prediction. Predicts the action and/or value for the given observations
 	/// @param observations The input observations to pass to the model. The observations must be on the same device as
@@ -34,10 +34,6 @@ public:
 	virtual void load(const std::filesystem::path& path) = 0;
 };
 
-inline Model::~Model()
-{
-}
-
 struct ActionPolicyEvaluation
 {
 	torch::Tensor values;
@@ -50,21 +46,17 @@ class ActorCriticModelInterface : public Model
 {
 public:
 	/// @brief Virtual destructor
-	virtual ~ActorCriticModelInterface();
+	virtual ~ActorCriticModelInterface() = default;
 
 	virtual ActionPolicyEvaluation evaluate_actions(const Observations& observations, const torch::Tensor& actions) = 0;
 };
-
-inline ActorCriticModelInterface::~ActorCriticModelInterface()
-{
-}
 
 /// @brief Common actor critic model interface
 class QNetModelInterface : public Model
 {
 public:
 	/// @brief Virtual destructor
-	virtual ~QNetModelInterface();
+	virtual ~QNetModelInterface() = default;
 
 	virtual torch::Tensor forward(const Observations& observations) = 0;
 
@@ -75,9 +67,5 @@ public:
 
 	virtual void set_exploration(double exploration) = 0;
 };
-
-inline QNetModelInterface::~QNetModelInterface()
-{
-}
 
 } // namespace drla

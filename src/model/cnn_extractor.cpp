@@ -126,6 +126,33 @@ CNNExtractor::CNNExtractor(const Config::CNNConfig& config, const std::vector<in
 	out_shape_ = {in_channels, w, h};
 }
 
+CNNExtractor::CNNExtractor(const CNNExtractor& other, const c10::optional<torch::Device>& device)
+		: out_shape_(other.out_shape_)
+{
+	int index = 0;
+	for (auto& cnn_layer : other.cnn_layers_)
+	{
+		std::visit(
+			[&](auto& layer) {
+				using layer_type = std::decay_t<decltype(layer)>;
+				if constexpr (std::is_same_v<Conv2d, layer_type>)
+				{
+					auto lp = std::make_pair(
+						std::dynamic_pointer_cast<Conv2d::first_type::Impl>(layer.first->clone(device)), layer.second);
+					register_module(other.named_children()[index++].key(), lp.first);
+					cnn_layers_.emplace_back(lp);
+				}
+				else
+				{
+					auto l = std::dynamic_pointer_cast<typename layer_type::Impl>(layer->clone(device));
+					register_module(other.named_children()[index++].key(), l);
+					cnn_layers_.emplace_back(std::move(l));
+				}
+			},
+			cnn_layer);
+	}
+}
+
 torch::Tensor CNNExtractor::forward(const torch::Tensor& observation)
 {
 	auto x = observation.to(torch::kFloat);
@@ -152,4 +179,10 @@ torch::Tensor CNNExtractor::forward(const torch::Tensor& observation)
 std::vector<int64_t> CNNExtractor::get_output_shape() const
 {
 	return out_shape_;
+}
+
+std::shared_ptr<torch::nn::Module> CNNExtractor::clone(const c10::optional<torch::Device>& device) const
+{
+	torch::NoGradGuard no_grad;
+	return std::make_shared<CNNExtractor>(static_cast<const CNNExtractor&>(*this), device);
 }

@@ -57,6 +57,42 @@ ActorCriticModel::ActorCriticModel(
 	spdlog::debug("Total parameters: {}", parameter_size);
 }
 
+ActorCriticModel::ActorCriticModel(const ActorCriticModel& other, const c10::optional<torch::Device>& device)
+		: config_(other.config_)
+		, predict_values_(other.predict_values_)
+		, action_space_(other.action_space_)
+		, feature_extractor_(nullptr)
+		, feature_extractor_critic_(nullptr)
+		, shared_(nullptr)
+		, critic_(nullptr)
+		, actor_(nullptr)
+		, policy_action_output_(nullptr)
+{
+	feature_extractor_ = std::dynamic_pointer_cast<FeatureExtractorImpl>(other.feature_extractor_->clone(device));
+	register_module("feature_extractor", feature_extractor_);
+
+	if (config_.use_shared_extractor)
+	{
+		shared_ = std::dynamic_pointer_cast<FCBlockImpl>(other.shared_->clone(device));
+		register_module(config_.shared.name, shared_);
+	}
+	else
+	{
+		feature_extractor_critic_ =
+			std::dynamic_pointer_cast<FeatureExtractorImpl>(other.feature_extractor_critic_->clone(device));
+		register_module("feature_extractor_critic", feature_extractor_critic_);
+	}
+
+	critic_ = std::dynamic_pointer_cast<FCBlockImpl>(other.critic_->clone(device));
+	register_module(config_.critic.name, critic_);
+
+	actor_ = std::dynamic_pointer_cast<FCBlockImpl>(other.actor_->clone(device));
+	register_module(config_.actor.name, actor_);
+
+	policy_action_output_ = std::dynamic_pointer_cast<PolicyActionOutputImpl>(other.policy_action_output_->clone(device));
+	register_module("policy_action_output", policy_action_output_);
+}
+
 PredictOutput ActorCriticModel::predict(const Observations& observations, bool deterministic)
 {
 	auto features = flatten(feature_extractor_(observations));
@@ -148,4 +184,10 @@ void ActorCriticModel::load(const std::filesystem::path& path)
 		torch::load(model, model_path);
 		spdlog::debug("Actor Critic model loaded");
 	}
+}
+
+std::shared_ptr<torch::nn::Module> ActorCriticModel::clone(const c10::optional<torch::Device>& device) const
+{
+	torch::NoGradGuard no_grad;
+	return std::make_shared<ActorCriticModel>(static_cast<const ActorCriticModel&>(*this), device);
 }

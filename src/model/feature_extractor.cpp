@@ -38,7 +38,7 @@ FeatureExtractorImpl::FeatureExtractorImpl(
 		}
 		else
 		{
-			spdlog::error("Invalid feature extractor type. Only MLP, CNN and ResNet are supported.");
+			spdlog::error("Invalid feature extractor type. Only MLP and CNN are supported.");
 			throw std::runtime_error("Invalid feature extractor type");
 		}
 		output_shape_.push_back(feature_extractors_.back()->get_output_shape());
@@ -56,13 +56,26 @@ FeatureExtractorImpl::FeatureExtractorImpl(
 	spdlog::debug("{:<28}[{}]", "Total observation features: ", output_size_);
 }
 
+FeatureExtractorImpl::FeatureExtractorImpl(
+	const FeatureExtractorImpl& other, const c10::optional<torch::Device>& device)
+		: output_shape_(other.output_shape_), output_size_(other.output_size_)
+{
+	int index = 0;
+	for (auto& feature_extractor : other.feature_extractors_)
+	{
+		auto fex = feature_extractor->clone(device);
+		register_module(other.named_children()[index++].key(), fex);
+		feature_extractors_.emplace_back(std::move(std::dynamic_pointer_cast<FeatureExtractorGroup>(fex)));
+	}
+}
+
 std::vector<torch::Tensor> FeatureExtractorImpl::forward(const Observations& observations)
 {
 	std::vector<torch::Tensor> output;
-	for (size_t i = 0; i < feature_extractors_.size(); ++i)
-	{
-		output.push_back(feature_extractors_[i]->forward(observations[i]));
-	}
+	output.resize(feature_extractors_.size());
+	at::parallel_for(0, feature_extractors_.size(), 1, [this, &observations, &output](int64_t index, int64_t stop) {
+		for (; index < stop; ++index) { output[index] = feature_extractors_[index]->forward(observations[index]); }
+	});
 	return output;
 }
 
@@ -74,4 +87,10 @@ std::vector<std::vector<int64_t>> FeatureExtractorImpl::get_output_shape() const
 int FeatureExtractorImpl::get_output_size() const
 {
 	return output_size_;
+}
+
+std::shared_ptr<torch::nn::Module> FeatureExtractorImpl::clone(const c10::optional<torch::Device>& device) const
+{
+	torch::NoGradGuard no_grad;
+	return std::make_shared<FeatureExtractorImpl>(static_cast<const FeatureExtractorImpl&>(*this), device);
 }
