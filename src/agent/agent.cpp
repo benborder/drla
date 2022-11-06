@@ -87,7 +87,7 @@ void Agent::make_environments(ThreadPool& threadpool, int env_count)
 	envs_.resize(env_count);
 	for (size_t i = env_count - envs_.size(); i < envs_.size(); i++)
 	{
-		threadpool.queue_task([&, i]() { envs_[i] = environment_manager_->make_environment(device_); });
+		threadpool.queue_task([&, i]() { envs_[i] = environment_manager_->make_environment(); });
 	}
 }
 
@@ -240,7 +240,7 @@ void Agent::load_model(bool force_reload)
 		// If there are no envs, then make a single env to get the required information to initialise the model
 		if (envs_.empty())
 		{
-			envs_.push_back(environment_manager_->make_environment(device_));
+			envs_.push_back(environment_manager_->make_environment());
 		}
 
 		// Observation shape and action space are the same for all envs

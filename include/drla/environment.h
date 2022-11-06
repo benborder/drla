@@ -42,7 +42,7 @@ class EnvironmentManager
 public:
 	/// @brief Creates an environment and returns a pointer to the interface.
 	/// @return A pointer to the environment interface
-	virtual std::unique_ptr<Environment> make_environment(torch::Device device) = 0;
+	virtual std::unique_ptr<Environment> make_environment() = 0;
 
 	/// @brief The callback when an episode ends and the environment is reset. This allows the environments to be
 	/// configured to have a specific state
