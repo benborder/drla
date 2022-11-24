@@ -4,7 +4,7 @@ using namespace drla;
 
 ReplayBuffer::ReplayBuffer(
 	int buffer_size, int n_envs, const EnvironmentConfiguration& env_config, int reward_shape, torch::Device device)
-		: device_(device), buffer_size_(buffer_size)
+		: device_(device), buffer_size_(buffer_size / n_envs)
 {
 	for (size_t i = 0; i < env_config.observation_shapes.size(); i++)
 	{
@@ -122,37 +122,32 @@ Observations ReplayBuffer::get_observations_head(int env) const
 
 ReplayBufferSamples ReplayBuffer::sample(int sample_size)
 {
-	torch::Tensor indices;
-	int total_samples = buffer_size_ * static_cast<int>(pos_.size());
+	int n_envs = static_cast<int>(pos_.size());
+	torch::Tensor step_indices;
+	torch::Tensor env_indices;
 	// The most recent sample is not valid (there is no next observation)
 	if (full_)
 	{
-		indices = (torch::randperm(total_samples, torch::TensorOptions(torch::kLong)).narrow(0, 0, sample_size) + pos_[0]) %
-							buffer_size_;
+		step_indices = (torch::randint(buffer_size_, {sample_size}) + pos_.front() + 1) % buffer_size_;
 	}
 	else
 	{
-		indices = torch::randperm((pos_[0] - 2) * static_cast<int>(pos_.size()), torch::TensorOptions(torch::kLong))
-								.narrow(0, 0, sample_size);
+		step_indices = torch::randint(pos_.front() - 2, {sample_size});
 	}
-	auto next_indicies = (indices + 1) % total_samples;
+	auto next_step_indices = (step_indices + 1) % buffer_size_;
+
+	env_indices = torch::randint(n_envs, {step_indices.size(0)});
 
 	ReplayBufferSamples data;
 	for (size_t i = 0; i < observations_.size(); i++)
 	{
-		auto observations_shape = observations_[i].sizes().vec();
-		observations_shape.erase(observations_shape.begin());
-		observations_shape[0] = -1;
-		auto obs = observations_[i].view(observations_shape);
-		data.observations.push_back(obs.index({indices}).to(device_));
-		data.next_observations.push_back(obs.index({next_indicies}).to(device_));
+		auto obs = observations_[i];
+		data.observations.push_back(obs.index({step_indices, env_indices}).to(device_));
+		data.next_observations.push_back(obs.index({next_step_indices, env_indices}).to(device_));
 	}
 
-	auto action_shape = actions_.sizes().vec();
-	action_shape.erase(action_shape.begin());
-	action_shape[0] = -1;
-	data.actions = actions_.view(action_shape).index({indices}).to(device_);
-	data.rewards = rewards_.view({-1, rewards_.size(2)}).index({indices}).to(device_);
-	data.episode_non_terminal = episode_non_terminal_.view({-1, 1}).index({indices}).to(device_);
+	data.actions = actions_.index({step_indices, env_indices}).to(device_);
+	data.rewards = rewards_.index({step_indices, env_indices}).to(device_);
+	data.episode_non_terminal = episode_non_terminal_.index({step_indices, env_indices}).to(device_);
 	return data;
 }
