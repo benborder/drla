@@ -122,7 +122,6 @@ void OffPolicyAgent::train()
 		case TrainAlgorithmType::kDQN:
 		{
 			algorithm = std::make_unique<DQN>(config_.train_algorithm, env_config.observation_shapes, buffer, model, gamma);
-			spdlog::info("Agent training algorithm: DQN");
 			break;
 		}
 		default:
@@ -131,6 +130,7 @@ void OffPolicyAgent::train()
 			return;
 		}
 	}
+	spdlog::info("Agent training algorithm: {}", algorithm->name());
 
 	training_ = true;
 

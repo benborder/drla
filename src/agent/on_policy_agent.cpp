@@ -120,13 +120,11 @@ void OnPolicyAgent::train()
 		case TrainAlgorithmType::kA2C:
 		{
 			algorithm = std::make_unique<A2C>(config_.train_algorithm, env_config.observation_shapes, buffer, model);
-			spdlog::info("Agent training algorithm: A2C");
 			break;
 		}
 		case TrainAlgorithmType::kPPO:
 		{
 			algorithm = std::make_unique<PPO>(config_.train_algorithm, env_config.observation_shapes, buffer, model);
-			spdlog::info("Agent training algorithm: PPO");
 			break;
 		}
 		default:
@@ -135,6 +133,7 @@ void OnPolicyAgent::train()
 			return;
 		}
 	}
+	spdlog::info("Agent training algorithm: {}", algorithm->name());
 
 	training_ = true;
 

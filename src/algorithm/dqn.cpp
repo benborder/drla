@@ -28,6 +28,11 @@ DQN::DQN(
 	update_exploration(0);
 }
 
+std::string DQN::name() const
+{
+	return "DQN";
+}
+
 std::vector<UpdateResult> DQN::update(int timestep)
 {
 	update_learning_rate(timestep);

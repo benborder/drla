@@ -28,6 +28,11 @@ PPO::PPO(
 	model_->train();
 }
 
+std::string PPO::name() const
+{
+	return "PPO";
+}
+
 std::vector<UpdateResult> PPO::update(int timestep)
 {
 	update_learning_rate(timestep);

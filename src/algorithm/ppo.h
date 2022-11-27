@@ -24,6 +24,7 @@ public:
 		RolloutBuffer& buffer,
 		std::shared_ptr<Model> model);
 
+	std::string name() const override;
 	std::vector<UpdateResult> update(int batch) override;
 
 	void save(const std::filesystem::path& path) const override;

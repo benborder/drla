@@ -25,6 +25,7 @@ public:
 		std::shared_ptr<Model> model,
 		torch::Tensor gamma);
 
+	std::string name() const override;
 	std::vector<UpdateResult> update(int timestep) override;
 
 	void save(const std::filesystem::path& path) const override;

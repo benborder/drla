@@ -27,6 +27,11 @@ A2C::A2C(
 	model_->train();
 }
 
+std::string A2C::name() const
+{
+	return "A2C";
+}
+
 std::vector<UpdateResult> A2C::update(int timestep)
 {
 	update_learning_rate(timestep);
