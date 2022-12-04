@@ -131,7 +131,7 @@ struct State
 };
 
 /// @brief The result of a step or reset in an environment
-struct StepResult
+struct EnvStepData
 {
 	// The observation from the environment after a step or reset
 	Observations observation;
@@ -150,7 +150,7 @@ struct StepData
 	int step = 0;
 
 	// The result of a step or reset in an environment
-	StepResult step_result;
+	EnvStepData env_data;
 
 	// Action prediction result
 	PredictOutput predict_result;

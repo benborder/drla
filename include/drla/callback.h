@@ -23,7 +23,7 @@ struct InitData
 	int reward_shape;
 
 	// The initial output of each environment
-	std::vector<StepResult> env_output;
+	std::vector<EnvStepData> env_output;
 };
 
 /// @brief Data from the current train timestep update. See `train_update` callback.

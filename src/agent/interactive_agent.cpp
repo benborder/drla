@@ -51,15 +51,15 @@ void InteractiveAgent::run(const std::vector<State>& initial_state, RunOptions o
 	ThreadPool threadpool(config_.env_count);
 	make_environments(threadpool, env_count);
 
-	std::vector<StepResult> step_results;
-	step_results.resize(env_count);
+	std::vector<EnvStepData> env_datas;
+	env_datas.resize(env_count);
 
 	// Wait for environments to complete initialising
 	threadpool.wait_queue_empty();
 
 	for (size_t env = 0; env < envs_.size(); ++env)
 	{
-		threadpool.queue_task([&, env]() { step_results[env] = envs_[env]->reset(initial_state[env]); });
+		threadpool.queue_task([&, env]() { env_datas[env] = envs_[env]->reset(initial_state[env]); });
 	}
 
 	// Wait for environment reset to complete
@@ -76,9 +76,9 @@ void InteractiveAgent::run(const std::vector<State>& initial_state, RunOptions o
 			StepData step_data;
 			step_data.env = env;
 			step_data.step = 0;
-			step_data.step_result = std::move(step_results[env]);
+			step_data.env_data = std::move(env_datas[env]);
 			step_data.predict_result.action = torch::zeros(env_config.action_space.shape);
-			step_data.reward = step_data.step_result.reward.clone();
+			step_data.reward = step_data.env_data.reward.clone();
 
 			auto agent_reset_config = agent_callback_->env_reset(step_data);
 			if (agent_reset_config.stop)
@@ -99,7 +99,7 @@ void InteractiveAgent::run(const std::vector<State>& initial_state, RunOptions o
 		}
 		threadpool.queue_task([&, env]() {
 			auto& environment = envs_[env];
-			auto& step_result = step_results[env];
+			auto& env_data = env_datas[env];
 
 			StepData step_data;
 			step_data.env = env;
@@ -109,8 +109,8 @@ void InteractiveAgent::run(const std::vector<State>& initial_state, RunOptions o
 			{
 				step_data.step = step;
 				step_data.predict_result.action = agent_callback_->interactive_step()[env];
-				step_data.step_result = environment->step(step_data.predict_result.action);
-				step_data.reward = step_data.step_result.reward.clone();
+				step_data.env_data = environment->step(step_data.predict_result.action);
+				step_data.reward = step_data.env_data.reward.clone();
 				if (config_.rewards.reward_clamp_min != 0)
 				{
 					step_data.reward.clamp_max_(-config_.rewards.reward_clamp_min);
@@ -130,7 +130,7 @@ void InteractiveAgent::run(const std::vector<State>& initial_state, RunOptions o
 					break;
 				}
 
-				if (step_data.step_result.state.episode_end)
+				if (step_data.env_data.state.episode_end)
 				{
 					environment->reset(initial_state[env]);
 					auto agent_reset_config = agent_callback_->env_reset(step_data);

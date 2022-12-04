@@ -49,7 +49,7 @@ void ReplayBuffer::add(const StepData& step_data)
 	full_ |= next_pos < pos;
 	for (size_t i = 0; i < observations_.size(); i++)
 	{
-		observations_[i][next_pos][step_data.env].copy_(step_data.step_result.observation[i]);
+		observations_[i][next_pos][step_data.env].copy_(step_data.env_data.observation[i]);
 	}
 	actions_[pos][step_data.env].copy_(step_data.predict_result.action[0]);
 	if (rewards_.size(2) == 1 && rewards_.size(2) != step_data.reward.size(0))
@@ -62,7 +62,7 @@ void ReplayBuffer::add(const StepData& step_data)
 	}
 
 	// When the episode ends zero all masks
-	episode_non_terminal_[pos][step_data.env] = step_data.step_result.state.episode_end ? 0.0F : 1.0F;
+	episode_non_terminal_[pos][step_data.env] = step_data.env_data.state.episode_end ? 0.0F : 1.0F;
 
 	pos_[step_data.env] = next_pos;
 }

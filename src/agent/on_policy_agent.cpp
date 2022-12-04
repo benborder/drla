@@ -48,8 +48,8 @@ void OnPolicyAgent::train()
 	ThreadPool threadpool(config_.env_count);
 	make_environments(threadpool, config_.env_count);
 
-	std::vector<StepResult> step_results;
-	step_results.resize(config_.env_count);
+	std::vector<EnvStepData> envs_data;
+	envs_data.resize(config_.env_count);
 
 	// Block and wait for envs to be created
 	threadpool.wait_queue_empty();
@@ -58,7 +58,7 @@ void OnPolicyAgent::train()
 	for (int env = 0; env < config_.env_count; env++)
 	{
 		threadpool.queue_task(
-			[&, env]() { step_results[env] = envs_[env]->reset(environment_manager_->get_initial_state()); });
+			[&, env]() { envs_data[env] = envs_[env]->reset(environment_manager_->get_initial_state()); });
 	}
 
 	int horizon_steps = 0;
@@ -85,7 +85,7 @@ void OnPolicyAgent::train()
 	auto env_config = envs_.front()->get_configuration();
 	int reward_shape = config_.rewards.combine_rewards ? 1 : static_cast<int>(env_config.reward_types.size());
 
-	agent_callback_->train_init({env_config, reward_shape, step_results});
+	agent_callback_->train_init({env_config, reward_shape, envs_data});
 
 	std::shared_ptr<Model> model;
 	switch (config_.model_type)
@@ -153,9 +153,9 @@ void OnPolicyAgent::train()
 		StepData step_data;
 		step_data.env = env;
 		step_data.step = 0;
-		step_data.step_result = std::move(step_results[env]);
+		step_data.env_data = std::move(envs_data[env]);
 		step_data.predict_result.action = torch::zeros(env_config.action_space.shape);
-		step_data.reward = step_data.step_result.reward.clone();
+		step_data.reward = step_data.env_data.reward.clone();
 		auto agent_reset_config = agent_callback_->env_reset(step_data);
 		raw_capture[env] = agent_reset_config.raw_capture;
 		buffer.initialise(step_data);
@@ -174,18 +174,18 @@ void OnPolicyAgent::train()
 
 					StepData step_data;
 					step_data.env = env;
-					step_data.step_result.observation = buffer.get_observations(0, env);
+					step_data.env_data.observation = buffer.get_observations(0, env);
 					for (int step = 0; step < horizon_steps; step++)
 					{
 						step_data.step = step;
 						{
 							torch::NoGradGuard no_grad;
-							for (auto& obs : step_data.step_result.observation) { obs = obs.unsqueeze(0).to(device_); }
-							step_data.predict_result = model->predict(step_data.step_result.observation, false);
+							for (auto& obs : step_data.env_data.observation) { obs = obs.unsqueeze(0).to(device_); }
+							step_data.predict_result = model->predict(step_data.env_data.observation, false);
 						}
-						step_data.step_result = environment->step(step_data.predict_result.action);
+						step_data.env_data = environment->step(step_data.predict_result.action);
 
-						step_data.reward = step_data.step_result.reward.clone();
+						step_data.reward = step_data.env_data.reward.clone();
 						if (config_.rewards.reward_clamp_min != 0)
 						{
 							step_data.reward.clamp_max_(-config_.rewards.reward_clamp_min);
@@ -205,13 +205,13 @@ void OnPolicyAgent::train()
 							break;
 						}
 
-						if (step_data.step_result.state.episode_end)
+						if (step_data.env_data.state.episode_end)
 						{
 							// If the episode has ended reset the environment and call env_reset
 							StepData reset_data;
 							reset_data.env = env;
-							reset_data.step_result = environment->reset(environment_manager_->get_initial_state());
-							reset_data.reward = reset_data.step_result.reward.clone();
+							reset_data.env_data = environment->reset(environment_manager_->get_initial_state());
+							reset_data.reward = reset_data.env_data.reward.clone();
 							if (config_.rewards.reward_clamp_min != 0)
 							{
 								reset_data.reward.clamp_max_(-config_.rewards.reward_clamp_min);
@@ -225,7 +225,7 @@ void OnPolicyAgent::train()
 								reset_data.raw_observation = environment->get_raw_observations();
 							}
 							auto agent_reset_config = agent_callback_->env_reset(reset_data);
-							step_data.step_result.observation = reset_data.step_result.observation;
+							step_data.env_data.observation = reset_data.env_data.observation;
 							raw_capture[env] = agent_reset_config.raw_capture;
 							if (agent_reset_config.stop)
 							{
@@ -270,9 +270,9 @@ void OnPolicyAgent::train()
 						step_data.predict_result.action_log_probs = timestep_data.predict_results.action_log_probs[env];
 						step_data.predict_result.values = timestep_data.predict_results.values[env];
 
-						step_data.step_result = environment->step(step_data.predict_result.action);
+						step_data.env_data = environment->step(step_data.predict_result.action);
 
-						step_data.reward = step_data.step_result.reward.clone();
+						step_data.reward = step_data.env_data.reward.clone();
 						if (config_.rewards.reward_clamp_min != 0)
 						{
 							step_data.reward.clamp_max_(-config_.rewards.reward_clamp_min);
@@ -288,13 +288,13 @@ void OnPolicyAgent::train()
 
 						stop |= agent_callback_->env_step(step_data);
 
-						if (step_data.step_result.state.episode_end)
+						if (step_data.env_data.state.episode_end)
 						{
 							// If the episode has ended reset the environment and call env_reset
 							StepData reset_data;
 							reset_data.env = env;
-							reset_data.step_result = environment->reset(environment_manager_->get_initial_state());
-							reset_data.reward = reset_data.step_result.reward.clone();
+							reset_data.env_data = environment->reset(environment_manager_->get_initial_state());
+							reset_data.reward = reset_data.env_data.reward.clone();
 							if (config_.rewards.reward_clamp_min != 0)
 							{
 								reset_data.reward.clamp_max_(-config_.rewards.reward_clamp_min);
@@ -308,17 +308,17 @@ void OnPolicyAgent::train()
 								reset_data.raw_observation = environment->get_raw_observations();
 							}
 							auto agent_reset_config = agent_callback_->env_reset(reset_data);
-							step_data.step_result.observation = reset_data.step_result.observation;
+							step_data.env_data.observation = reset_data.env_data.observation;
 							raw_capture[env] = agent_reset_config.raw_capture;
 							stop |= agent_reset_config.stop;
 						}
 
-						for (size_t i = 0; i < step_data.step_result.observation.size(); i++)
+						for (size_t i = 0; i < step_data.env_data.observation.size(); i++)
 						{
-							timestep_data.observations[i][env] = step_data.step_result.observation[i];
+							timestep_data.observations[i][env] = step_data.env_data.observation[i];
 						}
 						timestep_data.rewards[env] = std::move(step_data.reward);
-						timestep_data.states[env] = std::move(step_data.step_result.state);
+						timestep_data.states[env] = std::move(step_data.env_data.state);
 					});
 				}
 				threadpool.wait_queue_empty();

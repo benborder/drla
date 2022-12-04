@@ -59,13 +59,12 @@ public:
 
 	/// @brief Predicts the next action to perform given the input observations. Effectively performs a forward pass
 	/// through the model. **NOTE** 'load_model()' must be called at least once before calling this method.
-	/// @param input_observations The input observations to pass to the model. This method handles converting to the
-	/// correct device.
+	/// @param env_data The data from the environment. This method handles converting to the correct device.
 	/// @param deterministic Use a deterministic forward pass through the model to determine the action if true. Otherwise
 	/// a stochastic policy gradient is used to determine the action. This option is only relevant for policy gradient
 	/// based models.
 	/// @return The predicted action and/or value from the forward pass through the model.
-	virtual PredictOutput predict_action(const Observations& input_observations, bool deterministic = true);
+	virtual PredictOutput predict_action(const EnvStepData& env_data, bool deterministic = true);
 
 	/// @brief Clears and resets any loaded models, environments and state
 	virtual void reset();

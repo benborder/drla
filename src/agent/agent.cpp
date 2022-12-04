@@ -109,15 +109,15 @@ void Agent::run(const std::vector<State>& initial_state, RunOptions options)
 	ThreadPool threadpool(base_config_.env_count);
 	make_environments(threadpool, env_count);
 
-	std::vector<StepResult> step_results;
-	step_results.resize(env_count);
+	std::vector<EnvStepData> envs_data;
+	envs_data.resize(env_count);
 
 	// Wait for environments to complete initialising
 	threadpool.wait_queue_empty();
 
 	for (int env = 0; env < env_count; ++env)
 	{
-		threadpool.queue_task([&, env]() { step_results[env] = envs_[env]->reset(initial_state[env]); });
+		threadpool.queue_task([&, env]() { envs_data[env] = envs_[env]->reset(initial_state[env]); });
 	}
 
 	// Wait for environment reset to complete
@@ -137,9 +137,9 @@ void Agent::run(const std::vector<State>& initial_state, RunOptions options)
 			StepData step_data;
 			step_data.env = env;
 			step_data.step = 0;
-			step_data.step_result = std::move(step_results[env]);
+			step_data.env_data = std::move(envs_data[env]);
 			step_data.predict_result.action = torch::zeros(env_config.action_space.shape);
-			step_data.reward = step_data.step_result.reward.clone();
+			step_data.reward = step_data.env_data.reward.clone();
 
 			auto agent_reset_config = agent_callback_->env_reset(step_data);
 			if (agent_reset_config.stop)
@@ -162,13 +162,13 @@ void Agent::run(const std::vector<State>& initial_state, RunOptions options)
 
 			for (int step = 0; step < options.max_steps; step++)
 			{
-				auto observation = step_data.step_result.observation;
+				auto observation = step_data.env_data.observation;
 				for (auto& obs : observation) { obs = obs.unsqueeze(0).to(device_); }
 
 				step_data.step = step;
 				step_data.predict_result = model_->predict(observation, options.deterministic);
-				step_data.step_result = environment->step(step_data.predict_result.action);
-				step_data.reward = step_data.step_result.reward.clone();
+				step_data.env_data = environment->step(step_data.predict_result.action);
+				step_data.reward = step_data.env_data.reward.clone();
 				if (base_config_.rewards.reward_clamp_min != 0)
 				{
 					step_data.reward.clamp_max_(-base_config_.rewards.reward_clamp_min);
@@ -188,7 +188,7 @@ void Agent::run(const std::vector<State>& initial_state, RunOptions options)
 					break;
 				}
 
-				if (step_data.step_result.state.episode_end)
+				if (step_data.env_data.state.episode_end)
 				{
 					environment->reset(initial_state[env]);
 					auto agent_reset_config = agent_callback_->env_reset(step_data);
@@ -205,7 +205,7 @@ void Agent::run(const std::vector<State>& initial_state, RunOptions options)
 	threadpool.wait_queue_empty();
 }
 
-PredictOutput Agent::predict_action(const Observations& input_observations, bool deterministic)
+PredictOutput Agent::predict_action(const EnvStepData& env_data, bool deterministic)
 {
 	if (model_ == nullptr)
 	{
@@ -216,9 +216,9 @@ PredictOutput Agent::predict_action(const Observations& input_observations, bool
 	torch::NoGradGuard no_grad;
 
 	Observations observations;
-	for (auto& obs : input_observations) { observations.push_back(obs.unsqueeze(0).to(device_)); }
+	for (auto& obs : env_data.observation) { observations.push_back(obs.unsqueeze(0).to(device_)); }
 
-	return model_->predict(observations, deterministic);
+	return model_->predict(env_data.observation, deterministic);
 }
 
 void Agent::reset()

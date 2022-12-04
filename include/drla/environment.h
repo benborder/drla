@@ -19,16 +19,13 @@ public:
 
 	/// @brief Steps the environment and performs the specified action
 	/// @param action The action to perform in the environment
-	virtual StepResult step(torch::Tensor action) = 0;
+	/// @return The result of the step
+	virtual EnvStepData step(torch::Tensor action) = 0;
 
 	/// @brief Resets the environment and sets the initial state
 	/// @param initial_state The initial state of the environment to reset to
-	virtual StepResult reset(const State& initial_state) = 0;
-
-	/// @brief Sets the environment to a specific state. The effect of this is dependent on the environment
-	/// implementation.
-	/// @param state The state to set the environment to
-	virtual void set_state(const State& state) = 0;
+	/// @return The initial state after reset
+	virtual EnvStepData reset(const State& initial_state) = 0;
 
 	/// @brief Returns the unprocessed observations of the environment. This is typically used to return the raw
 	/// unfiltered state observations. For example an rgb or grayscale image.
