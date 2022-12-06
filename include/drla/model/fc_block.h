@@ -32,6 +32,7 @@ private:
 
 	std::vector<torch::nn::Linear> layers_;
 	int output_size_;
+	bool has_multi_connected_ = false;
 };
 
 TORCH_MODULE(FCBlock);

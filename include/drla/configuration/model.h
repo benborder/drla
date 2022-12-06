@@ -50,6 +50,17 @@ enum class Activation
 	kSoftplus,
 };
 
+/// @brief The type of fully connected layer
+enum class FCLayerType
+{
+	kLinear,				 // Standard linear/fully connected topology.
+	kInputConnected, // Same as linear, but input is also connected to this layer.
+	kMultiConnected, // Same as linear, but input and all previous layers are connected to this layers input.
+	kResidual,			 // Adds the input to the output of this layer. The output size will be the same as the input.
+	kForwardInput,	 // Forwards the input and the final layer to the output
+	kForwardAll,		 // Forwards the input and all layers to the output
+};
+
 /// @brief Fully connected block configuration
 struct FCConfig
 {
@@ -63,8 +74,8 @@ struct FCConfig
 		double init_weight = 1.0;
 		// The bias values to initialise the network with
 		double init_bias = 0.0;
-		// Enable a dense net configuration, which provides the block input to this layer
-		bool use_densenet = false;
+		// The type of fully connected network
+		FCLayerType type = FCLayerType::kLinear;
 	};
 
 	// The name of the fully conected block

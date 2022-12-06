@@ -123,6 +123,17 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 		{Activation::kSoftplus, "Softplus"},
 	})
 
+NLOHMANN_JSON_SERIALIZE_ENUM(
+	FCLayerType,
+	{
+		{FCLayerType::kLinear, "Linear"},
+		{FCLayerType::kInputConnected, "InputConnected"},
+		{FCLayerType::kMultiConnected, "MultiConnected"},
+		{FCLayerType::kResidual, "Residual"},
+		{FCLayerType::kForwardInput, "ForwardInput"},
+		{FCLayerType::kForwardAll, "ForwardAll"},
+	})
+
 static inline void from_json(const nlohmann::json& json, Rewards& reward_config)
 {
 	reward_config.reward_clamp_min << optional_input{json, "reward_clamp_min"};
@@ -301,11 +312,20 @@ static inline void to_json(nlohmann::json& json, const AgentTrainAlgorithm& trai
 
 static inline void from_json(const nlohmann::json& json, FCConfig::fc_layer& layer)
 {
-	layer.size << required_input{json, "size"};
+	layer.type << optional_input{json, "type"};
+	if (
+		layer.type == Config::FCLayerType::kResidual || layer.type == Config::FCLayerType::kForwardAll ||
+		layer.type == Config::FCLayerType::kForwardInput)
+	{
+		layer.size << optional_input{json, "size"};
+	}
+	else
+	{
+		layer.size << required_input{json, "size"};
+	}
 	layer.activation << optional_input{json, "activation"};
 	layer.init_bias << optional_input{json, "init_bias"};
 	layer.init_weight << optional_input{json, "init_weight"};
-	layer.use_densenet << optional_input{json, "use_densenet"};
 }
 
 static inline void to_json(nlohmann::json& json, const FCConfig::fc_layer& layer)
@@ -314,7 +334,7 @@ static inline void to_json(nlohmann::json& json, const FCConfig::fc_layer& layer
 	json["activation"] = layer.activation;
 	json["init_bias"] = layer.init_bias;
 	json["init_weight"] = layer.init_weight;
-	json["use_densenet"] = layer.use_densenet;
+	json["type"] = layer.type;
 }
 
 static inline void from_json(const nlohmann::json& json, FCConfig& fc)
