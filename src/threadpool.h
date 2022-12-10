@@ -4,6 +4,8 @@
 #include <condition_variable>
 #include <deque>
 #include <functional>
+#include <future>
+#include <memory>
 #include <thread>
 #include <type_traits>
 #include <vector>
@@ -17,11 +19,15 @@ class ThreadPool
 public:
 	/// @brief Initialises the threadpool with the number of threads specified, blocking until all threads are created and
 	/// waiting to run tasks.
-	/// @param threads The number of threads use.
+	/// @param threads The number of threads use. If 0 the number threads will be set to the number of cores available.
 	/// @param clamp_threads If set to true, the number of threads will be clamped to the number of cores available.
-	ThreadPool(size_t threads, bool clamp_threads = true) : pending_(0), running_(false)
+	ThreadPool(size_t threads = 0, bool clamp_threads = true) : pending_(0), running_(false)
 	{
-		if (clamp_threads)
+		if (threads == 0)
+		{
+			threads = std::thread::hardware_concurrency();
+		}
+		else if (clamp_threads)
 		{
 			threads = std::min<size_t>(std::thread::hardware_concurrency(), threads);
 		}
@@ -83,13 +89,36 @@ public:
 
 	/// @brief Dispatch a task to the queue and notify the pool a task is available.
 	/// @param func The function to execute on a thread in the pool.
-	template <typename Func>
+	template <typename Func, typename = std::enable_if_t<std::is_void_v<std::invoke_result_t<std::decay_t<Func>>>>>
 	void queue_task(Func&& func)
 	{
 		std::lock_guard lock(m_tasks_);
 		tasks_.push_back(std::move(func));
 		++pending_;
 		cv_tasks_.notify_one();
+	}
+
+	/// @brief Dispatch a task with a future return value to the queue and notify the pool a task is available.
+	/// @param func The function to execute on a thread in the pool.
+	/// @return A future of the of the return type of the task
+	template <
+		typename Func,
+		typename Res = std::invoke_result_t<std::decay_t<Func>>,
+		typename = std::enable_if_t<!std::is_void_v<Res>>>
+	[[nodiscard]] std::future<Res> queue_task(Func&& func)
+	{
+		auto task_promise = std::make_shared<std::promise<Res>>();
+		queue_task([func = std::move(func), task_promise] {
+			try
+			{
+				task_promise->set_value(func());
+			}
+			catch (...)
+			{
+				task_promise->set_exception(std::current_exception());
+			}
+		});
+		return task_promise->get_future();
 	}
 
 	/// @brief Wait until the task queue is empty.
