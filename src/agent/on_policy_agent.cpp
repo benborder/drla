@@ -65,6 +65,8 @@ void OnPolicyAgent::train()
 	int max_steps = 0;
 	int timestep = 0;
 	torch::Tensor gae_lambda = torch::empty({1}, device_);
+	// The discount factor for each reward type
+	std::vector<float> config_gamma;
 	std::visit(
 		[&](auto& config) {
 			using T = std::decay_t<decltype(config)>;
@@ -74,6 +76,7 @@ void OnPolicyAgent::train()
 				max_steps = config.total_timesteps;
 				timestep = config.start_timestep;
 				gae_lambda[0] = config.gae_lambda;
+				config_gamma = config.gamma;
 			}
 		},
 		config_.train_algorithm);
@@ -103,8 +106,6 @@ void OnPolicyAgent::train()
 	}
 	model->to(device_);
 
-	// The discount factor for each reward type
-	auto config_gamma = std::visit([&](auto& config) { return config.gamma; }, config_.train_algorithm);
 	if (config_gamma.size() < static_cast<size_t>(reward_shape))
 	{
 		config_gamma.resize(reward_shape, config_gamma.front());

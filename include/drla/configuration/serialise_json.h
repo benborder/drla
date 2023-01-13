@@ -152,7 +152,6 @@ static inline void from_json(const nlohmann::json& json, TrainAlgorithm& train_a
 {
 	train_algorithm.total_timesteps << required_input{json, "total_timesteps"};
 	train_algorithm.start_timestep << required_input{json, "start_timestep"};
-	train_algorithm.horizon_steps << required_input{json, "horizon_steps"};
 	train_algorithm.learning_rate << required_input{json, "learning_rate"};
 	train_algorithm.learning_rate_min << required_input{json, "learning_rate_min"};
 	train_algorithm.lr_schedule_type << required_input{json, "lr_schedule_type"};
@@ -163,7 +162,6 @@ static inline void to_json(nlohmann::json& json, const TrainAlgorithm& train_alg
 {
 	json["total_timesteps"] = train_algorithm.total_timesteps;
 	json["start_timestep"] = train_algorithm.start_timestep;
-	json["horizon_steps"] = train_algorithm.horizon_steps;
 	json["learning_rate"] = train_algorithm.learning_rate;
 	json["learning_rate_min"] = train_algorithm.learning_rate_min;
 	json["lr_schedule_type"] = train_algorithm.lr_schedule_type;
@@ -173,6 +171,7 @@ static inline void to_json(nlohmann::json& json, const TrainAlgorithm& train_alg
 static inline void from_json(const nlohmann::json& json, OnPolicyAlgorithm& on_policy_algorithm)
 {
 	from_json(json, static_cast<TrainAlgorithm&>(on_policy_algorithm));
+	on_policy_algorithm.horizon_steps << required_input{json, "horizon_steps"};
 	on_policy_algorithm.policy_loss_coef << required_input{json, "policy_loss_coef"};
 	on_policy_algorithm.value_loss_coef << required_input{json, "value_loss_coef"};
 	on_policy_algorithm.entropy_coef << required_input{json, "entropy_coef"};
@@ -183,6 +182,7 @@ static inline void from_json(const nlohmann::json& json, OnPolicyAlgorithm& on_p
 static inline void to_json(nlohmann::json& json, const OnPolicyAlgorithm& on_policy_algorithm)
 {
 	to_json(json, static_cast<const TrainAlgorithm&>(on_policy_algorithm));
+	json["horizon_steps"] = on_policy_algorithm.horizon_steps;
 	json["policy_loss_coef"] = on_policy_algorithm.policy_loss_coef;
 	json["value_loss_coef"] = on_policy_algorithm.value_loss_coef;
 	json["entropy_coef"] = on_policy_algorithm.entropy_coef;
@@ -193,6 +193,7 @@ static inline void to_json(nlohmann::json& json, const OnPolicyAlgorithm& on_pol
 static inline void from_json(const nlohmann::json& json, OffPolicyAlgorithm& off_policy_algorithm)
 {
 	from_json(json, static_cast<TrainAlgorithm&>(off_policy_algorithm));
+	off_policy_algorithm.horizon_steps << required_input{json, "horizon_steps"};
 	off_policy_algorithm.buffer_size << optional_input{json, "buffer_size"};
 	off_policy_algorithm.batch_size << optional_input{json, "batch_size"};
 	off_policy_algorithm.learning_starts << optional_input{json, "learning_starts"};
@@ -205,6 +206,7 @@ static inline void from_json(const nlohmann::json& json, OffPolicyAlgorithm& off
 static inline void to_json(nlohmann::json& json, const OffPolicyAlgorithm& off_policy_algorithm)
 {
 	to_json(json, static_cast<const TrainAlgorithm&>(off_policy_algorithm));
+	json["horizon_steps"] = off_policy_algorithm.horizon_steps;
 	json["buffer_size"] = off_policy_algorithm.buffer_size;
 	json["batch_size"] = off_policy_algorithm.batch_size;
 	json["learning_starts"] = off_policy_algorithm.learning_starts;
@@ -283,25 +285,10 @@ static inline void from_json(const nlohmann::json& json, AgentTrainAlgorithm& tr
 	train_algorithm_type << optional_input{json, "train_algorithm_type"};
 	switch (train_algorithm_type)
 	{
-		case TrainAlgorithmType::kA2C:
-		{
-			train_algorithm = json.get<A2C>();
-			break;
-		}
-		case TrainAlgorithmType::kPPO:
-		{
-			train_algorithm = json.get<PPO>();
-			break;
-		}
-		case TrainAlgorithmType::kDQN:
-		{
-			train_algorithm = json.get<DQN>();
-			break;
-		}
-		case TrainAlgorithmType::kNone:
-		{
-			break;
-		}
+		case TrainAlgorithmType::kA2C: train_algorithm = json.get<A2C>(); break;
+		case TrainAlgorithmType::kPPO: train_algorithm = json.get<PPO>(); break;
+		case TrainAlgorithmType::kDQN: train_algorithm = json.get<DQN>(); break;
+		case TrainAlgorithmType::kNone: break;
 	}
 }
 
@@ -451,31 +438,11 @@ static inline void from_json(const nlohmann::json& json, CNNLayerConfig& cnn_lay
 	type << required_input{json, "type"};
 	switch (type)
 	{
-		case LayerType::kConv2d:
-		{
-			cnn_layer_config = json.get<Conv2dConfig>();
-			break;
-		}
-		case LayerType::kMaxPool2d:
-		{
-			cnn_layer_config = json.get<MaxPool2dConfig>();
-			break;
-		}
-		case LayerType::kAvgPool2d:
-		{
-			cnn_layer_config = json.get<AvgPool2dConfig>();
-			break;
-		}
-		case LayerType::kAdaptiveAvgPool2d:
-		{
-			cnn_layer_config = json.get<AdaptiveAvgPool2dConfig>();
-			break;
-		}
-		case LayerType::kResBlock2d:
-		{
-			cnn_layer_config = json.get<ResBlock2dConfig>();
-			break;
-		}
+		case LayerType::kConv2d: cnn_layer_config = json.get<Conv2dConfig>(); break;
+		case LayerType::kMaxPool2d: cnn_layer_config = json.get<MaxPool2dConfig>(); break;
+		case LayerType::kAvgPool2d: cnn_layer_config = json.get<AvgPool2dConfig>(); break;
+		case LayerType::kAdaptiveAvgPool2d: cnn_layer_config = json.get<AdaptiveAvgPool2dConfig>(); break;
+		case LayerType::kResBlock2d: cnn_layer_config = json.get<ResBlock2dConfig>(); break;
 		default:
 		{
 			spdlog::error("[Config] The CNN layer type is not defined.");
@@ -507,16 +474,8 @@ static inline void from_json(const nlohmann::json& json, FeatureExtractorGroup& 
 	type << required_input{json, "type"};
 	switch (type)
 	{
-		case FeatureExtractorType::kMLP:
-		{
-			feature_extractor = json.get<MLPConfig>();
-			break;
-		}
-		case FeatureExtractorType::kCNN:
-		{
-			feature_extractor = json.get<CNNConfig>();
-			break;
-		}
+		case FeatureExtractorType::kMLP: feature_extractor = json.get<MLPConfig>(); break;
+		case FeatureExtractorType::kCNN: feature_extractor = json.get<CNNConfig>(); break;
 	}
 }
 
@@ -612,21 +571,9 @@ static inline void from_json(const nlohmann::json& json, ModelConfig& model)
 	model_type << required_input{json, "model_type"};
 	switch (model_type)
 	{
-		case AgentPolicyModelType::kRandom:
-		{
-			model = json.get<RandomConfig>();
-			break;
-		}
-		case AgentPolicyModelType::kActorCritic:
-		{
-			model = json.get<ActorCriticConfig>();
-			break;
-		}
-		case AgentPolicyModelType::kQNet:
-		{
-			model = json.get<QNetModelConfig>();
-			break;
-		}
+		case AgentPolicyModelType::kRandom: model = json.get<RandomConfig>(); break;
+		case AgentPolicyModelType::kActorCritic: model = json.get<ActorCriticConfig>(); break;
+		case AgentPolicyModelType::kQNet: model = json.get<QNetModelConfig>(); break;
 	}
 }
 
@@ -711,21 +658,9 @@ static inline void from_json(const nlohmann::json& json, Config::Agent& agent)
 		model_type << required_input{*model_json, "model_type"};
 		switch (model_type)
 		{
-			case AgentPolicyModelType::kRandom:
-			{
-				agent = json.get<Config::AgentBase>();
-				break;
-			}
-			case AgentPolicyModelType::kActorCritic:
-			{
-				agent = json.get<Config::OnPolicyAgent>();
-				break;
-			}
-			case AgentPolicyModelType::kQNet:
-			{
-				agent = json.get<Config::OffPolicyAgent>();
-				break;
-			}
+			case AgentPolicyModelType::kRandom: agent = json.get<Config::AgentBase>(); break;
+			case AgentPolicyModelType::kActorCritic: agent = json.get<Config::OnPolicyAgent>(); break;
+			case AgentPolicyModelType::kQNet: agent = json.get<Config::OffPolicyAgent>(); break;
 		}
 	}
 	else

@@ -35,10 +35,6 @@ struct TrainAlgorithm
 	int total_timesteps = 100'000;
 	// The step number to start training at. This is used to resume training
 	int start_timestep = 0;
-	// The number of environment steps to use in a train step.
-	// For on policy methods it is the size of the rollout buffer for each training step.
-	// For off policy methods it is the batch size
-	int horizon_steps = 128;
 
 	// The learning rate to use for training
 	double learning_rate = 0.001;
@@ -56,6 +52,8 @@ struct TrainAlgorithm
 /// @brief On policy algorithm configuration. This assumes an actor critic based model.
 struct OnPolicyAlgorithm : public TrainAlgorithm
 {
+	// The size of the rollout buffer for each training step.
+	int horizon_steps = 128;
 	// The ratio the policy loss contributes to the total loss
 	double policy_loss_coef = 1.0;
 	// The ratio the value loss contributes to the total loss
@@ -75,6 +73,8 @@ struct OnPolicyAlgorithm : public TrainAlgorithm
 /// @brief Off policy algorithm configuration. This assumes a Q network based model.
 struct OffPolicyAlgorithm : public TrainAlgorithm
 {
+	// The number of environment steps to use in a train step.
+	int horizon_steps = 128;
 	// The size of the replay buffer
 	int buffer_size = 1'000'000;
 	// The number of samples to use in a train update step

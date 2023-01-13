@@ -41,8 +41,8 @@ struct AgentBase
 
 	// The model type to use, must match
 	AgentPolicyModelType model_type;
-	// Model configuration. Defaults to actor critic.
-	ModelConfig model = ActorCriticConfig();
+	// Model configuration. Defaults to random.
+	ModelConfig model = RandomConfig();
 
 	// Configuration for rewards input into the agent.
 	Rewards rewards;
