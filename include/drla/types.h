@@ -100,12 +100,13 @@ inline std::string get_result_type_name(TrainResultType type)
 /// @brief The output from the agent's model prediction
 struct PredictOutput
 {
-	// The values output from a model forward pass
-	torch::Tensor values;
 	// The actions the model determined should be taken
 	torch::Tensor action;
-	// The log of the probalitity of taking each action, required for importance sampling in a train update
-	torch::Tensor action_log_probs;
+	// The values output from a model forward pass (for supported models)
+	torch::Tensor values = {};
+	// The log of the probalitity of taking each action, required for importance sampling in a train update (for supported
+	// models)
+	torch::Tensor action_log_probs = {};
 };
 
 /// @brief Training update result data

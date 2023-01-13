@@ -86,7 +86,7 @@ PredictOutput QNetModel::predict(const Observations& observations, bool determin
 		action = values.argmax(1).view({-1, 1});
 	}
 
-	return {values, action, {}};
+	return {action, values};
 }
 
 torch::Tensor QNetModel::forward_target(const Observations& observations)

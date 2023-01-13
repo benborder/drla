@@ -119,7 +119,7 @@ PredictOutput ActorCriticModel::predict(const Observations& observations, bool d
 
 	if (deterministic)
 	{
-		return {values, action, {}};
+		return {action, values};
 	}
 	else
 	{
@@ -135,7 +135,7 @@ PredictOutput ActorCriticModel::predict(const Observations& observations, bool d
 			action_log_probs = action_log_probs.sum(-1, true);
 		}
 
-		return {values, action, action_log_probs};
+		return {action, values, action_log_probs};
 	}
 }
 

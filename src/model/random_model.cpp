@@ -28,7 +28,7 @@ PredictOutput RandomModel::predict(const Observations& observations, bool determ
 	auto envs = observations.front().size(0);
 	auto dist = policy_action_output_(torch::ones({envs, 1}, observations.front().device()));
 	auto action = dist->sample().unsqueeze(-1);
-	return {torch::zeros({envs, value_shape_}), action, {}};
+	return {action, torch::zeros({envs, value_shape_})};
 }
 
 void RandomModel::save(const std::filesystem::path& path)
