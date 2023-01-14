@@ -13,9 +13,10 @@ namespace drla
 class FCBlockImpl : public torch::nn::Module
 {
 public:
-	FCBlockImpl(const Config::FCConfig& config, int input_size);
+	FCBlockImpl(const Config::FCConfig& config, const std::string& name, int input_size);
 	FCBlockImpl(
 		const Config::FCConfig& config,
+		const std::string& name,
 		int input_size,
 		int output_size,
 		Config::FCConfig::fc_layer output_layer_config = {});
@@ -26,7 +27,7 @@ public:
 	std::shared_ptr<torch::nn::Module> clone(const c10::optional<torch::Device>& device = c10::nullopt) const override;
 
 private:
-	void make_fc(int input_size);
+	void make_fc(int input_size, const std::string& name);
 
 	const Config::FCConfig config_;
 

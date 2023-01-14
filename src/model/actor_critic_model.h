@@ -37,7 +37,7 @@ public:
 
 private:
 	const Config::ActorCriticConfig config_;
-	bool predict_values_;
+	const bool predict_values_;
 
 	const ActionSpace action_space_;
 

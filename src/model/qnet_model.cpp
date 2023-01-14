@@ -28,9 +28,9 @@ QNetModel::QNetModel(const Config::ModelConfig& config, const EnvironmentConfigu
 	// DQN can not handle multi actions unless they are permuted
 	int action_shape = action_space_.shape[0];
 	q_net_ =
-		register_module(config_.q_net.name, FCBlock(config_.q_net, feature_extractor_->get_output_size(), action_shape));
+		register_module("q_net", FCBlock(config_.q_net, "q_net", feature_extractor_->get_output_size(), action_shape));
 	q_net_target_ = register_module(
-		config_.q_net.name + "_target", FCBlock(config_.q_net, feature_extractor_->get_output_size(), action_shape));
+		"q_net_target", FCBlock(config_.q_net, "q_net", feature_extractor_->get_output_size(), action_shape));
 
 	int parameter_size = 0;
 	auto params = parameters();
@@ -60,10 +60,10 @@ QNetModel::QNetModel(const QNetModel& other, const c10::optional<torch::Device>&
 	register_module("feature_extractor_target", feature_extractor_target_);
 
 	q_net_ = std::dynamic_pointer_cast<FCBlockImpl>(other.q_net_->clone(device));
-	register_module(config_.q_net.name, q_net_);
+	register_module("q_net", q_net_);
 
 	q_net_target_ = std::dynamic_pointer_cast<FCBlockImpl>(other.q_net_target_->clone(device));
-	register_module(config_.q_net.name + "_target", q_net_target_);
+	register_module("q_net_target", q_net_target_);
 }
 
 torch::Tensor QNetModel::forward(const Observations& observations)

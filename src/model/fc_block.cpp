@@ -40,7 +40,7 @@ FCBlockImpl::FCBlockImpl(const FCBlockImpl& other, const c10::optional<torch::De
 	}
 }
 
-FCBlockImpl::FCBlockImpl(const Config::FCConfig& config, int input_size) : config_(config)
+FCBlockImpl::FCBlockImpl(const Config::FCConfig& config, const std::string& name, int input_size) : config_(config)
 {
 	output_size_ = input_size;
 	if (config_.layers.empty())
@@ -48,19 +48,23 @@ FCBlockImpl::FCBlockImpl(const Config::FCConfig& config, int input_size) : confi
 		return;
 	}
 
-	make_fc(input_size);
+	make_fc(input_size, name);
 }
 
 FCBlockImpl::FCBlockImpl(
-	const Config::FCConfig& config, int input_size, int output_size, Config::FCConfig::fc_layer output_layer_config)
+	const Config::FCConfig& config,
+	const std::string& name,
+	int input_size,
+	int output_size,
+	Config::FCConfig::fc_layer output_layer_config)
 		: config_(configure_output(config, output_size, std::move(output_layer_config)))
 {
-	make_fc(input_size);
+	make_fc(input_size, name);
 }
 
-void FCBlockImpl::make_fc(int input_size)
+void FCBlockImpl::make_fc(int input_size, const std::string& name)
 {
-	spdlog::debug("Constructing {}", config_.name);
+	spdlog::debug("Constructing {}", name);
 
 	size_t i = 0;
 	int layer_size = input_size;
@@ -123,7 +127,7 @@ void FCBlockImpl::make_fc(int input_size)
 				return;
 			}
 		}
-		register_module(config_.name + std::to_string(i++), layers_.back());
+		register_module(name + std::to_string(i++), layers_.back());
 		torch::nn::init::orthogonal_(layers_.back()->weight, layer.init_weight);
 		torch::nn::init::constant_(layers_.back()->bias, layer.init_bias);
 

@@ -26,7 +26,7 @@ ActorCriticModel::ActorCriticModel(
 	int input_size = feature_extractor_->get_output_size();
 	if (config_.use_shared_extractor)
 	{
-		shared_ = register_module(config_.shared.name, FCBlock(config_.shared, input_size));
+		shared_ = register_module("shared", FCBlock(config_.shared, "shared", input_size));
 		input_size = shared_->get_output_size();
 	}
 	else
@@ -35,11 +35,11 @@ ActorCriticModel::ActorCriticModel(
 			"feature_extractor_critic", FeatureExtractor(config_.feature_extractor, env_config.observation_shapes));
 	}
 
-	critic_ = register_module(config_.critic.name, FCBlock(config_.critic, input_size, value_shape));
-	actor_ = register_module(config_.actor.name, FCBlock(config_.actor, input_size));
+	critic_ = register_module("critic", FCBlock(config_.critic, "critic", input_size, value_shape));
+	actor_ = register_module("actor", FCBlock(config_.actor, "actor", input_size));
 	if (config_.actor.layers.empty())
 	{
-		spdlog::debug("Constructing {}", config_.actor.name);
+		spdlog::debug("Constructing actor");
 	}
 	policy_action_output_ = register_module(
 		"policy_action_output",
@@ -74,7 +74,7 @@ ActorCriticModel::ActorCriticModel(const ActorCriticModel& other, const c10::opt
 	if (config_.use_shared_extractor)
 	{
 		shared_ = std::dynamic_pointer_cast<FCBlockImpl>(other.shared_->clone(device));
-		register_module(config_.shared.name, shared_);
+		register_module("shared", shared_);
 	}
 	else
 	{
@@ -84,10 +84,10 @@ ActorCriticModel::ActorCriticModel(const ActorCriticModel& other, const c10::opt
 	}
 
 	critic_ = std::dynamic_pointer_cast<FCBlockImpl>(other.critic_->clone(device));
-	register_module(config_.critic.name, critic_);
+	register_module("critic", critic_);
 
 	actor_ = std::dynamic_pointer_cast<FCBlockImpl>(other.actor_->clone(device));
-	register_module(config_.actor.name, actor_);
+	register_module("actor", actor_);
 
 	policy_action_output_ = std::dynamic_pointer_cast<PolicyActionOutputImpl>(other.policy_action_output_->clone(device));
 	register_module("policy_action_output", policy_action_output_);

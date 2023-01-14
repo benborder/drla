@@ -78,8 +78,6 @@ struct FCConfig
 		FCLayerType type = FCLayerType::kLinear;
 	};
 
-	// The name of the fully conected block
-	std::string name = "fc";
 	// Defines each layer in the block. Default to none, passing the original tensor through unmodified.
 	std::vector<fc_layer> layers = {};
 };
@@ -87,6 +85,8 @@ struct FCConfig
 /// @brief Multi Layer Perceptron feature extractor config. Has identical config to the fully connected block config.
 struct MLPConfig : FCConfig
 {
+	// The name of the MLP fully conected block
+	std::string name = "mlp";
 };
 
 /// @brief Convolutional layer configuration for a feature extractor.
@@ -208,11 +208,11 @@ struct ActorCriticConfig : public CommonModelConfig
 	// The feature extractor configuration
 	FeatureExtractorConfig feature_extractor;
 	// The shared fully connected block configuration
-	FCConfig shared = {"shared", {{512, Activation::kReLU}}};
+	FCConfig shared = {{{512, Activation::kReLU}}};
 	// The actor fully connected block configuration
-	FCConfig actor = {"actor"};
+	FCConfig actor = {};
 	// The critic fully connected block configuration
-	FCConfig critic = {"critic"};
+	FCConfig critic = {};
 	// The policy action output to convert the actor output to the environment action space.
 	PolicyActionOutputConfig policy_action_output;
 	// Indicates if the a forward pass should be performed with the critic to estimate the return values
@@ -225,7 +225,7 @@ struct QNetModelConfig : public CommonModelConfig
 	// The feature extractor configuration
 	FeatureExtractorConfig feature_extractor;
 	// The Q network fully connected block configuration
-	FCConfig q_net = {"q_net"};
+	FCConfig q_net = {};
 };
 
 /// @brief The model configuration for the agent.

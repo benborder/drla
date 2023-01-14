@@ -326,25 +326,25 @@ static inline void to_json(nlohmann::json& json, const FCConfig::fc_layer& layer
 
 static inline void from_json(const nlohmann::json& json, FCConfig& fc)
 {
-	fc.name << optional_input{json, "name"};
 	fc.layers << required_input{json, "layers"};
 }
 
 static inline void to_json(nlohmann::json& json, const FCConfig& fc)
 {
-	json["name"] = fc.name;
 	json["layers"] = fc.layers;
 }
 
 static inline void from_json(const nlohmann::json& json, MLPConfig& mlp)
 {
 	from_json(json, static_cast<FCConfig&>(mlp));
+	mlp.name << optional_input{json, "name"};
 }
 
 static inline void to_json(nlohmann::json& json, const MLPConfig& mlp)
 {
 	json["type"] = FeatureExtractorType::kMLP;
 	to_json(json, static_cast<const FCConfig&>(mlp));
+	json["name"] = mlp.name;
 }
 
 static inline void from_json(const nlohmann::json& json, Conv2dConfig& conv)

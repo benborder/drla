@@ -11,7 +11,7 @@ MLPExtractor::MLPExtractor(const Config::MLPConfig& config, const std::vector<in
 {
 	int i = 0;
 	output_size_ = std::accumulate(observation_shape.begin(), observation_shape.end(), 1, std::multiplies<>());
-	hidden_ = register_module(config.name, FCBlock(config, output_size_));
+	hidden_ = register_module(config.name, FCBlock(config, config.name, output_size_));
 	if (!config.layers.empty())
 	{
 		output_size_ = config.layers.back().size;
