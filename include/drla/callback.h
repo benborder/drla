@@ -38,6 +38,9 @@ struct TrainUpdateData
 	// The number of training timesteps
 	int timestep = 0;
 
+	// The total number of env steps taken
+	int global_steps = 0;
+
 	// Stats from a single training update step
 	std::vector<UpdateResult> update_data;
 

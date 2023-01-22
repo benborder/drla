@@ -337,6 +337,7 @@ void OnPolicyAgent::train()
 				: static_cast<double>(config_.env_count) / static_cast<double>(std::thread::hardware_concurrency());
 		train_update_data.fps_env = horizon_steps * period * env_thread_ratio;
 		train_update_data.fps = horizon_steps * period * config_.env_count;
+		train_update_data.global_steps = timestep * config_.env_count * horizon_steps;
 
 		// Measure the model update step time.
 		start = std::chrono::steady_clock::now();
