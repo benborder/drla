@@ -9,7 +9,7 @@ The DRLA library is a C++ Deep Reinforcement Learning Agent based on libtorch (p
 - Agent interfaces to integrate with environments and your project
 - Multi threaded async environment functionality
 - On-Policy rollout based algorithms (PPO, A2C)
-- Off-Policy replay based algorithms (DQN)
+- Off-Policy replay based algorithms (DQN, SAC)
 - Interfaces to use custom models
 
 Features to be added in the future:
@@ -17,7 +17,6 @@ Features to be added in the future:
 - Enable training via custom algorithms
 - Additional training algorithms
 	- Rainbow DQN
-	- Soft Actor Critic (SAC)
 - Monte-Carlo tree search based agent/algorithms
 
 ## Example

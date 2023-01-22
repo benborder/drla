@@ -38,6 +38,8 @@ public:
 
 	ReplayBufferSamples sample(int sample_size);
 
+	torch::Device get_device() const;
+
 private:
 	torch::Device device_;
 

@@ -63,6 +63,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 		{TrainAlgorithmType::kNone, "None"},
 		{TrainAlgorithmType::kA2C, "A2C"},
 		{TrainAlgorithmType::kPPO, "PPO"},
+		{TrainAlgorithmType::kSAC, "SAC"},
 		{TrainAlgorithmType::kDQN, "DQN"},
 	})
 
@@ -71,6 +72,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 	{
 		{AgentPolicyModelType::kRandom, "Random"},
 		{AgentPolicyModelType::kActorCritic, "ActorCritic"},
+		{AgentPolicyModelType::kSoftActorCritic, "SoftActorCritic"},
 		{AgentPolicyModelType::kQNet, "QNet"},
 	})
 
@@ -279,6 +281,25 @@ static inline void to_json(nlohmann::json& json, const DQN& alg_dqn)
 	json["exploration_final"] = alg_dqn.exploration_final;
 }
 
+static inline void from_json(const nlohmann::json& json, SAC& alg_sac)
+{
+	from_json(json, static_cast<OffPolicyAlgorithm&>(alg_sac));
+	alg_sac.epsilon << optional_input{json, "epsilon"};
+	alg_sac.actor_loss_coef << optional_input{json, "actor_loss_coef"};
+	alg_sac.value_loss_coef << optional_input{json, "value_loss_coef"};
+	alg_sac.target_entropy_scale << optional_input{json, "target_entropy_scale"};
+}
+
+static inline void to_json(nlohmann::json& json, const SAC& alg_sac)
+{
+	json["train_algorithm_type"] = TrainAlgorithmType::kSAC;
+	to_json(json, static_cast<const OffPolicyAlgorithm&>(alg_sac));
+	json["epsilon"] = alg_sac.epsilon;
+	json["actor_loss_coef"] = alg_sac.actor_loss_coef;
+	json["value_loss_coef"] = alg_sac.value_loss_coef;
+	json["target_entropy_scale"] = alg_sac.target_entropy_scale;
+}
+
 static inline void from_json(const nlohmann::json& json, AgentTrainAlgorithm& train_algorithm)
 {
 	TrainAlgorithmType train_algorithm_type = TrainAlgorithmType::kNone;
@@ -288,6 +309,7 @@ static inline void from_json(const nlohmann::json& json, AgentTrainAlgorithm& tr
 		case TrainAlgorithmType::kA2C: train_algorithm = json.get<A2C>(); break;
 		case TrainAlgorithmType::kPPO: train_algorithm = json.get<PPO>(); break;
 		case TrainAlgorithmType::kDQN: train_algorithm = json.get<DQN>(); break;
+		case TrainAlgorithmType::kSAC: train_algorithm = json.get<SAC>(); break;
 		case TrainAlgorithmType::kNone: break;
 	}
 }
@@ -541,6 +563,31 @@ static inline void to_json(nlohmann::json& json, const ActorCriticConfig& actor_
 	json["predict_values"] = actor_critic.predict_values;
 }
 
+static inline void from_json(const nlohmann::json& json, SoftActorCriticConfig& sac)
+{
+	from_json(json, static_cast<CommonModelConfig&>(sac));
+	sac.feature_extractor << required_input{json, "feature_extractor"};
+	sac.actor << optional_input{json, "actor"};
+	sac.critic << optional_input{json, "critic"};
+	sac.shared_feature_extractor << optional_input{json, "shared_feature_extractor"};
+	sac.n_critics << optional_input{json, "n_critics"};
+	sac.policy_action_output << optional_input{json, "policy_action_output"};
+	sac.predict_values << optional_input{json, "predict_values"};
+}
+
+static inline void to_json(nlohmann::json& json, const SoftActorCriticConfig& sac)
+{
+	json["model_type"] = AgentPolicyModelType::kSoftActorCritic;
+	to_json(json, static_cast<const CommonModelConfig&>(sac));
+	json["feature_extractor"] = sac.feature_extractor;
+	json["actor"] = sac.actor;
+	json["critic"] = sac.critic;
+	json["shared_feature_extractor"] = sac.shared_feature_extractor;
+	json["n_critics"] = sac.n_critics;
+	json["policy_action_output"] = sac.policy_action_output;
+	json["predict_values"] = sac.predict_values;
+}
+
 static inline void from_json(const nlohmann::json& json, QNetModelConfig& dqn_model)
 {
 	from_json(json, static_cast<CommonModelConfig&>(dqn_model));
@@ -573,6 +620,7 @@ static inline void from_json(const nlohmann::json& json, ModelConfig& model)
 	{
 		case AgentPolicyModelType::kRandom: model = json.get<RandomConfig>(); break;
 		case AgentPolicyModelType::kActorCritic: model = json.get<ActorCriticConfig>(); break;
+		case AgentPolicyModelType::kSoftActorCritic: model = json.get<SoftActorCriticConfig>(); break;
 		case AgentPolicyModelType::kQNet: model = json.get<QNetModelConfig>(); break;
 	}
 }
@@ -660,6 +708,7 @@ static inline void from_json(const nlohmann::json& json, Config::Agent& agent)
 		{
 			case AgentPolicyModelType::kRandom: agent = json.get<Config::AgentBase>(); break;
 			case AgentPolicyModelType::kActorCritic: agent = json.get<Config::OnPolicyAgent>(); break;
+			case AgentPolicyModelType::kSoftActorCritic: agent = json.get<Config::OffPolicyAgent>(); break;
 			case AgentPolicyModelType::kQNet: agent = json.get<Config::OffPolicyAgent>(); break;
 		}
 	}

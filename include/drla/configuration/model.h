@@ -15,6 +15,7 @@ enum class AgentPolicyModelType
 {
 	kRandom,
 	kActorCritic,
+	kSoftActorCritic,
 	kQNet,
 };
 
@@ -228,8 +229,29 @@ struct QNetModelConfig : public CommonModelConfig
 	FCConfig q_net = {};
 };
 
+/// @brief Configuration for the off policy soft actor critic model
+struct SoftActorCriticConfig : public CommonModelConfig
+{
+	// Use a shared feature extractor and optional shared fully connected block
+	bool shared_feature_extractor = false;
+	// The feature extractor configuration
+	FeatureExtractorConfig feature_extractor;
+	// The policy action output to convert the actor output to the environment action space.
+	PolicyActionOutputConfig policy_action_output;
+	// The actor fully connected block configuration
+	FCConfig actor = {};
+	// The critic fully connected block configuration
+	FCConfig critic = {};
+	// The critic target fully connected block configuration
+	FCConfig critic_target = {};
+	// The number of critics to use
+	size_t n_critics = 2;
+	// Indicates if the a forward pass should be performed with the critic to estimate the return values
+	bool predict_values = false;
+};
+
 /// @brief The model configuration for the agent.
-using ModelConfig = std::variant<RandomConfig, ActorCriticConfig, QNetModelConfig>;
+using ModelConfig = std::variant<RandomConfig, ActorCriticConfig, QNetModelConfig, SoftActorCriticConfig>;
 
 } // namespace Config
 

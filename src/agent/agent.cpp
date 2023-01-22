@@ -6,6 +6,7 @@
 #include "on_policy_agent.h"
 #include "qnet_model.h"
 #include "random_model.h"
+#include "soft_actor_critic_model.h"
 #include "threadpool.h"
 
 #include <spdlog/spdlog.h>
@@ -257,6 +258,11 @@ void Agent::load_model(bool force_reload)
 			case AgentPolicyModelType::kActorCritic:
 			{
 				model_ = std::make_shared<ActorCriticModel>(base_config_.model, env_config, reward_shape);
+				break;
+			}
+			case AgentPolicyModelType::kSoftActorCritic:
+			{
+				model_ = std::make_shared<SoftActorCriticModel>(base_config_.model, env_config, reward_shape);
 				break;
 			}
 			case AgentPolicyModelType::kQNet:

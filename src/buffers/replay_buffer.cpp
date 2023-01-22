@@ -151,3 +151,8 @@ ReplayBufferSamples ReplayBuffer::sample(int sample_size)
 	data.episode_non_terminal = episode_non_terminal_.index({step_indices, env_indices}).to(device_);
 	return data;
 }
+
+torch::Device ReplayBuffer::get_device() const
+{
+	return device_;
+}

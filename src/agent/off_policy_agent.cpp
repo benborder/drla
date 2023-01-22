@@ -7,6 +7,8 @@
 #include "qnet_model.h"
 #include "random_model.h"
 #include "replay_buffer.h"
+#include "sac.h"
+#include "soft_actor_critic_model.h"
 #include "threadpool.h"
 
 #include <spdlog/spdlog.h>
@@ -100,6 +102,11 @@ void OffPolicyAgent::train()
 			model = std::make_shared<QNetModel>(config_.model, env_config, reward_shape);
 			break;
 		}
+		case AgentPolicyModelType::kSoftActorCritic:
+		{
+			model = std::make_shared<SoftActorCriticModel>(config_.model, env_config, reward_shape);
+			break;
+		}
 		default:
 		{
 			spdlog::error("Invalid model selected for training!");
@@ -123,6 +130,11 @@ void OffPolicyAgent::train()
 		case TrainAlgorithmType::kDQN:
 		{
 			algorithm = std::make_unique<DQN>(config_.train_algorithm, env_config.observation_shapes, buffer, model, gamma);
+			break;
+		}
+		case TrainAlgorithmType::kSAC:
+		{
+			algorithm = std::make_unique<SAC>(config_.train_algorithm, env_config.action_space, buffer, model, gamma);
 			break;
 		}
 		default:

@@ -76,6 +76,7 @@ enum class TrainResultType
 	kLearningRate,
 	kExplainedVariance,
 	kExploration,
+	kEntropyCoeficients,
 };
 
 /// @brief Converts a TrainResultType to a string
@@ -93,6 +94,7 @@ inline std::string get_result_type_name(TrainResultType type)
 		case TrainResultType::kExplainedVariance: return "explained_variance";
 		case TrainResultType::kLearningRate: return "learning_rate";
 		case TrainResultType::kExploration: return "exploration";
+		case TrainResultType::kEntropyCoeficients: return "entropy_coeficients";
 		default: return "";
 	}
 }

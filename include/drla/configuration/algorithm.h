@@ -15,6 +15,7 @@ enum class TrainAlgorithmType
 	kA2C,
 	kPPO,
 	kDQN,
+	kSAC,
 };
 
 /// @brief The schedule type for learning rate decay configuration
@@ -106,6 +107,19 @@ struct DQN : public OffPolicyAlgorithm
 	double exploration_final = 0.05;
 };
 
+/// @brief SAC training algorithm specific configuration
+struct SAC : public OffPolicyAlgorithm
+{
+	// The ratio the actor loss contributes to the total loss
+	double actor_loss_coef = 1.0;
+	// The ratio the value loss contributes to the total loss
+	double value_loss_coef = 0.5;
+	// Epsilon coef for optimiser
+	double epsilon = 1e-8;
+	// The coefficient for scaling the entropy target
+	double target_entropy_scale = 0.89;
+};
+
 /// @brief A2C training algorithm specific configuration
 struct A2C : public OnPolicyAlgorithm
 {
@@ -139,7 +153,7 @@ struct PPO : public OnPolicyAlgorithm
 };
 
 /// @brief The agent training configuration
-using AgentTrainAlgorithm = std::variant<A2C, PPO, DQN>;
+using AgentTrainAlgorithm = std::variant<A2C, PPO, DQN, SAC>;
 
 } // namespace Config
 

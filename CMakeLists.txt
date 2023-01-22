@@ -49,6 +49,7 @@ add_library(drla STATIC
 	src/algorithm/a2c.cpp
 	src/algorithm/dqn.cpp
 	src/algorithm/ppo.cpp
+	src/algorithm/sac.cpp
 
 	# Models
 	src/model/feature_extractor.cpp
@@ -58,6 +59,7 @@ add_library(drla STATIC
 	src/model/res_block.cpp
 	src/model/policy_action_output.cpp
 	src/model/actor_critic_model.cpp
+	src/model/soft_actor_critic_model.cpp
 	src/model/random_model.cpp
 	src/model/qnet_model.cpp
 
