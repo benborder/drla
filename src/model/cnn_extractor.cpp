@@ -105,7 +105,8 @@ CNNExtractor::CNNExtractor(const Config::CNNConfig& config, const std::vector<in
 				if constexpr (std::is_same_v<Config::AdaptiveAvgPool2dConfig, T>)
 				{
 					cnn_layers_.emplace_back(torch::nn::AdaptiveAvgPool2d(config.size));
-					register_module("cnn_adaptavgpool" + std::to_string(l++), std::get<torch::nn::AvgPool2d>(cnn_layers_.back()));
+					register_module(
+						"cnn_adaptavgpool" + std::to_string(l++), std::get<torch::nn::AdaptiveAvgPool2d>(cnn_layers_.back()));
 
 					w = config.size[1];
 					h = config.size[0];
