@@ -1,5 +1,7 @@
 #include "res_block.h"
 
+#include "model/utils.h"
+
 #include <spdlog/spdlog.h>
 #include <torch/torch.h>
 
@@ -17,7 +19,7 @@ ResBlock2dImpl::ResBlock2dImpl(int channels, Config::ResBlock2dConfig config)
 				torch::nn::Conv2dOptions(channels, channels, config.kernel_size).stride(config.stride).padding(1).bias(false)),
 			nullptr};
 		register_module("conv" + std::to_string(i), layer.conv);
-		torch::nn::init::orthogonal_(layer.conv->weight, config.init_weight);
+		weight_init(layer.conv->weight, config.init_weight_type, config.init_weight);
 		if (config.normalise)
 		{
 			layer.bn = torch::nn::BatchNorm2d(torch::nn::BatchNorm2dOptions(channels));

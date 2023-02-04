@@ -3,7 +3,7 @@
 #include "bernoulli.h"
 #include "categorical.h"
 #include "diagonal_gaussian.h"
-#include "drla/model/utils.h"
+#include "model/utils.h"
 
 #include <spdlog/spdlog.h>
 #include <torch/torch.h>
@@ -27,11 +27,11 @@ PolicyActionOutputImpl::PolicyActionOutputImpl(
 	{
 		log_std_ = torch::nn::Linear(inputs, num_actions_);
 		register_module("log_std", log_std_);
-		torch::nn::init::orthogonal_(log_std_->weight, config_.init_weight);
-		torch::nn::init::constant_(log_std_->bias, config_.init_bias);
+		weight_init(log_std_->weight, config_.init_weight_type, config_.init_weight);
+		weight_init(log_std_->bias, config_.init_bias_type, config_.init_bias);
 	}
-	torch::nn::init::orthogonal_(action_net_->weight, config_.init_weight);
-	torch::nn::init::constant_(action_net_->bias, config_.init_bias);
+	weight_init(action_net_->weight, config_.init_weight_type, config_.init_weight);
+	weight_init(action_net_->bias, config_.init_bias_type, config_.init_bias);
 
 	spdlog::debug("Output:  {}", num_actions_);
 }

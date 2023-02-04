@@ -54,10 +54,10 @@ CNNExtractor::CNNExtractor(const Config::CNNConfig& config, const std::vector<in
 																					.bias(config.use_bias));
 					register_module("cnn_conv" + std::to_string(l++), conv);
 
-					torch::nn::init::orthogonal_(conv->weight, config.init_weight);
+					weight_init(conv->weight, config.init_weight_type, config.init_weight);
 					if (config.use_bias)
 					{
-						torch::nn::init::constant_(conv->bias, config.init_bias);
+						weight_init(conv->bias, config.init_bias_type, config.init_bias);
 					}
 
 					cnn_layers_.emplace_back(std::make_pair(std::move(conv), make_activation(config.activation)));

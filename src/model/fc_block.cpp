@@ -128,8 +128,8 @@ void FCBlockImpl::make_fc(int input_size, const std::string& name)
 			}
 		}
 		register_module(name + std::to_string(i++), layers_.back());
-		torch::nn::init::orthogonal_(layers_.back()->weight, layer.init_weight);
-		torch::nn::init::constant_(layers_.back()->bias, layer.init_bias);
+		weight_init(layers_.back()->weight, layer.init_weight_type, layer.init_weight);
+		weight_init(layers_.back()->bias, layer.init_bias_type, layer.init_bias);
 
 		layer_size = layer.size;
 

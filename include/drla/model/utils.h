@@ -46,4 +46,18 @@ inline torch::Tensor activation(torch::Tensor x, Config::Activation activation)
 	return x;
 }
 
+inline void weight_init(torch::Tensor weight, Config::InitType type, double init_value)
+{
+	switch (type)
+	{
+		case Config::InitType::kDefault: return;
+		case Config::InitType::kConstant: torch::nn::init::constant_(weight, init_value); return;
+		case Config::InitType::kOrthogonal: torch::nn::init::orthogonal_(weight, init_value); return;
+		case Config::InitType::kKaimingUniform: torch::nn::init::kaiming_uniform_(weight, init_value); return;
+		case Config::InitType::kKaimingNormal: torch::nn::init::kaiming_normal_(weight, init_value); return;
+		case Config::InitType::kXavierUniform: torch::nn::init::xavier_uniform_(weight, init_value); return;
+		case Config::InitType::kXavierNormal: torch::nn::init::xavier_normal_(weight, init_value); return;
+	}
+}
+
 } // namespace drla

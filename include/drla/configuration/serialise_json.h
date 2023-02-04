@@ -136,6 +136,51 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 		{FCLayerType::kForwardAll, "ForwardAll"},
 	})
 
+NLOHMANN_JSON_SERIALIZE_ENUM(
+	InitType,
+	{
+		{InitType::kDefault, "Default"},
+		{InitType::kOrthogonal, "Orthogonal"},
+		{InitType::kKaimingUniform, "KaimingUniform"},
+		{InitType::kKaimingNormal, "KaimingNormal"},
+		{InitType::kXavierUniform, "XavierUniform"},
+		{InitType::kXavierNormal, "XavierNormal"},
+	})
+
+template <typename T>
+void load_init_weights_config(T& layer, const nlohmann::json& json)
+{
+	layer.init_weight_type << optional_input{json, "init_weight_type"};
+	switch (layer.init_weight_type)
+	{
+		case InitType::kDefault:
+		case InitType::kOrthogonal: break;
+		case InitType::kConstant:
+		case InitType::kXavierUniform:
+		case InitType::kXavierNormal: layer.init_weight = 1.0; break;
+		case InitType::kKaimingUniform:
+		case InitType::kKaimingNormal: layer.init_weight = 0.0; break;
+	}
+	layer.init_weight << optional_input{json, "init_weight"};
+}
+
+template <typename T>
+void load_init_bias_config(T& layer, const nlohmann::json& json)
+{
+	layer.init_bias_type << optional_input{json, "init_bias_type"};
+	switch (layer.init_bias_type)
+	{
+		case InitType::kDefault: break;
+		case InitType::kXavierUniform:
+		case InitType::kXavierNormal: layer.init_weight = 1.0; break;
+		case InitType::kConstant:
+		case InitType::kOrthogonal:
+		case InitType::kKaimingUniform:
+		case InitType::kKaimingNormal: layer.init_weight = 0.0; break;
+	}
+	layer.init_bias << optional_input{json, "init_bias"};
+}
+
 static inline void from_json(const nlohmann::json& json, Rewards& reward_config)
 {
 	reward_config.reward_clamp_min << optional_input{json, "reward_clamp_min"};
@@ -333,15 +378,17 @@ static inline void from_json(const nlohmann::json& json, FCConfig::fc_layer& lay
 		layer.size << required_input{json, "size"};
 	}
 	layer.activation << optional_input{json, "activation"};
-	layer.init_bias << optional_input{json, "init_bias"};
-	layer.init_weight << optional_input{json, "init_weight"};
+	load_init_weights_config(layer, json);
+	load_init_bias_config(layer, json);
 }
 
 static inline void to_json(nlohmann::json& json, const FCConfig::fc_layer& layer)
 {
 	json["size"] = layer.size;
 	json["activation"] = layer.activation;
+	json["init_bias_type"] = layer.init_bias_type;
 	json["init_bias"] = layer.init_bias;
+	json["init_weight_type"] = layer.init_weight_type;
 	json["init_weight"] = layer.init_weight;
 	json["type"] = layer.type;
 }
@@ -376,8 +423,8 @@ static inline void from_json(const nlohmann::json& json, Conv2dConfig& conv)
 	conv.kernel_size << required_input{json, "kernel_size"};
 	conv.stride << required_input{json, "stride"};
 	conv.padding << optional_input{json, "padding"};
-	conv.init_weight << optional_input{json, "init_weight"};
-	conv.init_bias << optional_input{json, "init_bias"};
+	load_init_weights_config(conv, json);
+	load_init_bias_config(conv, json);
 	conv.use_bias << optional_input{json, "use_bias"};
 	conv.activation << optional_input{json, "activation"};
 }
@@ -390,7 +437,9 @@ static inline void to_json(nlohmann::json& json, const Conv2dConfig& conv)
 	json["kernel_size"] = conv.kernel_size;
 	json["stride"] = conv.stride;
 	json["padding"] = conv.padding;
+	json["init_weight_type"] = conv.init_weight_type;
 	json["init_weight"] = conv.init_weight;
+	json["init_bias_type"] = conv.init_bias_type;
 	json["init_bias"] = conv.init_bias;
 	json["use_bias"] = conv.use_bias;
 	json["activation"] = conv.activation;
@@ -443,6 +492,8 @@ static inline void from_json(const nlohmann::json& json, ResBlock2dConfig& resbl
 	resblock.kernel_size << optional_input{json, "kernel_size"};
 	resblock.stride << optional_input{json, "stride"};
 	resblock.normalise << optional_input{json, "normalise"};
+	resblock.init_weight_type << optional_input{json, "init_weight_type"};
+	load_init_weights_config(resblock, json);
 }
 
 static inline void to_json(nlohmann::json& json, const ResBlock2dConfig& resblock)
@@ -452,6 +503,8 @@ static inline void to_json(nlohmann::json& json, const ResBlock2dConfig& resbloc
 	json["kernel_size"] = resblock.kernel_size;
 	json["stride"] = resblock.stride;
 	json["normalise"] = resblock.normalise;
+	json["init_weight_type"] = resblock.init_weight_type;
+	json["init_weight"] = resblock.init_weight;
 }
 
 static inline void from_json(const nlohmann::json& json, CNNLayerConfig& cnn_layer_config)
@@ -519,14 +572,16 @@ static inline void to_json(nlohmann::json& json, const FeatureExtractorConfig& f
 static inline void from_json(const nlohmann::json& json, PolicyActionOutputConfig& paoc)
 {
 	paoc.activation << optional_input{json, "activation"};
-	paoc.init_bias << optional_input{json, "init_bias"};
-	paoc.init_weight << optional_input{json, "init_weight"};
+	load_init_weights_config(paoc, json);
+	load_init_bias_config(paoc, json);
 }
 
 static inline void to_json(nlohmann::json& json, const PolicyActionOutputConfig& paoc)
 {
 	json["activation"] = paoc.activation;
+	json["init_bias_type"] = paoc.init_bias_type;
 	json["init_bias"] = paoc.init_bias;
+	json["init_weight_type"] = paoc.init_weight_type;
 	json["init_weight"] = paoc.init_weight;
 }
 

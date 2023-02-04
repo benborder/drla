@@ -62,6 +62,18 @@ enum class FCLayerType
 	kForwardAll,		 // Forwards the input and all layers to the output
 };
 
+/// @brief The initialisation type to use for
+enum class InitType
+{
+	kDefault,
+	kConstant,
+	kOrthogonal,
+	kKaimingUniform,
+	kKaimingNormal,
+	kXavierUniform,
+	kXavierNormal,
+};
+
 /// @brief Fully connected block configuration
 struct FCConfig
 {
@@ -71,8 +83,12 @@ struct FCConfig
 		int size = 0;
 		// The activation function used for forward passes
 		Activation activation = Activation::kNone;
-		// The weight values to initialise the network with
+		// The type of initialisation for the weights
+		InitType init_weight_type = InitType::kDefault;
+		// The weight values to initialise the network with (if relevant)
 		double init_weight = 1.0;
+		// The type of initialisation for the bias
+		InitType init_bias_type = InitType::kDefault;
 		// The bias values to initialise the network with
 		double init_bias = 0.0;
 		// The type of fully connected network
@@ -103,8 +119,12 @@ struct Conv2dConfig
 	int stride;
 	// The padding, defaults to 0
 	int padding = 0;
+	// The type of initialisation for the weights
+	InitType init_weight_type = InitType::kDefault;
 	// The weight to initialise
 	float init_weight = std::sqrt(2.0f);
+	// The type of initialisation for the bias
+	InitType init_bias_type = InitType::kDefault;
 	// The bias to initialise
 	float init_bias = 0.0f;
 	// Use bias for kernel weights
@@ -151,6 +171,8 @@ struct ResBlock2dConfig
 	int kernel_size = 3;
 	// The stride of the kernel window
 	int stride = 1;
+	// The type of initialisation for the weights
+	InitType init_weight_type = InitType::kDefault;
 	// The weight to initialise
 	float init_weight = std::sqrt(2.0f);
 	// Normalise layers
@@ -185,8 +207,12 @@ struct PolicyActionOutputConfig
 {
 	// The activations function to use for the action head
 	Activation activation = Activation::kNone;
+	// The type of initialisation for the weights
+	InitType init_weight_type = InitType::kDefault;
 	// The weight values to initialise the network with
 	double init_weight = 0.01;
+	// The type of initialisation for the bias
+	InitType init_bias_type = InitType::kDefault;
 	// The bias values to initialise the network with
 	double init_bias = 0.0;
 };
