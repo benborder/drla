@@ -30,10 +30,12 @@ enum class FeatureExtractorType
 enum class LayerType
 {
 	kConv2d,
+	kBatchNorm2d,
 	kMaxPool2d,
 	kAvgPool2d,
 	kAdaptiveAvgPool2d,
 	kResBlock2d,
+	kActivation
 };
 
 namespace Config
@@ -129,8 +131,19 @@ struct Conv2dConfig
 	float init_bias = 0.0f;
 	// Use bias for kernel weights
 	bool use_bias = true;
-	// The activation function used for forward passes
-	Activation activation = Activation::kNone;
+};
+
+/// @brief Batch Normalisation layer configuration for a feature extractor.
+struct BatchNorm2dConfig
+{
+	// Whether to learn a scale and bias that are applied in an affine transformation on the input.
+	bool affine = true;
+	// The epsilon value added for numerical stability.
+	double eps = 1e-5;
+	// A momentum multiplier for the mean and variance.
+	double momentum = 0.1;
+	// Whether to store and update batch statistics (mean and variance) in the module.
+	bool track_running_stats = true;
 };
 
 /// @brief Max Pooling layer configuration for a feature extractor.
@@ -180,8 +193,14 @@ struct ResBlock2dConfig
 };
 
 /// @brief The CNN layer config
-using CNNLayerConfig =
-	std::variant<Conv2dConfig, MaxPool2dConfig, AvgPool2dConfig, AdaptiveAvgPool2dConfig, ResBlock2dConfig>;
+using CNNLayerConfig = std::variant<
+	Conv2dConfig,
+	BatchNorm2dConfig,
+	MaxPool2dConfig,
+	AvgPool2dConfig,
+	AdaptiveAvgPool2dConfig,
+	ResBlock2dConfig,
+	Activation>;
 
 /// @brief Convolutional Neural Network feature extractor configuration.
 struct CNNConfig

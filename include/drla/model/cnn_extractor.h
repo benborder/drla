@@ -6,6 +6,7 @@
 
 #include <torch/torch.h>
 
+#include <functional>
 #include <variant>
 #include <vector>
 
@@ -23,9 +24,14 @@ public:
 	std::shared_ptr<torch::nn::Module> clone(const c10::optional<torch::Device>& device = c10::nullopt) const override;
 
 private:
-	using Conv2d = std::pair<torch::nn::Conv2d, std::function<torch::Tensor(const torch::Tensor&)>>;
-	using Layer =
-		std::variant<Conv2d, torch::nn::MaxPool2d, torch::nn::AvgPool2d, torch::nn::AdaptiveAvgPool2d, ResBlock2d>;
+	using Layer = std::variant<
+		torch::nn::Conv2d,
+		torch::nn::BatchNorm2d,
+		torch::nn::MaxPool2d,
+		torch::nn::AvgPool2d,
+		torch::nn::AdaptiveAvgPool2d,
+		ResBlock2d,
+		std::function<torch::Tensor(const torch::Tensor&)>>;
 	std::vector<Layer> cnn_layers_;
 	std::vector<int64_t> out_shape_;
 };

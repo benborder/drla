@@ -18,16 +18,20 @@ CNNExtractor::CNNExtractor(const Config::CNNConfig& config, const std::vector<in
 		throw std::runtime_error("Invalid observation shape");
 	}
 
-	const int64_t config_in_channels = std::visit(
-		[](const auto& config) {
-			using T = std::decay_t<decltype(config)>;
-			if constexpr (std::is_same_v<Config::Conv2dConfig, T>)
-			{
-				return config.in_channels;
-			}
-			return 0;
-		},
-		config.layers.front());
+	const int64_t config_in_channels = 0;
+	if (!config.layers.empty())
+	{
+		std::visit(
+			[](const auto& config) {
+				using T = std::decay_t<decltype(config)>;
+				if constexpr (std::is_same_v<Config::Conv2dConfig, T>)
+				{
+					return config.in_channels;
+				}
+				return 0;
+			},
+			config.layers.front());
+	}
 	int64_t in_channels = observation_shape[0];
 	int64_t w = observation_shape[1];
 	int64_t h = observation_shape[2];
@@ -60,7 +64,7 @@ CNNExtractor::CNNExtractor(const Config::CNNConfig& config, const std::vector<in
 						weight_init(conv->bias, config.init_bias_type, config.init_bias);
 					}
 
-					cnn_layers_.emplace_back(std::make_pair(std::move(conv), make_activation(config.activation)));
+					cnn_layers_.emplace_back(std::move(conv));
 
 					w = (w - config.kernel_size + 2 * config.padding) / config.stride + 1;
 					h = (h - config.kernel_size + 2 * config.padding) / config.stride + 1;
@@ -75,6 +79,17 @@ CNNExtractor::CNNExtractor(const Config::CNNConfig& config, const std::vector<in
 					spdlog::debug("{:<28}[{} {}]", conv_layer, w, h);
 
 					in_channels = config.out_channels;
+				}
+				if constexpr (std::is_same_v<Config::BatchNorm2dConfig, T>)
+				{
+					cnn_layers_.emplace_back(torch::nn::BatchNorm2d(torch::nn::BatchNorm2dOptions(in_channels)
+																														.affine(config.affine)
+																														.eps(config.eps)
+																														.momentum(config.momentum)
+																														.track_running_stats(config.track_running_stats)));
+					register_module("cnn_batchnorm" + std::to_string(l++), std::get<torch::nn::BatchNorm2d>(cnn_layers_.back()));
+
+					spdlog::debug("{:<28}[{} {}]", "BatchNorm2d", w, h);
 				}
 				if constexpr (std::is_same_v<Config::MaxPool2dConfig, T>)
 				{
@@ -116,9 +131,14 @@ CNNExtractor::CNNExtractor(const Config::CNNConfig& config, const std::vector<in
 				if constexpr (std::is_same_v<Config::ResBlock2dConfig, T>)
 				{
 					cnn_layers_.emplace_back(ResBlock2d(in_channels, config));
-					register_module("resnet_resblock" + std::to_string(l++), std::get<ResBlock2d>(cnn_layers_.back()));
+					register_module("cnn_resblock" + std::to_string(l++), std::get<ResBlock2d>(cnn_layers_.back()));
 
 					spdlog::debug("{:<28}[{} {}]", "resblock2d", w, h);
+				}
+				if constexpr (std::is_same_v<Config::Activation, T>)
+				{
+					cnn_layers_.emplace_back(make_activation(config));
+					spdlog::debug("{:<28}[{}]", "activation", activation_name(config));
 				}
 			},
 			layer_config);
@@ -136,12 +156,9 @@ CNNExtractor::CNNExtractor(const CNNExtractor& other, const c10::optional<torch:
 		std::visit(
 			[&](auto& layer) {
 				using layer_type = std::decay_t<decltype(layer)>;
-				if constexpr (std::is_same_v<Conv2d, layer_type>)
+				if constexpr (std::is_same_v<std::function<torch::Tensor(const torch::Tensor&)>, layer_type>)
 				{
-					auto lp = std::make_pair(
-						std::dynamic_pointer_cast<Conv2d::first_type::Impl>(layer.first->clone(device)), layer.second);
-					register_module(other.named_children()[index++].key(), lp.first);
-					cnn_layers_.emplace_back(lp);
+					cnn_layers_.emplace_back(layer);
 				}
 				else
 				{
@@ -159,19 +176,7 @@ torch::Tensor CNNExtractor::forward(const torch::Tensor& observation)
 	auto x = observation.to(torch::kFloat);
 	for (auto& cnn_layer : cnn_layers_)
 	{
-		x = std::visit(
-			[&x](auto& layer) {
-				using T = std::decay_t<decltype(layer)>;
-				if constexpr (std::is_same_v<Conv2d, T>)
-				{
-					return layer.second(layer.first(x));
-				}
-				else
-				{
-					return layer(x);
-				}
-			},
-			cnn_layer);
+		x = std::visit([&x](auto& layer) { return layer(x); }, cnn_layer);
 	}
 
 	return x;

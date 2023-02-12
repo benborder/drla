@@ -5,6 +5,7 @@
 #include <torch/torch.h>
 
 #include <functional>
+#include <string>
 
 namespace drla
 {
@@ -44,6 +45,21 @@ inline torch::Tensor activation(torch::Tensor x, Config::Activation activation)
 		case Config::Activation::kSoftplus: return torch::softplus(x);
 	}
 	return x;
+}
+
+inline std::string activation_name(Config::Activation activation)
+{
+	switch (activation)
+	{
+		case Config::Activation::kNone: break;
+		case Config::Activation::kReLU: return "ReLU";
+		case Config::Activation::kLeakyReLU: return "Leaky ReLU";
+		case Config::Activation::kTanh: return "Tanh";
+		case Config::Activation::kSigmoid: return "Sigmoid";
+		case Config::Activation::kELU: return "ELU";
+		case Config::Activation::kSoftplus: return "Softplus";
+	}
+	return "Unity";
 }
 
 inline void weight_init(torch::Tensor weight, Config::InitType type, double init_value)

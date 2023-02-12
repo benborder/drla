@@ -87,10 +87,12 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 	LayerType,
 	{
 		{LayerType::kConv2d, "Conv2d"},
+		{LayerType::kBatchNorm2d, "BatchNorm2d"},
 		{LayerType::kMaxPool2d, "MaxPool2d"},
 		{LayerType::kAvgPool2d, "AvgPool2d"},
 		{LayerType::kAdaptiveAvgPool2d, "AdaptiveAvgPool2d"},
 		{LayerType::kResBlock2d, "ResBlock2d"},
+		{LayerType::kActivation, "Activation"},
 	})
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
@@ -426,7 +428,6 @@ static inline void from_json(const nlohmann::json& json, Conv2dConfig& conv)
 	load_init_weights_config(conv, json);
 	load_init_bias_config(conv, json);
 	conv.use_bias << optional_input{json, "use_bias"};
-	conv.activation << optional_input{json, "activation"};
 }
 
 static inline void to_json(nlohmann::json& json, const Conv2dConfig& conv)
@@ -442,7 +443,23 @@ static inline void to_json(nlohmann::json& json, const Conv2dConfig& conv)
 	json["init_bias_type"] = conv.init_bias_type;
 	json["init_bias"] = conv.init_bias;
 	json["use_bias"] = conv.use_bias;
-	json["activation"] = conv.activation;
+}
+
+static inline void from_json(const nlohmann::json& json, BatchNorm2dConfig& batch_norm)
+{
+	batch_norm.affine << optional_input{json, "affine"};
+	batch_norm.eps << optional_input{json, "eps"};
+	batch_norm.momentum << optional_input{json, "momentum"};
+	batch_norm.track_running_stats << optional_input{json, "track_running_stats"};
+}
+
+static inline void to_json(nlohmann::json& json, const BatchNorm2dConfig& batch_norm)
+{
+	json["type"] = LayerType::kBatchNorm2d;
+	json["affine"] = batch_norm.affine;
+	json["eps"] = batch_norm.eps;
+	json["momentum"] = batch_norm.momentum;
+	json["track_running_stats"] = batch_norm.track_running_stats;
 }
 
 static inline void from_json(const nlohmann::json& json, MaxPool2dConfig& maxpool)
@@ -509,11 +526,19 @@ static inline void to_json(nlohmann::json& json, const ResBlock2dConfig& resbloc
 
 static inline void from_json(const nlohmann::json& json, CNNLayerConfig& cnn_layer_config)
 {
+	auto json_activation = json.find("activation");
+	if (json_activation != json.end())
+	{
+		cnn_layer_config = json_activation->get<Activation>();
+		return;
+	}
+
 	LayerType type;
 	type << required_input{json, "type"};
 	switch (type)
 	{
 		case LayerType::kConv2d: cnn_layer_config = json.get<Conv2dConfig>(); break;
+		case LayerType::kBatchNorm2d: cnn_layer_config = json.get<BatchNorm2dConfig>(); break;
 		case LayerType::kMaxPool2d: cnn_layer_config = json.get<MaxPool2dConfig>(); break;
 		case LayerType::kAvgPool2d: cnn_layer_config = json.get<AvgPool2dConfig>(); break;
 		case LayerType::kAdaptiveAvgPool2d: cnn_layer_config = json.get<AdaptiveAvgPool2dConfig>(); break;
@@ -529,7 +554,19 @@ static inline void from_json(const nlohmann::json& json, CNNLayerConfig& cnn_lay
 
 static inline void to_json(nlohmann::json& json, const CNNLayerConfig& cnn_layer_config)
 {
-	std::visit([&json](const auto& cnn_layer) { to_json(json, cnn_layer); }, cnn_layer_config);
+	std::visit(
+		[&json](const auto& cnn_layer) {
+			using T = std::decay_t<decltype(cnn_layer)>;
+			if constexpr (std::is_same_v<Config::Activation, T>)
+			{
+				json["activation"] = cnn_layer;
+			}
+			else
+			{
+				to_json(json, cnn_layer);
+			}
+		},
+		cnn_layer_config);
 }
 
 static inline void from_json(const nlohmann::json& json, CNNConfig& cnn)
