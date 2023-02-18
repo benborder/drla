@@ -9,7 +9,7 @@
 using namespace drla;
 using namespace torch;
 
-QNetModel::QNetModel(const Config::ModelConfig& config, const EnvironmentConfiguration& env_config, int value_shape)
+QNetModel::QNetModel(const Config::ModelConfig& config, const EnvironmentConfiguration& env_config)
 		: config_(std::get<Config::QNetModelConfig>(config))
 		, action_space_(env_config.action_space)
 		, feature_extractor_(config_.feature_extractor, env_config.observation_shapes)

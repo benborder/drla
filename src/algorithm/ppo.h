@@ -18,11 +18,7 @@ class ActorCriticModel;
 class PPO final : public Algorithm
 {
 public:
-	PPO(
-		const Config::AgentTrainAlgorithm& config,
-		const ObservationShapes& observation_shape,
-		RolloutBuffer& buffer,
-		std::shared_ptr<Model> model);
+	PPO(const Config::AgentTrainAlgorithm& config, RolloutBuffer& buffer, std::shared_ptr<Model> model);
 
 	std::string name() const override;
 	std::vector<UpdateResult> update(int batch) override;

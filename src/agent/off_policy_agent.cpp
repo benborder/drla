@@ -99,7 +99,7 @@ void OffPolicyAgent::train()
 	{
 		case AgentPolicyModelType::kQNet:
 		{
-			model = std::make_shared<QNetModel>(config_.model, env_config, reward_shape);
+			model = std::make_shared<QNetModel>(config_.model, env_config);
 			break;
 		}
 		case AgentPolicyModelType::kSoftActorCritic:
@@ -129,7 +129,7 @@ void OffPolicyAgent::train()
 	{
 		case TrainAlgorithmType::kDQN:
 		{
-			algorithm = std::make_unique<DQN>(config_.train_algorithm, env_config.observation_shapes, buffer, model, gamma);
+			algorithm = std::make_unique<DQN>(config_.train_algorithm, buffer, model, gamma);
 			break;
 		}
 		case TrainAlgorithmType::kSAC:
@@ -159,7 +159,6 @@ void OffPolicyAgent::train()
 	// Get first observation and state for all envs
 	for (int env = 0; env < config_.env_count; env++)
 	{
-		auto& environment = envs_[env];
 		StepData reset_data;
 		reset_data.env = env;
 		reset_data.step = 0;

@@ -99,7 +99,6 @@ void InteractiveAgent::run(const std::vector<State>& initial_state, RunOptions o
 		}
 		threadpool.queue_task([&, env]() {
 			auto& environment = envs_[env];
-			auto& env_data = env_datas[env];
 
 			StepData step_data;
 			step_data.env = env;

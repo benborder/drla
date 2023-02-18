@@ -267,7 +267,7 @@ void Agent::load_model(bool force_reload)
 			}
 			case AgentPolicyModelType::kQNet:
 			{
-				model_ = std::make_shared<QNetModel>(base_config_.model, env_config, reward_shape);
+				model_ = std::make_shared<QNetModel>(base_config_.model, env_config);
 				break;
 			}
 			default:

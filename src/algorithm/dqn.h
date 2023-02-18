@@ -19,11 +19,7 @@ class DQN final : public Algorithm
 {
 public:
 	DQN(
-		const Config::AgentTrainAlgorithm& config,
-		const ObservationShapes& observation_shape,
-		ReplayBuffer& buffer,
-		std::shared_ptr<Model> model,
-		torch::Tensor gamma);
+		const Config::AgentTrainAlgorithm& config, ReplayBuffer& buffer, std::shared_ptr<Model> model, torch::Tensor gamma);
 
 	std::string name() const override;
 	std::vector<UpdateResult> update(int timestep) override;

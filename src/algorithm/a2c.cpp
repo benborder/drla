@@ -12,11 +12,7 @@
 
 using namespace drla;
 
-A2C::A2C(
-	const Config::AgentTrainAlgorithm& config,
-	const ObservationShapes& observation_shape,
-	RolloutBuffer& buffer,
-	std::shared_ptr<Model> model)
+A2C::A2C(const Config::AgentTrainAlgorithm& config, RolloutBuffer& buffer, std::shared_ptr<Model> model)
 		: config_(std::get<Config::A2C>(config))
 		, buffer_(buffer)
 		, model_(std::dynamic_pointer_cast<ActorCriticModelInterface>(model))

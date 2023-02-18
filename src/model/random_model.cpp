@@ -5,7 +5,8 @@
 using namespace drla;
 using namespace torch;
 
-RandomModel::RandomModel(const Config::ModelConfig& config, const ActionSpace& action_space, int value_shape)
+RandomModel::RandomModel(
+	[[maybe_unused]] const Config::ModelConfig& config, const ActionSpace& action_space, int value_shape)
 		: action_space_(action_space)
 		, value_shape_(value_shape)
 		, policy_action_output_(register_module(
@@ -22,7 +23,7 @@ RandomModel::RandomModel(const RandomModel& other, const c10::optional<torch::De
 {
 }
 
-PredictOutput RandomModel::predict(const Observations& observations, bool deterministic)
+PredictOutput RandomModel::predict(const Observations& observations, [[maybe_unused]] bool deterministic)
 {
 	// Create an output distribution to select a uniformly random action
 	auto envs = observations.front().size(0);
@@ -31,11 +32,11 @@ PredictOutput RandomModel::predict(const Observations& observations, bool determ
 	return {action, torch::zeros({envs, value_shape_})};
 }
 
-void RandomModel::save(const std::filesystem::path& path)
+void RandomModel::save([[maybe_unused]] const std::filesystem::path& path)
 {
 }
 
-void RandomModel::load(const std::filesystem::path& path)
+void RandomModel::load([[maybe_unused]] const std::filesystem::path& path)
 {
 }
 

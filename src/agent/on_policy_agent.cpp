@@ -120,12 +120,12 @@ void OnPolicyAgent::train()
 	{
 		case TrainAlgorithmType::kA2C:
 		{
-			algorithm = std::make_unique<A2C>(config_.train_algorithm, env_config.observation_shapes, buffer, model);
+			algorithm = std::make_unique<A2C>(config_.train_algorithm, buffer, model);
 			break;
 		}
 		case TrainAlgorithmType::kPPO:
 		{
-			algorithm = std::make_unique<PPO>(config_.train_algorithm, env_config.observation_shapes, buffer, model);
+			algorithm = std::make_unique<PPO>(config_.train_algorithm, buffer, model);
 			break;
 		}
 		default:
@@ -150,7 +150,6 @@ void OnPolicyAgent::train()
 	// Get first observation and state for all envs
 	for (int env = 0; env < config_.env_count; env++)
 	{
-		auto& environment = envs_[env];
 		StepData step_data;
 		step_data.env = env;
 		step_data.step = 0;

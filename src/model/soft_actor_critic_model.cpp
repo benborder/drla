@@ -115,7 +115,7 @@ SoftActorCriticModel::SoftActorCriticModel(
 	register_module("actor", actor_);
 }
 
-PredictOutput SoftActorCriticModel::predict(const Observations& observations, bool deterministic)
+PredictOutput SoftActorCriticModel::predict(const Observations& observations, [[maybe_unused]] bool deterministic)
 {
 	torch::Tensor features = flatten(feature_extractor_actor_(observations));
 	auto latent_pi = actor_(features);

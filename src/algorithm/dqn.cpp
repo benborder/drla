@@ -13,11 +13,7 @@
 using namespace drla;
 
 DQN::DQN(
-	const Config::AgentTrainAlgorithm& config,
-	const ObservationShapes& observation_shape,
-	ReplayBuffer& buffer,
-	std::shared_ptr<Model> model,
-	torch::Tensor gamma)
+	const Config::AgentTrainAlgorithm& config, ReplayBuffer& buffer, std::shared_ptr<Model> model, torch::Tensor gamma)
 		: config_(std::get<Config::DQN>(config))
 		, buffer_(buffer)
 		, model_(std::dynamic_pointer_cast<QNetModelInterface>(model))

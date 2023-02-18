@@ -71,7 +71,7 @@ add_library(drla STATIC
 	src/distributions/diagonal_gaussian.cpp
 )
 
-target_compile_options(drla PRIVATE -Wall -Wextra -Werror -Wno-unused $<$<CONFIG:RELEASE>:-O2 -flto>)
+target_compile_options(drla PRIVATE -Wall -Wextra -Werror -Wpedantic $<$<CONFIG:RELEASE>:-O2 -flto>)
 target_compile_features(drla PRIVATE cxx_std_17)
 
 target_include_directories(drla

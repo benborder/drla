@@ -15,11 +15,7 @@
 
 using namespace drla;
 
-PPO::PPO(
-	const Config::AgentTrainAlgorithm& config,
-	const ObservationShapes& observation_shape,
-	RolloutBuffer& buffer,
-	std::shared_ptr<Model> model)
+PPO::PPO(const Config::AgentTrainAlgorithm& config, RolloutBuffer& buffer, std::shared_ptr<Model> model)
 		: config_(std::get<Config::PPO>(config))
 		, buffer_(buffer)
 		, model_(std::dynamic_pointer_cast<ActorCriticModelInterface>(model))

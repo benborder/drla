@@ -27,7 +27,7 @@ struct ModelOutput
 class QNetModel : public QNetModelInterface
 {
 public:
-	QNetModel(const Config::ModelConfig& config, const EnvironmentConfiguration& env_config, int value_shape);
+	QNetModel(const Config::ModelConfig& config, const EnvironmentConfiguration& env_config);
 	QNetModel(const QNetModel& other, const c10::optional<torch::Device>& device);
 
 	torch::Tensor forward(const Observations& observations);
