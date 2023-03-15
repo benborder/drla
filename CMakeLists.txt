@@ -33,6 +33,7 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)  # Set -pthreads
 find_package(Threads REQUIRED)
 find_package(Torch REQUIRED)
 
+# The core drla library
 add_library(drla STATIC
 	# Agent
 	src/agent/agent.cpp
@@ -70,6 +71,7 @@ add_library(drla STATIC
 	src/distributions/normal.cpp
 	src/distributions/diagonal_gaussian.cpp
 )
+add_library(drla::drla ALIAS drla)
 
 target_compile_options(drla PRIVATE -Wall -Wextra -Werror -Wpedantic $<$<CONFIG:RELEASE>:-O2 -flto>)
 target_compile_features(drla PRIVATE cxx_std_17)
@@ -97,12 +99,39 @@ PRIVATE
 	$<BUILD_INTERFACE:spdlog::spdlog>
 )
 
+# aux drla library
+add_library(drla_aux STATIC
+	src/auxiliary/env_manager.cpp
+)
+add_library(drla::aux ALIAS drla_aux)
+
+target_compile_options(drla_aux PRIVATE -Wall -Wextra -Werror -Wpedantic $<$<CONFIG:RELEASE>:-O2 -flto>)
+target_compile_features(drla_aux PRIVATE cxx_std_17)
+
+target_include_directories(drla_aux
+	PUBLIC
+		$<INSTALL_INTERFACE:include>
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+	PRIVATE
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/drla>
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/drla/auxiliary>
+)
+
+target_link_libraries(drla_aux
+PUBLIC
+	drla::drla
+	${TORCH_LIBRARIES}
+	Threads::Threads
+PRIVATE
+	$<BUILD_INTERFACE:spdlog::spdlog>
+)
+
 # ----------------------------------------------------------------------------
 # Installing the DRLA library
 # ----------------------------------------------------------------------------
 
 install(
-	TARGETS drla
+	TARGETS drla drla_aux
 	EXPORT drla_Targets
 	ARCHIVE DESTINATION lib
 	LIBRARY DESTINATION lib
