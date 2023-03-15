@@ -1,203 +1,23 @@
-#pragma once
+#include "serialise_json.h"
 
-#include "drla/configuration.h"
-#include "drla/types.h"
-
-#include <nlohmann/json.hpp>
-#include <spdlog/spdlog.h>
-
-namespace
+namespace drla::Config
 {
 
-struct optional_input
-{
-	const nlohmann::json& json;
-	const char* name;
-};
-
-template <typename T>
-static inline void operator<<(T& value, const optional_input&& input)
-{
-	auto item = input.json.find(input.name);
-	if (item != input.json.end())
-	{
-		value = item->get<T>();
-	}
-}
-
-struct required_input
-{
-	const nlohmann::json& json;
-	const char* name;
-	const bool throw_on_error = false;
-};
-
-template <typename T>
-static inline void operator<<(T& value, const required_input&& input)
-{
-	auto item = input.json.find(input.name);
-	if (item != input.json.end())
-	{
-		value = item->get<T>();
-	}
-	else if (!input.throw_on_error)
-	{
-		spdlog::warn("[Config] Missing parameter '{}'. Using default instead.", input.name);
-	}
-	else
-	{
-		std::string err = "[Config] Missing parameter: ";
-		err += input.name;
-		throw std::runtime_error(err.c_str());
-	}
-}
-
-} // namespace
-
-namespace drla
-{
-
-NLOHMANN_JSON_SERIALIZE_ENUM(
-	TrainAlgorithmType,
-	{
-		{TrainAlgorithmType::kNone, "None"},
-		{TrainAlgorithmType::kA2C, "A2C"},
-		{TrainAlgorithmType::kPPO, "PPO"},
-		{TrainAlgorithmType::kSAC, "SAC"},
-		{TrainAlgorithmType::kDQN, "DQN"},
-	})
-
-NLOHMANN_JSON_SERIALIZE_ENUM(
-	AgentPolicyModelType,
-	{
-		{AgentPolicyModelType::kRandom, "Random"},
-		{AgentPolicyModelType::kActorCritic, "ActorCritic"},
-		{AgentPolicyModelType::kSoftActorCritic, "SoftActorCritic"},
-		{AgentPolicyModelType::kQNet, "QNet"},
-	})
-
-NLOHMANN_JSON_SERIALIZE_ENUM(
-	FeatureExtractorType,
-	{
-		{FeatureExtractorType::kMLP, "MLP"},
-		{FeatureExtractorType::kCNN, "CNN"},
-	})
-
-NLOHMANN_JSON_SERIALIZE_ENUM(
-	LayerType,
-	{
-		{LayerType::kConv2d, "Conv2d"},
-		{LayerType::kBatchNorm2d, "BatchNorm2d"},
-		{LayerType::kMaxPool2d, "MaxPool2d"},
-		{LayerType::kAvgPool2d, "AvgPool2d"},
-		{LayerType::kAdaptiveAvgPool2d, "AdaptiveAvgPool2d"},
-		{LayerType::kResBlock2d, "ResBlock2d"},
-		{LayerType::kActivation, "Activation"},
-	})
-
-NLOHMANN_JSON_SERIALIZE_ENUM(
-	LearningRateScheduleType,
-	{
-		{LearningRateScheduleType::kConstant, "Constant"},
-		{LearningRateScheduleType::kLinear, "Linear"},
-		{LearningRateScheduleType::kExponential, "Exponential"},
-	})
-
-NLOHMANN_JSON_SERIALIZE_ENUM(
-	ActionSpaceType,
-	{
-		{ActionSpaceType::kDiscrete, "Discrete"},
-		{ActionSpaceType::kBox, "Box"},
-		{ActionSpaceType::kMultiBinary, "MultiBinary"},
-		{ActionSpaceType::kMultiDiscrete, "MultiDiscrete"},
-	})
-
-namespace Config
-{
-
-NLOHMANN_JSON_SERIALIZE_ENUM(
-	Activation,
-	{
-		{Activation::kNone, "None"},
-		{Activation::kReLU, "ReLU"},
-		{Activation::kLeakyReLU, "LeakyReLU"},
-		{Activation::kSigmoid, "Sigmoid"},
-		{Activation::kTanh, "Tanh"},
-		{Activation::kELU, "ELU"},
-		{Activation::kSoftplus, "Softplus"},
-	})
-
-NLOHMANN_JSON_SERIALIZE_ENUM(
-	FCLayerType,
-	{
-		{FCLayerType::kLinear, "Linear"},
-		{FCLayerType::kInputConnected, "InputConnected"},
-		{FCLayerType::kMultiConnected, "MultiConnected"},
-		{FCLayerType::kResidual, "Residual"},
-		{FCLayerType::kForwardInput, "ForwardInput"},
-		{FCLayerType::kForwardAll, "ForwardAll"},
-	})
-
-NLOHMANN_JSON_SERIALIZE_ENUM(
-	InitType,
-	{
-		{InitType::kDefault, "Default"},
-		{InitType::kOrthogonal, "Orthogonal"},
-		{InitType::kKaimingUniform, "KaimingUniform"},
-		{InitType::kKaimingNormal, "KaimingNormal"},
-		{InitType::kXavierUniform, "XavierUniform"},
-		{InitType::kXavierNormal, "XavierNormal"},
-	})
-
-template <typename T>
-void load_init_weights_config(T& layer, const nlohmann::json& json)
-{
-	layer.init_weight_type << optional_input{json, "init_weight_type"};
-	switch (layer.init_weight_type)
-	{
-		case InitType::kDefault:
-		case InitType::kOrthogonal: break;
-		case InitType::kConstant:
-		case InitType::kXavierUniform:
-		case InitType::kXavierNormal: layer.init_weight = 1.0; break;
-		case InitType::kKaimingUniform:
-		case InitType::kKaimingNormal: layer.init_weight = 0.0; break;
-	}
-	layer.init_weight << optional_input{json, "init_weight"};
-}
-
-template <typename T>
-void load_init_bias_config(T& layer, const nlohmann::json& json)
-{
-	layer.init_bias_type << optional_input{json, "init_bias_type"};
-	switch (layer.init_bias_type)
-	{
-		case InitType::kDefault: break;
-		case InitType::kXavierUniform:
-		case InitType::kXavierNormal: layer.init_weight = 1.0; break;
-		case InitType::kConstant:
-		case InitType::kOrthogonal:
-		case InitType::kKaimingUniform:
-		case InitType::kKaimingNormal: layer.init_weight = 0.0; break;
-	}
-	layer.init_bias << optional_input{json, "init_bias"};
-}
-
-static inline void from_json(const nlohmann::json& json, Rewards& reward_config)
+void from_json(const nlohmann::json& json, Rewards& reward_config)
 {
 	reward_config.reward_clamp_min << optional_input{json, "reward_clamp_min"};
 	reward_config.reward_clamp_max << optional_input{json, "reward_clamp_max"};
 	reward_config.combine_rewards << optional_input{json, "combine_rewards"};
 }
 
-static inline void to_json(nlohmann::json& json, const Rewards& reward_config)
+void to_json(nlohmann::json& json, const Rewards& reward_config)
 {
 	json["reward_clamp_min"] = reward_config.reward_clamp_min;
 	json["reward_clamp_max"] = reward_config.reward_clamp_max;
 	json["combine_rewards"] = reward_config.combine_rewards;
 }
 
-static inline void from_json(const nlohmann::json& json, TrainAlgorithm& train_algorithm)
+void from_json(const nlohmann::json& json, TrainAlgorithm& train_algorithm)
 {
 	train_algorithm.total_timesteps << required_input{json, "total_timesteps"};
 	train_algorithm.start_timestep << required_input{json, "start_timestep"};
@@ -207,7 +27,7 @@ static inline void from_json(const nlohmann::json& json, TrainAlgorithm& train_a
 	train_algorithm.lr_decay_rate << optional_input{json, "lr_decay_rate"};
 }
 
-static inline void to_json(nlohmann::json& json, const TrainAlgorithm& train_algorithm)
+void to_json(nlohmann::json& json, const TrainAlgorithm& train_algorithm)
 {
 	json["total_timesteps"] = train_algorithm.total_timesteps;
 	json["start_timestep"] = train_algorithm.start_timestep;
@@ -217,7 +37,7 @@ static inline void to_json(nlohmann::json& json, const TrainAlgorithm& train_alg
 	json["lr_decay_rate"] = train_algorithm.lr_decay_rate;
 }
 
-static inline void from_json(const nlohmann::json& json, OnPolicyAlgorithm& on_policy_algorithm)
+void from_json(const nlohmann::json& json, OnPolicyAlgorithm& on_policy_algorithm)
 {
 	from_json(json, static_cast<TrainAlgorithm&>(on_policy_algorithm));
 	on_policy_algorithm.horizon_steps << required_input{json, "horizon_steps"};
@@ -228,7 +48,7 @@ static inline void from_json(const nlohmann::json& json, OnPolicyAlgorithm& on_p
 	on_policy_algorithm.gamma << required_input{json, "gamma"};
 }
 
-static inline void to_json(nlohmann::json& json, const OnPolicyAlgorithm& on_policy_algorithm)
+void to_json(nlohmann::json& json, const OnPolicyAlgorithm& on_policy_algorithm)
 {
 	to_json(json, static_cast<const TrainAlgorithm&>(on_policy_algorithm));
 	json["horizon_steps"] = on_policy_algorithm.horizon_steps;
@@ -239,7 +59,7 @@ static inline void to_json(nlohmann::json& json, const OnPolicyAlgorithm& on_pol
 	json["gamma"] = on_policy_algorithm.gamma;
 }
 
-static inline void from_json(const nlohmann::json& json, OffPolicyAlgorithm& off_policy_algorithm)
+void from_json(const nlohmann::json& json, OffPolicyAlgorithm& off_policy_algorithm)
 {
 	from_json(json, static_cast<TrainAlgorithm&>(off_policy_algorithm));
 	off_policy_algorithm.horizon_steps << required_input{json, "horizon_steps"};
@@ -252,7 +72,7 @@ static inline void from_json(const nlohmann::json& json, OffPolicyAlgorithm& off
 	off_policy_algorithm.target_update_interval << optional_input{json, "target_update_interval"};
 }
 
-static inline void to_json(nlohmann::json& json, const OffPolicyAlgorithm& off_policy_algorithm)
+void to_json(nlohmann::json& json, const OffPolicyAlgorithm& off_policy_algorithm)
 {
 	to_json(json, static_cast<const TrainAlgorithm&>(off_policy_algorithm));
 	json["horizon_steps"] = off_policy_algorithm.horizon_steps;
@@ -265,7 +85,7 @@ static inline void to_json(nlohmann::json& json, const OffPolicyAlgorithm& off_p
 	json["target_update_interval"] = off_policy_algorithm.target_update_interval;
 }
 
-static inline void from_json(const nlohmann::json& json, A2C& alg_a2c)
+void from_json(const nlohmann::json& json, A2C& alg_a2c)
 {
 	from_json(json, static_cast<OnPolicyAlgorithm&>(alg_a2c));
 	alg_a2c.alpha << required_input{json, "alpha"};
@@ -273,7 +93,7 @@ static inline void from_json(const nlohmann::json& json, A2C& alg_a2c)
 	alg_a2c.max_grad_norm << required_input{json, "max_grad_norm"};
 }
 
-static inline void to_json(nlohmann::json& json, const A2C& alg_a2c)
+void to_json(nlohmann::json& json, const A2C& alg_a2c)
 {
 	json["train_algorithm_type"] = TrainAlgorithmType::kA2C;
 	to_json(json, static_cast<const OnPolicyAlgorithm&>(alg_a2c));
@@ -282,7 +102,7 @@ static inline void to_json(nlohmann::json& json, const A2C& alg_a2c)
 	json["max_grad_norm"] = alg_a2c.max_grad_norm;
 }
 
-static inline void from_json(const nlohmann::json& json, PPO& alg_ppo)
+void from_json(const nlohmann::json& json, PPO& alg_ppo)
 {
 	from_json(json, static_cast<OnPolicyAlgorithm&>(alg_ppo));
 	alg_ppo.clip_range_policy << required_input{json, "clip_range_policy"};
@@ -294,7 +114,7 @@ static inline void from_json(const nlohmann::json& json, PPO& alg_ppo)
 	alg_ppo.kl_target << required_input{json, "kl_target"};
 }
 
-static inline void to_json(nlohmann::json& json, const PPO& alg_ppo)
+void to_json(nlohmann::json& json, const PPO& alg_ppo)
 {
 	json["train_algorithm_type"] = TrainAlgorithmType::kPPO;
 	to_json(json, static_cast<const OnPolicyAlgorithm&>(alg_ppo));
@@ -307,7 +127,7 @@ static inline void to_json(nlohmann::json& json, const PPO& alg_ppo)
 	json["kl_target"] = alg_ppo.kl_target;
 }
 
-static inline void from_json(const nlohmann::json& json, DQN& alg_dqn)
+void from_json(const nlohmann::json& json, DQN& alg_dqn)
 {
 	from_json(json, static_cast<OffPolicyAlgorithm&>(alg_dqn));
 	alg_dqn.epsilon << optional_input{json, "epsilon"};
@@ -317,7 +137,7 @@ static inline void from_json(const nlohmann::json& json, DQN& alg_dqn)
 	alg_dqn.exploration_final << optional_input{json, "exploration_final"};
 }
 
-static inline void to_json(nlohmann::json& json, const DQN& alg_dqn)
+void to_json(nlohmann::json& json, const DQN& alg_dqn)
 {
 	json["train_algorithm_type"] = TrainAlgorithmType::kDQN;
 	to_json(json, static_cast<const OffPolicyAlgorithm&>(alg_dqn));
@@ -328,7 +148,7 @@ static inline void to_json(nlohmann::json& json, const DQN& alg_dqn)
 	json["exploration_final"] = alg_dqn.exploration_final;
 }
 
-static inline void from_json(const nlohmann::json& json, SAC& alg_sac)
+void from_json(const nlohmann::json& json, SAC& alg_sac)
 {
 	from_json(json, static_cast<OffPolicyAlgorithm&>(alg_sac));
 	alg_sac.epsilon << optional_input{json, "epsilon"};
@@ -337,7 +157,7 @@ static inline void from_json(const nlohmann::json& json, SAC& alg_sac)
 	alg_sac.target_entropy_scale << optional_input{json, "target_entropy_scale"};
 }
 
-static inline void to_json(nlohmann::json& json, const SAC& alg_sac)
+void to_json(nlohmann::json& json, const SAC& alg_sac)
 {
 	json["train_algorithm_type"] = TrainAlgorithmType::kSAC;
 	to_json(json, static_cast<const OffPolicyAlgorithm&>(alg_sac));
@@ -347,7 +167,7 @@ static inline void to_json(nlohmann::json& json, const SAC& alg_sac)
 	json["target_entropy_scale"] = alg_sac.target_entropy_scale;
 }
 
-static inline void from_json(const nlohmann::json& json, AgentTrainAlgorithm& train_algorithm)
+void from_json(const nlohmann::json& json, AgentTrainAlgorithm& train_algorithm)
 {
 	TrainAlgorithmType train_algorithm_type = TrainAlgorithmType::kNone;
 	train_algorithm_type << optional_input{json, "train_algorithm_type"};
@@ -361,12 +181,12 @@ static inline void from_json(const nlohmann::json& json, AgentTrainAlgorithm& tr
 	}
 }
 
-static inline void to_json(nlohmann::json& json, const AgentTrainAlgorithm& train_algorithm)
+void to_json(nlohmann::json& json, const AgentTrainAlgorithm& train_algorithm)
 {
 	std::visit([&](auto& alg) { to_json(json, alg); }, train_algorithm);
 }
 
-static inline void from_json(const nlohmann::json& json, FCConfig::fc_layer& layer)
+void from_json(const nlohmann::json& json, FCConfig::fc_layer& layer)
 {
 	layer.type << optional_input{json, "type"};
 	if (
@@ -384,7 +204,7 @@ static inline void from_json(const nlohmann::json& json, FCConfig::fc_layer& lay
 	load_init_bias_config(layer, json);
 }
 
-static inline void to_json(nlohmann::json& json, const FCConfig::fc_layer& layer)
+void to_json(nlohmann::json& json, const FCConfig::fc_layer& layer)
 {
 	json["size"] = layer.size;
 	json["activation"] = layer.activation;
@@ -395,30 +215,30 @@ static inline void to_json(nlohmann::json& json, const FCConfig::fc_layer& layer
 	json["type"] = layer.type;
 }
 
-static inline void from_json(const nlohmann::json& json, FCConfig& fc)
+void from_json(const nlohmann::json& json, FCConfig& fc)
 {
 	fc.layers << required_input{json, "layers"};
 }
 
-static inline void to_json(nlohmann::json& json, const FCConfig& fc)
+void to_json(nlohmann::json& json, const FCConfig& fc)
 {
 	json["layers"] = fc.layers;
 }
 
-static inline void from_json(const nlohmann::json& json, MLPConfig& mlp)
+void from_json(const nlohmann::json& json, MLPConfig& mlp)
 {
 	from_json(json, static_cast<FCConfig&>(mlp));
 	mlp.name << optional_input{json, "name"};
 }
 
-static inline void to_json(nlohmann::json& json, const MLPConfig& mlp)
+void to_json(nlohmann::json& json, const MLPConfig& mlp)
 {
 	json["type"] = FeatureExtractorType::kMLP;
 	to_json(json, static_cast<const FCConfig&>(mlp));
 	json["name"] = mlp.name;
 }
 
-static inline void from_json(const nlohmann::json& json, Conv2dConfig& conv)
+void from_json(const nlohmann::json& json, Conv2dConfig& conv)
 {
 	conv.in_channels << optional_input{json, "in_channels"};
 	conv.out_channels << required_input{json, "out_channels"};
@@ -430,7 +250,7 @@ static inline void from_json(const nlohmann::json& json, Conv2dConfig& conv)
 	conv.use_bias << optional_input{json, "use_bias"};
 }
 
-static inline void to_json(nlohmann::json& json, const Conv2dConfig& conv)
+void to_json(nlohmann::json& json, const Conv2dConfig& conv)
 {
 	json["type"] = LayerType::kConv2d;
 	json["in_channels"] = conv.in_channels;
@@ -445,7 +265,7 @@ static inline void to_json(nlohmann::json& json, const Conv2dConfig& conv)
 	json["use_bias"] = conv.use_bias;
 }
 
-static inline void from_json(const nlohmann::json& json, BatchNorm2dConfig& batch_norm)
+void from_json(const nlohmann::json& json, BatchNorm2dConfig& batch_norm)
 {
 	batch_norm.affine << optional_input{json, "affine"};
 	batch_norm.eps << optional_input{json, "eps"};
@@ -453,7 +273,7 @@ static inline void from_json(const nlohmann::json& json, BatchNorm2dConfig& batc
 	batch_norm.track_running_stats << optional_input{json, "track_running_stats"};
 }
 
-static inline void to_json(nlohmann::json& json, const BatchNorm2dConfig& batch_norm)
+void to_json(nlohmann::json& json, const BatchNorm2dConfig& batch_norm)
 {
 	json["type"] = LayerType::kBatchNorm2d;
 	json["affine"] = batch_norm.affine;
@@ -462,14 +282,14 @@ static inline void to_json(nlohmann::json& json, const BatchNorm2dConfig& batch_
 	json["track_running_stats"] = batch_norm.track_running_stats;
 }
 
-static inline void from_json(const nlohmann::json& json, MaxPool2dConfig& maxpool)
+void from_json(const nlohmann::json& json, MaxPool2dConfig& maxpool)
 {
 	maxpool.kernel_size << required_input{json, "kernel_size"};
 	maxpool.stride << required_input{json, "stride"};
 	maxpool.padding << optional_input{json, "padding"};
 }
 
-static inline void to_json(nlohmann::json& json, const MaxPool2dConfig& maxpool)
+void to_json(nlohmann::json& json, const MaxPool2dConfig& maxpool)
 {
 	json["type"] = LayerType::kMaxPool2d;
 	json["kernel_size"] = maxpool.kernel_size;
@@ -477,14 +297,14 @@ static inline void to_json(nlohmann::json& json, const MaxPool2dConfig& maxpool)
 	json["padding"] = maxpool.padding;
 }
 
-static inline void from_json(const nlohmann::json& json, AvgPool2dConfig& avgpool)
+void from_json(const nlohmann::json& json, AvgPool2dConfig& avgpool)
 {
 	avgpool.kernel_size << required_input{json, "kernel_size"};
 	avgpool.stride << required_input{json, "stride"};
 	avgpool.padding << optional_input{json, "padding"};
 }
 
-static inline void to_json(nlohmann::json& json, const AvgPool2dConfig& avgpool)
+void to_json(nlohmann::json& json, const AvgPool2dConfig& avgpool)
 {
 	json["type"] = LayerType::kAvgPool2d;
 	json["kernel_size"] = avgpool.kernel_size;
@@ -492,18 +312,18 @@ static inline void to_json(nlohmann::json& json, const AvgPool2dConfig& avgpool)
 	json["padding"] = avgpool.padding;
 }
 
-static inline void from_json(const nlohmann::json& json, AdaptiveAvgPool2dConfig& adaptavgpool)
+void from_json(const nlohmann::json& json, AdaptiveAvgPool2dConfig& adaptavgpool)
 {
 	adaptavgpool.size << required_input{json, "size"};
 }
 
-static inline void to_json(nlohmann::json& json, const AdaptiveAvgPool2dConfig& adaptavgpool)
+void to_json(nlohmann::json& json, const AdaptiveAvgPool2dConfig& adaptavgpool)
 {
 	json["type"] = LayerType::kAdaptiveAvgPool2d;
 	json["size"] = adaptavgpool.size;
 }
 
-static inline void from_json(const nlohmann::json& json, ResBlock2dConfig& resblock)
+void from_json(const nlohmann::json& json, ResBlock2dConfig& resblock)
 {
 	resblock.layers << optional_input{json, "layers"};
 	resblock.kernel_size << optional_input{json, "kernel_size"};
@@ -513,7 +333,7 @@ static inline void from_json(const nlohmann::json& json, ResBlock2dConfig& resbl
 	load_init_weights_config(resblock, json);
 }
 
-static inline void to_json(nlohmann::json& json, const ResBlock2dConfig& resblock)
+void to_json(nlohmann::json& json, const ResBlock2dConfig& resblock)
 {
 	json["type"] = LayerType::kResBlock2d;
 	json["layers"] = resblock.layers;
@@ -524,7 +344,7 @@ static inline void to_json(nlohmann::json& json, const ResBlock2dConfig& resbloc
 	json["init_weight"] = resblock.init_weight;
 }
 
-static inline void from_json(const nlohmann::json& json, CNNLayerConfig& cnn_layer_config)
+void from_json(const nlohmann::json& json, CNNLayerConfig& cnn_layer_config)
 {
 	auto json_activation = json.find("activation");
 	if (json_activation != json.end())
@@ -552,7 +372,7 @@ static inline void from_json(const nlohmann::json& json, CNNLayerConfig& cnn_lay
 	}
 }
 
-static inline void to_json(nlohmann::json& json, const CNNLayerConfig& cnn_layer_config)
+void to_json(nlohmann::json& json, const CNNLayerConfig& cnn_layer_config)
 {
 	std::visit(
 		[&json](const auto& cnn_layer) {
@@ -569,18 +389,18 @@ static inline void to_json(nlohmann::json& json, const CNNLayerConfig& cnn_layer
 		cnn_layer_config);
 }
 
-static inline void from_json(const nlohmann::json& json, CNNConfig& cnn)
+void from_json(const nlohmann::json& json, CNNConfig& cnn)
 {
 	cnn.layers << optional_input{json, "layers"};
 }
 
-static inline void to_json(nlohmann::json& json, const CNNConfig& cnn)
+void to_json(nlohmann::json& json, const CNNConfig& cnn)
 {
 	json["type"] = FeatureExtractorType::kCNN;
 	json["layers"] = cnn.layers;
 }
 
-static inline void from_json(const nlohmann::json& json, FeatureExtractorGroup& feature_extractor)
+void from_json(const nlohmann::json& json, FeatureExtractorGroup& feature_extractor)
 {
 	FeatureExtractorType type;
 	type << required_input{json, "type"};
@@ -591,29 +411,29 @@ static inline void from_json(const nlohmann::json& json, FeatureExtractorGroup& 
 	}
 }
 
-static inline void to_json(nlohmann::json& json, const FeatureExtractorGroup& feature_extractor)
+void to_json(nlohmann::json& json, const FeatureExtractorGroup& feature_extractor)
 {
 	std::visit([&](auto& feature_extractor) { to_json(json, feature_extractor); }, feature_extractor);
 }
 
-static inline void from_json(const nlohmann::json& json, FeatureExtractorConfig& feature_extractor)
+void from_json(const nlohmann::json& json, FeatureExtractorConfig& feature_extractor)
 {
 	feature_extractor.feature_groups = json.get<decltype(feature_extractor.feature_groups)>();
 }
 
-static inline void to_json(nlohmann::json& json, const FeatureExtractorConfig& feature_extractor)
+void to_json(nlohmann::json& json, const FeatureExtractorConfig& feature_extractor)
 {
 	json = feature_extractor.feature_groups;
 }
 
-static inline void from_json(const nlohmann::json& json, PolicyActionOutputConfig& paoc)
+void from_json(const nlohmann::json& json, PolicyActionOutputConfig& paoc)
 {
 	paoc.activation << optional_input{json, "activation"};
 	load_init_weights_config(paoc, json);
 	load_init_bias_config(paoc, json);
 }
 
-static inline void to_json(nlohmann::json& json, const PolicyActionOutputConfig& paoc)
+void to_json(nlohmann::json& json, const PolicyActionOutputConfig& paoc)
 {
 	json["activation"] = paoc.activation;
 	json["init_bias_type"] = paoc.init_bias_type;
@@ -622,15 +442,15 @@ static inline void to_json(nlohmann::json& json, const PolicyActionOutputConfig&
 	json["init_weight"] = paoc.init_weight;
 }
 
-static inline void from_json(const nlohmann::json& json, CommonModelConfig& model_config)
+void from_json([[maybe_unused]] const nlohmann::json& json, [[maybe_unused]] CommonModelConfig& model_config)
 {
 }
 
-static inline void to_json(nlohmann::json& json, const CommonModelConfig& model_config)
+void to_json([[maybe_unused]] nlohmann::json& json, [[maybe_unused]] const CommonModelConfig& model_config)
 {
 }
 
-static inline void from_json(const nlohmann::json& json, ActorCriticConfig& actor_critic)
+void from_json(const nlohmann::json& json, ActorCriticConfig& actor_critic)
 {
 	from_json(json, static_cast<CommonModelConfig&>(actor_critic));
 	actor_critic.use_shared_extractor << optional_input{json, "use_shared_extractor"};
@@ -642,7 +462,7 @@ static inline void from_json(const nlohmann::json& json, ActorCriticConfig& acto
 	actor_critic.predict_values << optional_input{json, "predict_values"};
 }
 
-static inline void to_json(nlohmann::json& json, const ActorCriticConfig& actor_critic)
+void to_json(nlohmann::json& json, const ActorCriticConfig& actor_critic)
 {
 	json["model_type"] = AgentPolicyModelType::kActorCritic;
 	to_json(json, static_cast<const CommonModelConfig&>(actor_critic));
@@ -655,7 +475,7 @@ static inline void to_json(nlohmann::json& json, const ActorCriticConfig& actor_
 	json["predict_values"] = actor_critic.predict_values;
 }
 
-static inline void from_json(const nlohmann::json& json, SoftActorCriticConfig& sac)
+void from_json(const nlohmann::json& json, SoftActorCriticConfig& sac)
 {
 	from_json(json, static_cast<CommonModelConfig&>(sac));
 	sac.feature_extractor << required_input{json, "feature_extractor"};
@@ -667,7 +487,7 @@ static inline void from_json(const nlohmann::json& json, SoftActorCriticConfig& 
 	sac.predict_values << optional_input{json, "predict_values"};
 }
 
-static inline void to_json(nlohmann::json& json, const SoftActorCriticConfig& sac)
+void to_json(nlohmann::json& json, const SoftActorCriticConfig& sac)
 {
 	json["model_type"] = AgentPolicyModelType::kSoftActorCritic;
 	to_json(json, static_cast<const CommonModelConfig&>(sac));
@@ -680,14 +500,14 @@ static inline void to_json(nlohmann::json& json, const SoftActorCriticConfig& sa
 	json["predict_values"] = sac.predict_values;
 }
 
-static inline void from_json(const nlohmann::json& json, QNetModelConfig& dqn_model)
+void from_json(const nlohmann::json& json, QNetModelConfig& dqn_model)
 {
 	from_json(json, static_cast<CommonModelConfig&>(dqn_model));
 	dqn_model.feature_extractor << required_input{json, "feature_extractor"};
 	dqn_model.q_net << required_input{json, "q_net"};
 }
 
-static inline void to_json(nlohmann::json& json, const QNetModelConfig& dqn_model)
+void to_json(nlohmann::json& json, const QNetModelConfig& dqn_model)
 {
 	json["model_type"] = AgentPolicyModelType::kQNet;
 	to_json(json, static_cast<const CommonModelConfig&>(dqn_model));
@@ -695,16 +515,16 @@ static inline void to_json(nlohmann::json& json, const QNetModelConfig& dqn_mode
 	json["q_net"] = dqn_model.q_net;
 }
 
-static inline void from_json(const nlohmann::json& json, RandomConfig& random)
+void from_json([[maybe_unused]] const nlohmann::json& json, [[maybe_unused]] RandomConfig& random)
 {
 }
 
-static inline void to_json(nlohmann::json& json, const RandomConfig& random)
+void to_json([[maybe_unused]] nlohmann::json& json, [[maybe_unused]] const RandomConfig& random)
 {
 	json["model_type"] = AgentPolicyModelType::kRandom;
 }
 
-static inline void from_json(const nlohmann::json& json, ModelConfig& model)
+void from_json(const nlohmann::json& json, ModelConfig& model)
 {
 	AgentPolicyModelType model_type;
 	model_type << required_input{json, "model_type"};
@@ -717,12 +537,12 @@ static inline void from_json(const nlohmann::json& json, ModelConfig& model)
 	}
 }
 
-static inline void to_json(nlohmann::json& json, const ModelConfig& model)
+void to_json(nlohmann::json& json, const ModelConfig& model)
 {
 	std::visit([&](auto& model) { to_json(json, model); }, model);
 }
 
-static inline void from_json(const nlohmann::json& json, Config::AgentBase& agent)
+void from_json(const nlohmann::json& json, Config::AgentBase& agent)
 {
 	agent.env_count << optional_input{json, "env_count"};
 	agent.use_cuda << optional_input{json, "use_cuda"};
@@ -739,7 +559,7 @@ static inline void from_json(const nlohmann::json& json, Config::AgentBase& agen
 	agent.checkpoint_save_period << optional_input{json, "checkpoint_save_period"};
 }
 
-static inline void to_json(nlohmann::json& json, const Config::AgentBase& agent)
+void to_json(nlohmann::json& json, const Config::AgentBase& agent)
 {
 	json["env_count"] = agent.env_count;
 	json["use_cuda"] = agent.use_cuda;
@@ -754,42 +574,42 @@ static inline void to_json(nlohmann::json& json, const Config::AgentBase& agent)
 	json["checkpoint_save_period"] = agent.checkpoint_save_period;
 }
 
-static inline void from_json(const nlohmann::json& json, Config::InteractiveAgent& agent)
+void from_json([[maybe_unused]] const nlohmann::json& json, [[maybe_unused]] Config::InteractiveAgent& agent)
 {
 }
 
-static inline void to_json(nlohmann::json& json, const Config::InteractiveAgent& agent)
+void to_json([[maybe_unused]] nlohmann::json& json, [[maybe_unused]] const Config::InteractiveAgent& agent)
 {
 }
 
-static inline void from_json(const nlohmann::json& json, Config::OnPolicyAgent& agent)
+void from_json(const nlohmann::json& json, Config::OnPolicyAgent& agent)
 {
 	from_json(json, static_cast<Config::AgentBase&>(agent));
 	agent.asynchronous_env << optional_input{json, "asynchronous_env"};
 }
 
-static inline void to_json(nlohmann::json& json, const Config::OnPolicyAgent& agent)
+void to_json(nlohmann::json& json, const Config::OnPolicyAgent& agent)
 {
 	to_json(json, static_cast<const Config::AgentBase&>(agent));
 	json["asynchronous_env"] = agent.asynchronous_env;
 }
 
-static inline void from_json(const nlohmann::json& json, Config::OffPolicyAgent& agent)
+void from_json(const nlohmann::json& json, Config::OffPolicyAgent& agent)
 {
 	from_json(json, static_cast<Config::AgentBase&>(agent));
 }
 
-static inline void to_json(nlohmann::json& json, const Config::OffPolicyAgent& agent)
+void to_json(nlohmann::json& json, const Config::OffPolicyAgent& agent)
 {
 	to_json(json, static_cast<const Config::AgentBase&>(agent));
 }
 
-static inline void to_json(nlohmann::json& json, const Config::Agent& agent)
+void to_json(nlohmann::json& json, const Config::Agent& agent)
 {
 	std::visit([&](auto& agent) { to_json(json, agent); }, agent);
 }
 
-static inline void from_json(const nlohmann::json& json, Config::Agent& agent)
+void from_json(const nlohmann::json& json, Config::Agent& agent)
 {
 	auto model_json = json.find("model");
 	if (model_json != json.end())
@@ -810,6 +630,4 @@ static inline void from_json(const nlohmann::json& json, Config::Agent& agent)
 	}
 }
 
-} // namespace Config
-
-} // namespace drla
+} // namespace drla::Config

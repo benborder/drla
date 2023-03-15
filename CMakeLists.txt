@@ -29,6 +29,18 @@ else()
 	add_library(spdlog::spdlog ALIAS spdlog)
 endif()
 
+find_package(nlohmann_json QUIET)
+if(${nlohmann_json_FOUND})
+	message(STATUS "Found nlohmann_json ${nlohmann_json_DIR}")
+else()
+	FetchContent_Declare(
+		nlohmann_json
+		GIT_REPOSITORY https://github.com/nlohmann/json.git
+		GIT_TAG        v3.10.5
+	)
+	FetchContent_MakeAvailable(nlohmann_json)
+endif()
+
 set(THREADS_PREFER_PTHREAD_FLAG ON)  # Set -pthreads
 find_package(Threads REQUIRED)
 find_package(Torch REQUIRED)
@@ -102,6 +114,7 @@ PRIVATE
 # aux drla library
 add_library(drla_aux STATIC
 	src/auxiliary/env_manager.cpp
+	src/auxiliary/serialise_json.cpp
 )
 add_library(drla::aux ALIAS drla_aux)
 
@@ -123,6 +136,7 @@ PUBLIC
 	${TORCH_LIBRARIES}
 	Threads::Threads
 PRIVATE
+	$<BUILD_INTERFACE:nlohmann_json::nlohmann_json>
 	$<BUILD_INTERFACE:spdlog::spdlog>
 )
 
