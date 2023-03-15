@@ -59,8 +59,9 @@ void OffPolicyAgent::train()
 	// The environments are reset and initialised before creating the algorithm as the observation shape must be known
 	for (int env = 0; env < config_.env_count; env++)
 	{
-		threadpool.queue_task(
-			[&, env]() { envs_data[env] = envs_[env]->reset(environment_manager_->get_initial_state()); });
+		threadpool.queue_task([&, env]() {
+			envs_data[env] = environment_manager_->get_environment(env)->reset(environment_manager_->get_initial_state());
+		});
 	}
 
 	int buffer_size = 0;
@@ -89,7 +90,7 @@ void OffPolicyAgent::train()
 	threadpool.wait_queue_empty();
 
 	// Configuration is the same for all envs
-	auto env_config = envs_.front()->get_configuration();
+	auto env_config = environment_manager_->get_configuration();
 	int reward_shape = config_.rewards.combine_rewards ? 1 : static_cast<int>(env_config.reward_types.size());
 
 	agent_callback_->train_init({env_config, reward_shape, envs_data});
@@ -179,7 +180,7 @@ void OffPolicyAgent::train()
 			for (int env = 0; env < config_.env_count; env++)
 			{
 				threadpool.queue_task([&, env]() {
-					auto& environment = envs_[env];
+					auto environment = environment_manager_->get_environment(env);
 
 					StepData step_data;
 					step_data.env = env;
@@ -268,7 +269,7 @@ void OffPolicyAgent::train()
 				for (int env = 0; env < config_.env_count; env++)
 				{
 					threadpool.queue_task([&, env]() {
-						auto& environment = envs_[env];
+						auto environment = environment_manager_->get_environment(env);
 
 						StepData step_data;
 						step_data.env = env;

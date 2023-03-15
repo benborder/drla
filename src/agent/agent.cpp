@@ -81,14 +81,10 @@ std::filesystem::path Agent::get_save_path(const std::string& postfix) const
 
 void Agent::make_environments(ThreadPool& threadpool, int env_count)
 {
-	if (static_cast<int>(envs_.size()) >= env_count)
+	int num_envs = environment_manager_->num_envs();
+	for (int i = 0, num_make = env_count - num_envs; i < num_make; i++)
 	{
-		return;
-	}
-	envs_.resize(env_count);
-	for (size_t i = env_count - envs_.size(); i < envs_.size(); i++)
-	{
-		threadpool.queue_task([&, i]() { envs_[i] = environment_manager_->make_environment(); });
+		threadpool.queue_task([this]() { environment_manager_->add_environment(); });
 	}
 }
 
@@ -118,7 +114,8 @@ void Agent::run(const std::vector<State>& initial_state, RunOptions options)
 
 	for (int env = 0; env < env_count; ++env)
 	{
-		threadpool.queue_task([&, env]() { envs_data[env] = envs_[env]->reset(initial_state[env]); });
+		threadpool.queue_task(
+			[&, env]() { envs_data[env] = environment_manager_->get_environment(env)->reset(initial_state[env]); });
 	}
 
 	// Wait for environment reset to complete
@@ -126,14 +123,14 @@ void Agent::run(const std::vector<State>& initial_state, RunOptions options)
 
 	load_model(options.force_model_reload);
 
-	auto env_config = envs_.front()->get_configuration();
+	auto env_config = environment_manager_->get_configuration();
 
 	model_->eval();
 
 	for (int env = 0; env < env_count; env++)
 	{
 		threadpool.queue_task([&, env]() {
-			auto& environment = envs_[env];
+			auto environment = environment_manager_->get_environment(env);
 			// Get initial observation and state, running a env_step callback to update externally
 			StepData step_data;
 			step_data.env = env;
@@ -226,7 +223,7 @@ void Agent::reset()
 {
 	training_ = false;
 	model_.reset();
-	envs_.clear();
+	environment_manager_->reset();
 }
 
 void Agent::train()
@@ -238,14 +235,8 @@ void Agent::load_model(bool force_reload)
 {
 	if (force_reload || model_ == nullptr)
 	{
-		// If there are no envs, then make a single env to get the required information to initialise the model
-		if (envs_.empty())
-		{
-			envs_.push_back(environment_manager_->make_environment());
-		}
-
 		// Observation shape and action space are the same for all envs
-		const auto env_config = envs_.front()->get_configuration();
+		const auto env_config = environment_manager_->get_configuration();
 		int reward_shape = base_config_.rewards.combine_rewards ? 1 : static_cast<int>(env_config.reward_types.size());
 
 		switch (base_config_.model_type)

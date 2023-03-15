@@ -57,21 +57,22 @@ void InteractiveAgent::run(const std::vector<State>& initial_state, RunOptions o
 	// Wait for environments to complete initialising
 	threadpool.wait_queue_empty();
 
-	for (size_t env = 0; env < envs_.size(); ++env)
+	for (int env = 0; env < env_count; ++env)
 	{
-		threadpool.queue_task([&, env]() { env_datas[env] = envs_[env]->reset(initial_state[env]); });
+		threadpool.queue_task(
+			[&, env]() { env_datas[env] = environment_manager_->get_environment(env)->reset(initial_state[env]); });
 	}
 
 	// Wait for environment reset to complete
 	threadpool.wait_queue_empty();
 
-	auto env_config = envs_.front()->get_configuration();
+	auto env_config = environment_manager_->get_configuration();
 	int reward_shape = config_.rewards.combine_rewards ? 1 : static_cast<int>(env_config.reward_types.size());
 
 	for (int env = 0; env < env_count; env++)
 	{
 		{
-			auto& environment = envs_[env];
+			auto environment = environment_manager_->get_environment(env);
 			// Get initial observation and state, running a env_step callback to update externally
 			StepData step_data;
 			step_data.env = env;
@@ -98,7 +99,7 @@ void InteractiveAgent::run(const std::vector<State>& initial_state, RunOptions o
 			}
 		}
 		threadpool.queue_task([&, env]() {
-			auto& environment = envs_[env];
+			auto environment = environment_manager_->get_environment(env);
 
 			StepData step_data;
 			step_data.env = env;
@@ -148,5 +149,5 @@ void InteractiveAgent::run(const std::vector<State>& initial_state, RunOptions o
 
 void InteractiveAgent::reset()
 {
-	envs_.clear();
+	environment_manager_->reset();
 }

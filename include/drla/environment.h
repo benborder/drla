@@ -37,14 +37,36 @@ public:
 class EnvironmentManager
 {
 public:
-	/// @brief Creates an environment and returns a pointer to the interface.
+	/// @brief Creates an environment and returns a pointer to the interface. The manager does not own the environment.
 	/// @return A pointer to the environment interface
 	virtual std::unique_ptr<Environment> make_environment() = 0;
+
+	/// @brief Adds an environment (via calling `make_environment`)and returns a pointer to the interface. The environment
+	/// is owned by the manager.
+	/// @return A non owning pointer to the environment interface
+	virtual Environment* add_environment() = 0;
+
+	/// @brief Gets the environment
+	/// @param i The index of the environment to return
+	/// @return A non owning raw pointer to the environment interface
+	virtual Environment* get_environment(int i) = 0;
 
 	/// @brief The callback when an episode ends and the environment is reset. This allows the environments to be
 	/// configured to have a specific state
 	/// @return A struct defining the initial state of the environment.
 	virtual State get_initial_state() = 0;
+
+	/// @brief Gets the environment configuration which describes the observation shape and data types, action space and
+	/// reward types for all the environments.
+	/// @return The environment configuration used for all environments
+	virtual EnvironmentConfiguration get_configuration() = 0;
+
+	/// @brief Returns the number of enviroments that have been created
+	/// @return The number of envs
+	virtual int num_envs() const = 0;
+
+	/// @brief Removes all environments, running their destructors
+	virtual void reset() = 0;
 };
 
 } // namespace drla

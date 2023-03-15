@@ -92,9 +92,6 @@ protected:
 	// The compute device to use
 	torch::Device device_;
 
-	// The environments
-	std::vector<std::unique_ptr<Environment>> envs_;
-
 	// Indicates if the agent is training
 	bool training_ = false;
 	// Indicates if rewards from the environment should be combined/summed
