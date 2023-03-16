@@ -13,7 +13,7 @@ namespace drla
 class Bernoulli : public Distribution
 {
 public:
-	Bernoulli(std::optional<torch::Tensor> probs, std::optional<torch::Tensor> logits);
+	Bernoulli(const torch::Tensor probs = {}, const torch::Tensor logits = {});
 
 	torch::Tensor entropy() override;
 	torch::Tensor action_log_prob(torch::Tensor action) override;

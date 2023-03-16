@@ -8,30 +8,30 @@
 
 using namespace drla;
 
-Bernoulli::Bernoulli(std::optional<torch::Tensor> probs, std::optional<torch::Tensor> logits)
+Bernoulli::Bernoulli(const torch::Tensor probs, const torch::Tensor logits)
 {
-	if (probs.has_value() == logits.has_value())
+	if (probs.defined() == logits.defined())
 	{
-		throw std::runtime_error("Either `probs` or `logits` must be specified, but not both.");
+		throw std::invalid_argument("Either `probs` or `logits` must be specified, but not both.");
 	}
-	if (probs.has_value())
+	if (probs.defined())
 	{
-		if (probs->dim() < 1)
+		if (probs.dim() < 1)
 		{
-			throw std::runtime_error("Probs dimension must be non zero!");
+			throw std::invalid_argument("Probs dimension must be non zero!");
 		}
-		param_ = *probs;
+		param_ = probs;
 		probs_ = param_ / param_.sum(-1, true);
 		auto pclamped = probs_.clamp(1e-8, 1 - 1e-8);
 		logits_ = pclamped.log() - pclamped.log1p();
 	}
 	else
 	{
-		if (logits->dim() < 1)
+		if (logits.dim() < 1)
 		{
-			throw std::runtime_error("Logits dimension must be non zero!");
+			throw std::invalid_argument("Logits dimension must be non zero!");
 		}
-		param_ = *logits;
+		param_ = logits;
 		logits_ = param_;
 		probs_ = torch::sigmoid(logits_);
 	}

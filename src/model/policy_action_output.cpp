@@ -57,8 +57,8 @@ std::unique_ptr<Distribution> PolicyActionOutputImpl::forward(torch::Tensor late
 {
 	auto latent_actions = activation(action_net_(latent_pi), config_.activation);
 
-	std::optional<torch::Tensor> probs;
-	std::optional<torch::Tensor> logits;
+	torch::Tensor probs;
+	torch::Tensor logits;
 	if (use_logits_)
 	{
 		logits = {latent_actions};

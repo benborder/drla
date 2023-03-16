@@ -5,30 +5,30 @@
 
 using namespace drla;
 
-Categorical::Categorical(std::optional<torch::Tensor> probs, std::optional<torch::Tensor> logits)
+Categorical::Categorical(const torch::Tensor probs, const torch::Tensor logits)
 {
-	if (probs.has_value() == logits.has_value())
+	if (probs.defined() == logits.defined())
 	{
-		throw std::runtime_error("Either `probs` or `logits` must be specified, but not both.");
+		throw std::invalid_argument("Either `probs` or `logits` must be specified, but not both.");
 	}
-	if (probs.has_value())
+	if (probs.defined())
 	{
-		if (probs->dim() < 1)
+		if (probs.dim() < 1)
 		{
-			throw std::runtime_error("Probs dimension must be non zero!");
+			throw std::invalid_argument("Probs dimension must be non zero!");
 		}
-		param_ = *probs;
+		param_ = probs;
 		auto p = param_.clamp(1e-8, 1 - 1e-8);
 		probs_ = p / p.sum(-1, true);
 		logits_ = probs_.log();
 	}
 	else
 	{
-		if (logits->dim() < 1)
+		if (logits.dim() < 1)
 		{
-			throw std::runtime_error("Logits dimension must be non zero!");
+			throw std::invalid_argument("Logits dimension must be non zero!");
 		}
-		param_ = *logits;
+		param_ = logits;
 		// Normalise
 		logits_ = param_ - param_.logsumexp(-1, true);
 		probs_ = torch::softmax(logits_, -1);
@@ -83,25 +83,25 @@ const torch::Tensor Categorical::get_action_output() const
 }
 
 MultiCategorical::MultiCategorical(
-	const std::vector<int64_t>& action_shape, std::optional<torch::Tensor> probs, std::optional<torch::Tensor> logits)
+	const std::vector<int64_t>& action_shape, const torch::Tensor probs, const torch::Tensor logits)
 {
 	if (action_shape.empty())
 	{
-		throw std::runtime_error("The action dimensions must be non zero!");
+		throw std::invalid_argument("The action dimensions must be non zero!");
 	}
-	if (probs.has_value() == logits.has_value())
+	if (probs.defined() == logits.defined())
 	{
-		throw std::runtime_error("Either `probs` or `logits` must be specified, but not both.");
+		throw std::invalid_argument("Either `probs` or `logits` must be specified, but not both.");
 	}
-	if (probs.has_value())
+	if (probs.defined())
 	{
-		auto split = torch::split_with_sizes(*probs, action_shape, 1);
-		for (auto& split_probs : split) { category_dim_.emplace_back(split_probs, std::nullopt); }
+		auto split = torch::split_with_sizes(probs, action_shape, 1);
+		for (auto& split_probs : split) { category_dim_.emplace_back(split_probs, torch::Tensor{}); }
 	}
 	else
 	{
-		auto split = torch::split_with_sizes(*logits, action_shape, 1);
-		for (auto& split_logits : split) { category_dim_.emplace_back(std::nullopt, split_logits); }
+		auto split = torch::split_with_sizes(logits, action_shape, 1);
+		for (auto& split_logits : split) { category_dim_.emplace_back(torch::Tensor{}, split_logits); }
 	}
 }
 
