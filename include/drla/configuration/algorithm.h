@@ -48,6 +48,9 @@ struct TrainAlgorithm
 	// For linear lr_scale = 1 - lr_decay_rate * progress
 	// For expenenatial lr_scale = exp(-0.5 * PI * lr_decay_rate * progress)
 	double lr_decay_rate = 1.0;
+
+	// The max steps to run the agent when performing evaluation
+	int eval_max_steps = 0;
 };
 
 /// @brief On policy algorithm configuration. This assumes an actor critic based model.

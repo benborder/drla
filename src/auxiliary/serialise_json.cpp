@@ -25,6 +25,7 @@ void from_json(const nlohmann::json& json, TrainAlgorithm& train_algorithm)
 	train_algorithm.learning_rate_min << required_input{json, "learning_rate_min"};
 	train_algorithm.lr_schedule_type << required_input{json, "lr_schedule_type"};
 	train_algorithm.lr_decay_rate << optional_input{json, "lr_decay_rate"};
+	train_algorithm.eval_max_steps << optional_input{json, "eval_max_steps"};
 }
 
 void to_json(nlohmann::json& json, const TrainAlgorithm& train_algorithm)
@@ -35,6 +36,7 @@ void to_json(nlohmann::json& json, const TrainAlgorithm& train_algorithm)
 	json["learning_rate_min"] = train_algorithm.learning_rate_min;
 	json["lr_schedule_type"] = train_algorithm.lr_schedule_type;
 	json["lr_decay_rate"] = train_algorithm.lr_decay_rate;
+	json["eval_max_steps"] = train_algorithm.eval_max_steps;
 }
 
 void from_json(const nlohmann::json& json, OnPolicyAlgorithm& on_policy_algorithm)
@@ -557,6 +559,7 @@ void from_json(const nlohmann::json& json, Config::AgentBase& agent)
 
 	agent.timestep_save_period << optional_input{json, "timestep_save_period"};
 	agent.checkpoint_save_period << optional_input{json, "checkpoint_save_period"};
+	agent.eval_period << optional_input{json, "eval_period"};
 }
 
 void to_json(nlohmann::json& json, const Config::AgentBase& agent)
@@ -572,6 +575,7 @@ void to_json(nlohmann::json& json, const Config::AgentBase& agent)
 
 	json["timestep_save_period"] = agent.timestep_save_period;
 	json["checkpoint_save_period"] = agent.checkpoint_save_period;
+	json["eval_period"] = agent.eval_period;
 }
 
 void from_json([[maybe_unused]] const nlohmann::json& json, [[maybe_unused]] Config::InteractiveAgent& agent)

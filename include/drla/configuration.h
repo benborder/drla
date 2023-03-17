@@ -51,6 +51,8 @@ struct AgentBase
 	int timestep_save_period = 100;
 	// Save a checkpoint of state every n timesteps, 0 disables checkpoint saving
 	int checkpoint_save_period = 0;
+	// Evaluate the agent every n timesteps during training. 0 disables evaluation.
+	int eval_period = 0;
 };
 
 /// @brief Interactive agent specific configuration

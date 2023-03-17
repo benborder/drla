@@ -112,95 +112,96 @@ void Agent::run(const std::vector<State>& initial_state, RunOptions options)
 	// Wait for environments to complete initialising
 	threadpool.wait_queue_empty();
 
-	for (int env = 0; env < env_count; ++env)
-	{
-		threadpool.queue_task(
-			[&, env]() { envs_data[env] = environment_manager_->get_environment(env)->reset(initial_state[env]); });
-	}
-
-	// Wait for environment reset to complete
-	threadpool.wait_queue_empty();
-
 	load_model(options.force_model_reload);
-
-	auto env_config = environment_manager_->get_configuration();
 
 	model_->eval();
 
 	for (int env = 0; env < env_count; env++)
 	{
-		threadpool.queue_task([&, env]() {
-			auto environment = environment_manager_->get_environment(env);
-			// Get initial observation and state, running a env_step callback to update externally
-			StepData step_data;
-			step_data.env = env;
-			step_data.step = 0;
-			step_data.env_data = std::move(envs_data[env]);
-			step_data.predict_result.action = torch::zeros(env_config.action_space.shape);
-			step_data.reward = step_data.env_data.reward.clone();
+		threadpool.queue_task([&, env]() { run_episode(model_.get(), initial_state[env], env, options); });
+	}
 
+	// Wait for all environments to finish running
+	threadpool.wait_queue_empty();
+}
+
+void Agent::run_episode(Model* model, const State& initial_state, int env, RunOptions options)
+{
+	assert(model != nullptr);
+	auto environment = environment_manager_->get_environment(env);
+	auto env_config = environment->get_configuration();
+	if (options.max_steps <= 0)
+	{
+		// Run the environment until it terminates (setting to max int should be sufficient)
+		options.max_steps = std::numeric_limits<int>::max();
+	}
+
+	// Get initial observation and state, running a env_step callback to update externally
+	StepData step_data;
+	step_data.eval_mode = true;
+	step_data.env = env;
+	step_data.step = 0;
+	step_data.env_data = environment->reset(initial_state);
+	step_data.predict_result.action = torch::zeros(env_config.action_space.shape);
+	step_data.reward = step_data.env_data.reward.clone();
+
+	auto agent_reset_config = agent_callback_->env_reset(step_data);
+	if (agent_reset_config.stop)
+	{
+		return;
+	}
+	options.capture_observations |= agent_reset_config.raw_capture;
+	if (options.capture_observations)
+	{
+		step_data.raw_observation = environment->get_raw_observations();
+	}
+
+	bool stop = agent_callback_->env_step(step_data);
+	if (stop)
+	{
+		return;
+	}
+
+	torch::NoGradGuard no_grad;
+
+	for (int step = 0; step < options.max_steps; step++)
+	{
+		auto observation = step_data.env_data.observation;
+		for (auto& obs : observation) { obs = obs.unsqueeze(0).to(device_); }
+
+		step_data.step = step;
+		step_data.predict_result = model->predict(observation, options.deterministic);
+		step_data.env_data = environment->step(step_data.predict_result.action);
+		step_data.reward = step_data.env_data.reward.clone();
+		if (base_config_.rewards.reward_clamp_min != 0)
+		{
+			step_data.reward.clamp_max_(-base_config_.rewards.reward_clamp_min);
+		}
+		if (base_config_.rewards.reward_clamp_max != 0)
+		{
+			step_data.reward.clamp_min_(-base_config_.rewards.reward_clamp_max);
+		}
+		if (options.capture_observations)
+		{
+			step_data.raw_observation = environment->get_raw_observations();
+		}
+
+		bool stop = agent_callback_->env_step(step_data);
+		if (stop)
+		{
+			break;
+		}
+
+		if (step_data.env_data.state.episode_end)
+		{
+			environment->reset(initial_state);
 			auto agent_reset_config = agent_callback_->env_reset(step_data);
 			if (agent_reset_config.stop)
 			{
-				return;
+				break;
 			}
-			options.capture_observations |= agent_reset_config.raw_capture;
-			if (options.capture_observations)
-			{
-				step_data.raw_observation = environment->get_raw_observations();
-			}
-
-			bool stop = agent_callback_->env_step(step_data);
-			if (stop)
-			{
-				return;
-			}
-
-			torch::NoGradGuard no_grad;
-
-			for (int step = 0; step < options.max_steps; step++)
-			{
-				auto observation = step_data.env_data.observation;
-				for (auto& obs : observation) { obs = obs.unsqueeze(0).to(device_); }
-
-				step_data.step = step;
-				step_data.predict_result = model_->predict(observation, options.deterministic);
-				step_data.env_data = environment->step(step_data.predict_result.action);
-				step_data.reward = step_data.env_data.reward.clone();
-				if (base_config_.rewards.reward_clamp_min != 0)
-				{
-					step_data.reward.clamp_max_(-base_config_.rewards.reward_clamp_min);
-				}
-				if (base_config_.rewards.reward_clamp_max != 0)
-				{
-					step_data.reward.clamp_min_(-base_config_.rewards.reward_clamp_max);
-				}
-				if (options.capture_observations)
-				{
-					step_data.raw_observation = environment->get_raw_observations();
-				}
-
-				bool stop = agent_callback_->env_step(step_data);
-				if (stop)
-				{
-					break;
-				}
-
-				if (step_data.env_data.state.episode_end)
-				{
-					environment->reset(initial_state[env]);
-					auto agent_reset_config = agent_callback_->env_reset(step_data);
-					if (agent_reset_config.stop)
-					{
-						break;
-					}
-				}
-			}
-		});
+		}
 	}
-
-	// Wait for all environments to finish their batch
-	threadpool.wait_queue_empty();
 }
 
 PredictOutput Agent::predict_action(const EnvStepData& env_data, bool deterministic)

@@ -151,6 +151,8 @@ struct StepData
 	unsigned int env = 0;
 	// The step number
 	int step = 0;
+	// The agent is running in evaluation mode (only relevant in training)
+	bool eval_mode = false;
 
 	// The result of a step or reset in an environment
 	EnvStepData env_data;

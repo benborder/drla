@@ -85,6 +85,7 @@ public:
 protected:
 	std::filesystem::path get_save_path(const std::string& postfix = "") const;
 	void make_environments(ThreadPool& threadpool, int env_count);
+	void run_episode(Model* model, const State& initial_state, int env, RunOptions options);
 
 	// Common configuration for all agents
 	const Config::AgentBase base_config_;

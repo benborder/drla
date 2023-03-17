@@ -46,7 +46,7 @@ void OnPolicyAgent::train()
 		return;
 	}
 	ThreadPool threadpool(config_.env_count);
-	make_environments(threadpool, config_.env_count);
+	make_environments(threadpool, config_.env_count + (config_.eval_period > 0 ? 1 : 0));
 
 	std::vector<EnvStepData> envs_data;
 	envs_data.resize(config_.env_count);
@@ -61,10 +61,15 @@ void OnPolicyAgent::train()
 			envs_data[env] = environment_manager_->get_environment(env)->reset(environment_manager_->get_initial_state());
 		});
 	}
+	if (config_.eval_period > 0)
+	{
+		envs_data.push_back({}); // Add an extra one for the eval env
+	}
 
 	int horizon_steps = 0;
 	int max_steps = 0;
 	int timestep = 0;
+	int eval_max_steps = 0;
 	torch::Tensor gae_lambda = torch::empty({1}, device_);
 	// The discount factor for each reward type
 	std::vector<float> config_gamma;
@@ -78,6 +83,7 @@ void OnPolicyAgent::train()
 				timestep = config.start_timestep;
 				gae_lambda[0] = config.gae_lambda;
 				config_gamma = config.gamma;
+				eval_max_steps = config.eval_max_steps;
 			}
 		},
 		config_.train_algorithm);
@@ -355,6 +361,17 @@ void OnPolicyAgent::train()
 		buffer.prepare_next_batch();
 
 		train_update_data.update_duration = std::chrono::steady_clock::now() - start;
+
+		// Run evaluation every save period
+		if (config_.eval_period > 0 && timestep % config_.eval_period == 0)
+		{
+			RunOptions options;
+			options.deterministic = true;
+			options.max_steps = eval_max_steps;
+			options.capture_observations = true;
+			run_episode(
+				model.get(), environment_manager_->get_initial_state(), environment_manager_->num_envs() - 1, options);
+		}
 
 		agent_callback_->train_update(train_update_data);
 
