@@ -25,12 +25,16 @@ See the [drla-atari](https://github.com/benborder/drla-atari) repository for an 
 
 ## Dependencies
 
-The library has been designed to have as few dependencies as possible with the only dependencies being:
+The library has been designed to have as few dependencies as possible with the only dependencies for the core library:
 
 - [libtorch](https://github.com/pytorch/pytorch) (build and runtime)
 - [spdlog](https://github.com/gabime/spdlog) (build)
 - Compiler with C++17 support
 - CMake 3.14 or newer
+
+Additional auxillary functionality such as json serialisation and helper classes require the following libraries:
+
+- [nlohmann_json](https://github.com/nlohmann/json) (build)
 
 ## Installing
 
@@ -39,7 +43,7 @@ Install libtorch at `/usr/local/libtorch` and ensure cmake is also installed. Th
 1. Installing and using cmake `find_package`.
 2. Using FetchContent to obtain the library as a subproject.
 
-For both options make sure to add `drla::drla` to your projects `target_link_libraries`.
+For both options make sure to add `drla::drla` to your projects `target_link_libraries`. To use the auxillary functionality also add the `drla::aux` target.
 
 ### 1. Install and find_package
 
@@ -63,7 +67,6 @@ FetchContent_Declare(
 	GIT_TAG        master
 )
 FetchContent_MakeAvailable(drla)
-add_library(drla::drla ALIAS drla)
 ```
 
 ## Acknowledgements
