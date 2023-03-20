@@ -70,7 +70,7 @@ void OnPolicyAgent::train()
 	int max_steps = 0;
 	int timestep = 0;
 	int eval_max_steps = 0;
-	torch::Tensor gae_lambda = torch::empty({1}, device_);
+	torch::Tensor gae_lambda = torch::empty({1}, devices_.front());
 	// The discount factor for each reward type
 	std::vector<float> config_gamma;
 	std::visit(
@@ -111,15 +111,15 @@ void OnPolicyAgent::train()
 			return;
 		}
 	}
-	model->to(device_);
+	model->to(devices_.front());
 
 	if (config_gamma.size() < static_cast<size_t>(reward_shape))
 	{
 		config_gamma.resize(reward_shape, config_gamma.front());
 	}
-	torch::Tensor gamma = torch::from_blob(config_gamma.data(), {reward_shape}).to(device_);
+	torch::Tensor gamma = torch::from_blob(config_gamma.data(), {reward_shape}).to(devices_.front());
 
-	RolloutBuffer buffer(horizon_steps, config_.env_count, env_config, reward_shape, gamma, gae_lambda, device_);
+	RolloutBuffer buffer(horizon_steps, config_.env_count, env_config, reward_shape, gamma, gae_lambda, devices_.front());
 
 	std::unique_ptr<Algorithm> algorithm;
 
@@ -187,7 +187,7 @@ void OnPolicyAgent::train()
 						step_data.step = step;
 						{
 							torch::NoGradGuard no_grad;
-							for (auto& obs : step_data.env_data.observation) { obs = obs.unsqueeze(0).to(device_); }
+							for (auto& obs : step_data.env_data.observation) { obs = obs.unsqueeze(0).to(devices_.front()); }
 							step_data.predict_result = model->predict(step_data.env_data.observation, false);
 						}
 						step_data.env_data = environment->step(step_data.predict_result.action);

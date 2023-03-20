@@ -21,7 +21,7 @@ Agent::Agent(
 	AgentCallbackInterface* callback,
 	std::filesystem::path data_path)
 		: base_config_(std::visit([](const auto& config) { return static_cast<const Config::AgentBase>(config); }, config))
-		, device_(torch::kCPU)
+		, devices_({torch::kCPU})
 		, model_(nullptr)
 		, environment_manager_(environment_manager)
 		, agent_callback_(callback)
@@ -36,21 +36,42 @@ Agent::Agent(
 		throw std::runtime_error("A callback interface must be provided.");
 	}
 
-	if (std::visit([&](auto& config) { return config.use_cuda; }, config))
+	auto cuda_devices = std::visit([&](auto& config) { return config.cuda_devices; }, config);
+	auto max_cuda_device_count = static_cast<int>(torch::cuda::device_count());
+	if (!cuda_devices.empty() && max_cuda_device_count > 0)
 	{
-		if (torch::cuda::is_available())
+		// Note the first time a CUDA operation is run it takes a second or so to initialise the cuda libraries
+		// All subsequent usage is significantly faster
+		devices_.clear();
+		if (cuda_devices.back() == -1)
 		{
-			// Note the first time a CUDA operation is run it takes a second or so to initialise the cuda libraries
-			// All subsequent usage is significantly faster
-			spdlog::info("Using CUDA device!");
-			spdlog::debug("{:<8}{}", "CUDA:", at::detail::getCUDAHooks().versionCUDART());
-			spdlog::debug("{:<8}{}", "CuDNN:", at::detail::getCUDAHooks().versionCuDNN());
-			device_ = torch::kCUDA;
+			for (const auto index : c10::irange(max_cuda_device_count))
+			{
+				devices_.emplace_back(torch::kCUDA, static_cast<torch::DeviceIndex>(index));
+			}
 		}
 		else
 		{
-			spdlog::warn("CUDA unavailable!");
+			for (const auto index : cuda_devices)
+			{
+				if (index < max_cuda_device_count && index >= 0)
+				{
+					devices_.emplace_back(torch::kCUDA, static_cast<torch::DeviceIndex>(index));
+				}
+				else
+				{
+					spdlog::error("CUDA device {} not available", index);
+				}
+			}
 		}
+
+		spdlog::info("Using CUDA {} devices", devices_.size());
+		spdlog::debug("{:<8}{}", "CUDA:", at::detail::getCUDAHooks().versionCUDART());
+		spdlog::debug("{:<8}{}", "CuDNN:", at::detail::getCUDAHooks().versionCuDNN());
+	}
+	else if (!cuda_devices.empty())
+	{
+		spdlog::warn("CUDA unavailable!");
 	}
 }
 
@@ -167,7 +188,7 @@ void Agent::run_episode(Model* model, const State& initial_state, int env, RunOp
 	for (int step = 0; step < options.max_steps; step++)
 	{
 		auto observation = step_data.env_data.observation;
-		for (auto& obs : observation) { obs = obs.unsqueeze(0).to(device_); }
+		for (auto& obs : observation) { obs = obs.unsqueeze(0).to(devices_.front()); }
 
 		step_data.step = step;
 		step_data.predict_result = model->predict(observation, options.deterministic);
@@ -215,7 +236,7 @@ PredictOutput Agent::predict_action(const EnvStepData& env_data, bool determinis
 	torch::NoGradGuard no_grad;
 
 	Observations observations;
-	for (auto& obs : env_data.observation) { observations.push_back(obs.unsqueeze(0).to(device_)); }
+	for (auto& obs : env_data.observation) { observations.push_back(obs.unsqueeze(0).to(devices_.front())); }
 
 	return model_->predict(env_data.observation, deterministic);
 }
@@ -270,7 +291,7 @@ void Agent::load_model(bool force_reload)
 		}
 
 		model_->load(data_path_);
-		model_->to(device_);
+		model_->to(devices_.front());
 	}
 }
 

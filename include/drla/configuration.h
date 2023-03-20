@@ -31,8 +31,8 @@ struct AgentBase
 {
 	// The number of environments to run concurrently
 	int env_count = 8;
-	// Enable cuda if available
-	bool use_cuda = true;
+	// The cuda devices to use. Leaving empty uses none, a single -1 uses all available cuda GPUs
+	std::vector<int> cuda_devices = {-1};
 
 	// The training algorithm type. Is only required if training and agent.
 	TrainAlgorithmType train_algorithm_type = TrainAlgorithmType::kNone;

@@ -90,8 +90,8 @@ protected:
 	// Common configuration for all agents
 	const Config::AgentBase base_config_;
 
-	// The compute device to use
-	torch::Device device_;
+	// The compute devices to use
+	std::vector<torch::Device> devices_;
 
 	// Indicates if the agent is training
 	bool training_ = false;

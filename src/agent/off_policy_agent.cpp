@@ -120,15 +120,15 @@ void OffPolicyAgent::train()
 			return;
 		}
 	}
-	model->to(device_);
+	model->to(devices_.front());
 
 	if (config_gamma.size() < static_cast<size_t>(reward_shape))
 	{
 		config_gamma.resize(reward_shape, config_gamma.front());
 	}
-	torch::Tensor gamma = torch::from_blob(config_gamma.data(), {reward_shape}).to(device_);
+	torch::Tensor gamma = torch::from_blob(config_gamma.data(), {reward_shape}).to(devices_.front());
 
-	ReplayBuffer buffer(buffer_size, config_.env_count, env_config, reward_shape, device_);
+	ReplayBuffer buffer(buffer_size, config_.env_count, env_config, reward_shape, devices_.front());
 
 	std::unique_ptr<Algorithm> algorithm;
 

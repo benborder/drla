@@ -547,7 +547,7 @@ void to_json(nlohmann::json& json, const ModelConfig& model)
 void from_json(const nlohmann::json& json, Config::AgentBase& agent)
 {
 	agent.env_count << optional_input{json, "env_count"};
-	agent.use_cuda << optional_input{json, "use_cuda"};
+	agent.cuda_devices << optional_input{json, "cuda_devices"};
 
 	agent.model << required_input{json, "model"};
 	agent.model_type << required_input{json.at("model"), "model_type"};
@@ -565,7 +565,7 @@ void from_json(const nlohmann::json& json, Config::AgentBase& agent)
 void to_json(nlohmann::json& json, const Config::AgentBase& agent)
 {
 	json["env_count"] = agent.env_count;
-	json["use_cuda"] = agent.use_cuda;
+	json["cuda_devices"] = agent.cuda_devices;
 
 	json["model"] = agent.model;
 
