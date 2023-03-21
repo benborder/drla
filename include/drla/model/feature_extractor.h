@@ -12,25 +12,58 @@
 namespace drla
 {
 
+/// @brief The FeatureExtractorGroup defines the interface for feature extraction modules. See `MLPExtractor` and
+/// `CNNExtractor` for available modules.
 class FeatureExtractorGroup : public torch::nn::Module
 {
 public:
 	~FeatureExtractorGroup() = default;
 
+	/// @brief Computes a forward pass through the feature extractor, returning the output tensor
+	/// @param observation The observation tensor list to extract features from.Each tensor in the list has the shape
+	/// [batch, channel, ...]
+	/// @return The extracted features in latent space, having the shape [batch, ...], where ... can be obtained from
+	/// `get_output_shape()`.
 	virtual torch::Tensor forward(const torch::Tensor& observation) = 0;
+	/// @brief Gets the shape of this extractor forward pass output tensor
+	/// @return The shape of the forward pass tensor output
 	virtual std::vector<int64_t> get_output_shape() const = 0;
+	/// @brief Clones the feature extractor, creating a deep copy.
+	/// @param device An optional device parameter to use for the cloned extractor.
+	/// @return A shared pointer to the cloned feature extractor.
 	virtual std::shared_ptr<torch::nn::Module> clone(const c10::optional<torch::Device>& device = c10::nullopt) const = 0;
 };
 
+/// @brief Provides feature extraction functionality, accepting an observation group list of tensors and outputting a
+/// list of tensors representing the extracted features in latent space.
 class FeatureExtractorImpl : public torch::nn::Module
 {
 public:
+	/// @brief Constructs feature extractors according to the specified FeatureExtractorConfig and supplied observation
+	/// shape. A single observation group is assigned to a single feature extractor group.
+	/// @param config The configuration for the feature extractors
+	/// @param observation_shape The observation shape for each observation group.
 	FeatureExtractorImpl(const Config::FeatureExtractorConfig& config, const ObservationShapes& observation_shape);
+	/// @brief Clones all feature extractors, creating a deep copy
+	/// @param other The FeatureExtractorImpl to clone
+	/// @param device An optional device parameter to use for the cloned extractor.
 	FeatureExtractorImpl(const FeatureExtractorImpl& other, const c10::optional<torch::Device>& device);
 
+	/// @brief Computes a forward pass through all feature extractors, returning the output tensor list
+	/// @param observation The observation tensor list to extract features from. Each tensor in the list has the shape
+	/// [batch, channel, ...]
+	/// @return The extracted features in latent space, having the shape [batch, ...], where ... can be obtained from
+	/// `get_output_shape()`.
 	std::vector<torch::Tensor> forward(const Observations& observations);
+	/// @brief Gets the shape of this extractors forward pass output tensor
+	/// @return The shape of the forward pass tensor output
 	std::vector<std::vector<int64_t>> get_output_shape() const;
+	/// @brief Returns the total size of all outputs combined in terms of the number of elements
+	/// @return The number of elements in the output of a forward pass
 	int get_output_size() const;
+	/// @brief Clones the feature extractor, creating a deep copy.
+	/// @param device An optional device parameter to use for the cloned block.
+	/// @return A shared pointer to the cloned feature extractor.
 	std::shared_ptr<torch::nn::Module> clone(const c10::optional<torch::Device>& device = c10::nullopt) const override;
 
 private:

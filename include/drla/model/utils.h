@@ -10,6 +10,9 @@
 namespace drla
 {
 
+/// @brief Flattens the input tensor list to a single 1D output tensor
+/// @param features The input tensor list to flatten
+/// @return The flattened output tensor
 inline torch::Tensor flatten(const std::vector<torch::Tensor>& features)
 {
 	torch::Tensor flattened = torch::empty({features.front().size(0), 0}, features.front().device());
@@ -17,6 +20,9 @@ inline torch::Tensor flatten(const std::vector<torch::Tensor>& features)
 	return flattened;
 }
 
+/// @brief Creates and activation function based on the type specified
+/// @param activation The activation function type
+/// @return A std::function of the activation function
 inline std::function<torch::Tensor(const torch::Tensor&)> make_activation(Config::Activation activation)
 {
 	switch (activation)
@@ -32,6 +38,10 @@ inline std::function<torch::Tensor(const torch::Tensor&)> make_activation(Config
 	return [](const torch::Tensor& x) { return x; };
 }
 
+/// @brief Performs the specified activation function on the input x
+/// @param x The input to perform activation on
+/// @param activation The activation function type to use
+/// @return The activated output
 inline torch::Tensor activation(torch::Tensor x, Config::Activation activation)
 {
 	switch (activation)
@@ -47,6 +57,9 @@ inline torch::Tensor activation(torch::Tensor x, Config::Activation activation)
 	return x;
 }
 
+/// @brief Gets the string of the specified activation function
+/// @param activation The activation function type
+/// @return A string of the activation function type
 inline std::string activation_name(Config::Activation activation)
 {
 	switch (activation)
@@ -62,6 +75,11 @@ inline std::string activation_name(Config::Activation activation)
 	return "Unity";
 }
 
+/// @brief Performs initialisation on the specified tensor
+/// @param weight The tensor to perform initialisation on
+/// @param type The type of initialisation to perform
+/// @param init_value The value to use for initialisation. This value is dependent on the activation type and not
+/// necessarily used.
 inline void weight_init(torch::Tensor weight, Config::InitType type, double init_value)
 {
 	switch (type)
