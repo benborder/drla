@@ -66,27 +66,22 @@ void OnPolicyAgent::train()
 		envs_data.push_back({}); // Add an extra one for the eval env
 	}
 
-	int horizon_steps = 0;
-	int max_steps = 0;
-	int timestep = 0;
-	int eval_max_steps = 0;
-	torch::Tensor gae_lambda = torch::empty({1}, devices_.front());
-	// The discount factor for each reward type
-	std::vector<float> config_gamma;
-	std::visit(
-		[&](auto& config) {
+	const Config::OnPolicyAlgorithm train_config = std::visit(
+		[&](auto& config) -> Config::OnPolicyAlgorithm {
 			using T = std::decay_t<decltype(config)>;
 			if constexpr (std::is_base_of_v<Config::OnPolicyAlgorithm, T>)
 			{
-				horizon_steps = config.horizon_steps;
-				max_steps = config.total_timesteps;
-				timestep = config.start_timestep;
-				gae_lambda[0] = config.gae_lambda;
-				config_gamma = config.gamma;
-				eval_max_steps = config.eval_max_steps;
+				return static_cast<Config::OnPolicyAlgorithm>(config);
 			}
+			throw std::runtime_error("Incompatible train algorithm specified. Must be derrived from 'OnPolicyAlgorithm'.");
 		},
 		config_.train_algorithm);
+
+	// The discount factor for each reward type
+	std::vector<float> config_gamma = train_config.gamma;
+	torch::Tensor gae_lambda = torch::empty({1}, devices_.front());
+	gae_lambda[0] = train_config.gae_lambda;
+	int timestep = train_config.start_timestep;
 
 	// Block and wait for envs to initialise
 	threadpool.wait_queue_empty();
@@ -119,7 +114,8 @@ void OnPolicyAgent::train()
 	}
 	torch::Tensor gamma = torch::from_blob(config_gamma.data(), {reward_shape}).to(devices_.front());
 
-	RolloutBuffer buffer(horizon_steps, config_.env_count, env_config, reward_shape, gamma, gae_lambda, devices_.front());
+	RolloutBuffer buffer(
+		train_config.horizon_steps, config_.env_count, env_config, reward_shape, gamma, gae_lambda, devices_.front());
 
 	std::unique_ptr<Algorithm> algorithm;
 
@@ -168,7 +164,7 @@ void OnPolicyAgent::train()
 		buffer.initialise(step_data);
 	}
 
-	for (; timestep < max_steps; timestep++)
+	for (; timestep < train_config.total_timesteps; timestep++)
 	{
 		auto start = std::chrono::steady_clock::now();
 		if (config_.asynchronous_env)
@@ -182,7 +178,7 @@ void OnPolicyAgent::train()
 					StepData step_data;
 					step_data.env = env;
 					step_data.env_data.observation = buffer.get_observations(0, env);
-					for (int step = 0; step < horizon_steps; step++)
+					for (int step = 0; step < train_config.horizon_steps; step++)
 					{
 						step_data.step = step;
 						{
@@ -255,7 +251,7 @@ void OnPolicyAgent::train()
 			timestep_data.rewards = torch::empty({config_.env_count, reward_shape});
 			timestep_data.states.resize(config_.env_count);
 			bool stop = false;
-			for (int step = 0; step < horizon_steps && !stop; step++)
+			for (int step = 0; step < train_config.horizon_steps && !stop; step++)
 			{
 				timestep_data.step = step;
 				{
@@ -341,9 +337,9 @@ void OnPolicyAgent::train()
 			config_.env_count <= static_cast<int>(std::thread::hardware_concurrency())
 				? 1.0
 				: static_cast<double>(config_.env_count) / static_cast<double>(std::thread::hardware_concurrency());
-		train_update_data.fps_env = horizon_steps * period * env_thread_ratio;
-		train_update_data.fps = horizon_steps * period * config_.env_count;
-		train_update_data.global_steps = timestep * config_.env_count * horizon_steps;
+		train_update_data.fps_env = train_config.horizon_steps * period * env_thread_ratio;
+		train_update_data.fps = train_config.horizon_steps * period * config_.env_count;
+		train_update_data.global_steps = timestep * config_.env_count * train_config.horizon_steps;
 
 		// Measure the model update step time.
 		start = std::chrono::steady_clock::now();
@@ -367,7 +363,7 @@ void OnPolicyAgent::train()
 		{
 			RunOptions options;
 			options.deterministic = true;
-			options.max_steps = eval_max_steps;
+			options.max_steps = train_config.eval_max_steps;
 			options.capture_observations = true;
 			run_episode(
 				model.get(), environment_manager_->get_initial_state(), environment_manager_->num_envs() - 1, options);
