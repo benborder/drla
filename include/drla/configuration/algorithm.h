@@ -51,6 +51,8 @@ struct TrainAlgorithm
 
 	// The max steps to run the agent when performing evaluation
 	int eval_max_steps = 0;
+	// Options to run evaluation model deterministically
+	bool eval_determinisic = true;
 };
 
 /// @brief On policy algorithm configuration. This assumes an actor critic based model.

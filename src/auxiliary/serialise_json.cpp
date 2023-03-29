@@ -26,6 +26,7 @@ void from_json(const nlohmann::json& json, TrainAlgorithm& train_algorithm)
 	train_algorithm.lr_schedule_type << required_input{json, "lr_schedule_type"};
 	train_algorithm.lr_decay_rate << optional_input{json, "lr_decay_rate"};
 	train_algorithm.eval_max_steps << optional_input{json, "eval_max_steps"};
+	train_algorithm.eval_determinisic << optional_input{json, "eval_determinisic"};
 }
 
 void to_json(nlohmann::json& json, const TrainAlgorithm& train_algorithm)
@@ -37,6 +38,7 @@ void to_json(nlohmann::json& json, const TrainAlgorithm& train_algorithm)
 	json["lr_schedule_type"] = train_algorithm.lr_schedule_type;
 	json["lr_decay_rate"] = train_algorithm.lr_decay_rate;
 	json["eval_max_steps"] = train_algorithm.eval_max_steps;
+	json["eval_determinisic"] = train_algorithm.eval_determinisic;
 }
 
 void from_json(const nlohmann::json& json, OnPolicyAlgorithm& on_policy_algorithm)

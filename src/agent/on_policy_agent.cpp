@@ -362,7 +362,7 @@ void OnPolicyAgent::train()
 		if (config_.eval_period > 0 && timestep % config_.eval_period == 0)
 		{
 			RunOptions options;
-			options.deterministic = true;
+			options.deterministic = train_config.eval_determinisic;
 			options.max_steps = train_config.eval_max_steps;
 			options.capture_observations = true;
 			run_episode(
