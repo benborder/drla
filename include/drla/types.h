@@ -47,6 +47,8 @@ using ObservationShapes = std::vector<std::vector<int64_t>>;
 using ObservationDataTypes = std::vector<torch::ScalarType>;
 /// @brief The type of rewards of the environment
 using RewardTypes = std::vector<std::string>;
+/// @brief The list of discrete actions available to perform in the environment.
+using ActionSet = std::vector<int>;
 
 /// @brief Describes the configuration of the environment. Shapes and data types for observations, actions space and
 /// reward types.
@@ -62,6 +64,10 @@ struct EnvironmentConfiguration
 	ActionSpace action_space;
 	// The types of rewards the environment returns
 	RewardTypes reward_types;
+	// The action set for the environment
+	ActionSet action_set;
+	// The number of actors this environment is configured for
+	int num_actors;
 };
 
 /// @brief The result type from a training step
@@ -70,6 +76,7 @@ enum class TrainResultType
 	kLoss,
 	kValueLoss,
 	kPolicyLoss,
+	kRewardLoss,
 	kEntropyLoss,
 	kClipFraction,
 	kKLDivergence,
@@ -77,6 +84,7 @@ enum class TrainResultType
 	kExplainedVariance,
 	kExploration,
 	kEntropyCoeficients,
+	kReanalyseCount,
 };
 
 /// @brief Converts a TrainResultType to a string
@@ -85,16 +93,18 @@ inline std::string get_result_type_name(TrainResultType type)
 {
 	switch (type)
 	{
+		case TrainResultType::kLoss: return "loss";
 		case TrainResultType::kValueLoss: return "value_loss";
 		case TrainResultType::kPolicyLoss: return "policy_loss";
+		case TrainResultType::kRewardLoss: return "reward_loss";
 		case TrainResultType::kEntropyLoss: return "entropy_loss";
 		case TrainResultType::kClipFraction: return "clip_fraction";
 		case TrainResultType::kKLDivergence: return "kl_divergence";
-		case TrainResultType::kLoss: return "loss";
-		case TrainResultType::kExplainedVariance: return "explained_variance";
 		case TrainResultType::kLearningRate: return "learning_rate";
+		case TrainResultType::kExplainedVariance: return "explained_variance";
 		case TrainResultType::kExploration: return "exploration";
 		case TrainResultType::kEntropyCoeficients: return "entropy_coeficients";
+		case TrainResultType::kReanalyseCount: return "reanalyse_count";
 		default: return "";
 	}
 }
@@ -109,6 +119,12 @@ struct PredictOutput
 	// The log of the probalitity of taking each action, required for importance sampling in a train update (for supported
 	// models)
 	torch::Tensor action_log_probs = {};
+	// The policy logits of taking each action (for supported models)
+	torch::Tensor policy = {};
+	// The reward from model prediction (for supported models)
+	torch::Tensor reward = {};
+	// The predicted state (from supported models)
+	std::vector<torch::Tensor> state = {};
 };
 
 /// @brief Training update result data
@@ -142,6 +158,21 @@ struct EnvStepData
 	torch::Tensor reward;
 	// The state of the environment after a step or reset
 	State state;
+	// The list of discrete actions that are possible to perform given the current environment state. Only applicable for
+	// environments with discrete actions.
+	ActionSet legal_actions = {};
+	// The index of the agent to take the next turn given the current state. Only relevant for multi agent environments
+	// turn based environments.
+	int turn_index = 0;
+};
+
+/// @brief The input for model prediction
+struct PredictInput
+{
+	// The input data from the environment
+	EnvStepData env_data;
+	// The action taken in the previous step. Not required for model free agents.
+	torch::Tensor action = {};
 };
 
 /// @brief Output data from a single step in an environment

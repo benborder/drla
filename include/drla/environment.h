@@ -31,6 +31,10 @@ public:
 	/// unfiltered state observations. For example an rgb or grayscale image.
 	/// @return The raw state ofthe environment. The dimensions can differ from observations obtained from a step.
 	virtual Observations get_raw_observations() const = 0;
+
+	/// @brief Generates an action via the environments expert agent
+	/// @return The action determined by the environments expert agent
+	virtual torch::Tensor expert_agent() = 0;
 };
 
 /// @brief An interface to abstract the construction of environments and creating an initial state during training

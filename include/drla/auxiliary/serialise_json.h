@@ -65,6 +65,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 		{TrainAlgorithmType::kPPO, "PPO"},
 		{TrainAlgorithmType::kSAC, "SAC"},
 		{TrainAlgorithmType::kDQN, "DQN"},
+		{TrainAlgorithmType::kMuZero, "MuZero"},
 	})
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
@@ -74,6 +75,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 		{AgentPolicyModelType::kActorCritic, "ActorCritic"},
 		{AgentPolicyModelType::kSoftActorCritic, "SoftActorCritic"},
 		{AgentPolicyModelType::kQNet, "QNet"},
+		{AgentPolicyModelType::kMuZero, "MuZero"},
 	})
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
@@ -101,6 +103,13 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 		{LearningRateScheduleType::kConstant, "Constant"},
 		{LearningRateScheduleType::kLinear, "Linear"},
 		{LearningRateScheduleType::kExponential, "Exponential"},
+	})
+
+NLOHMANN_JSON_SERIALIZE_ENUM(
+	OptimiserType,
+	{
+		{OptimiserType::kAdam, "Adam"},
+		{OptimiserType::kSGD, "SGD"},
 	})
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
@@ -199,6 +208,10 @@ void from_json(const nlohmann::json& json, OffPolicyAlgorithm& off_policy_algori
 
 void to_json(nlohmann::json& json, const OffPolicyAlgorithm& off_policy_algorithm);
 
+void from_json(const nlohmann::json& json, MCTSAlgorithm& mcts_algorithm);
+
+void to_json(nlohmann::json& json, const MCTSAlgorithm& mcts_algorithm);
+
 void from_json(const nlohmann::json& json, A2C& alg_a2c);
 
 void to_json(nlohmann::json& json, const A2C& alg_a2c);
@@ -214,6 +227,10 @@ void to_json(nlohmann::json& json, const DQN& alg_dqn);
 void from_json(const nlohmann::json& json, SAC& alg_sac);
 
 void to_json(nlohmann::json& json, const SAC& alg_sac);
+
+void from_json(const nlohmann::json& json, MuZero& alg_muzero);
+
+void to_json(nlohmann::json& json, const MuZero& alg_muzero);
 
 void from_json(const nlohmann::json& json, AgentTrainAlgorithm& train_algorithm);
 
@@ -291,6 +308,18 @@ void from_json(const nlohmann::json& json, QNetModelConfig& dqn_model);
 
 void to_json(nlohmann::json& json, const QNetModelConfig& dqn_model);
 
+void from_json(const nlohmann::json& json, DynamicsNetworkConfig& dyn_net);
+
+void to_json(nlohmann::json& json, const DynamicsNetworkConfig& dyn_net);
+
+void from_json(const nlohmann::json& json, PredictionNetworkConfig& pred_net);
+
+void to_json(nlohmann::json& json, const PredictionNetworkConfig& pred_net);
+
+void from_json(const nlohmann::json& json, MuZeroModelConfig& muzero_config);
+
+void to_json(nlohmann::json& json, const MuZeroModelConfig& muzero_config);
+
 void from_json(const nlohmann::json& json, RandomConfig& random);
 
 void to_json(nlohmann::json& json, const RandomConfig& random);
@@ -314,6 +343,10 @@ void to_json(nlohmann::json& json, const Config::OnPolicyAgent& agent);
 void from_json(const nlohmann::json& json, Config::OffPolicyAgent& agent);
 
 void to_json(nlohmann::json& json, const Config::OffPolicyAgent& agent);
+
+void from_json(const nlohmann::json& json, Config::MCTSAgent& agent);
+
+void to_json(nlohmann::json& json, const Config::MCTSAgent& agent);
 
 void to_json(nlohmann::json& json, const Config::Agent& agent);
 

@@ -52,17 +52,24 @@ add_library(drla STATIC
 	src/agent/on_policy_agent.cpp
 	src/agent/off_policy_agent.cpp
 	src/agent/interactive_agent.cpp
+	src/agent/mcts_agent.cpp
 
 	# Buffers
 	src/buffers/rollout_buffer.cpp
 	src/buffers/replay_buffer.cpp
 	src/buffers/minibatch_buffer.cpp
+	src/buffers/episodic_per_buffer.cpp
+	src/buffers/mcts_episode.cpp
 
 	# Training algorithms
 	src/algorithm/a2c.cpp
 	src/algorithm/dqn.cpp
 	src/algorithm/ppo.cpp
 	src/algorithm/sac.cpp
+	src/algorithm/muzero.cpp
+
+	# Monte Carlo Tree Search
+	src/mcts/mcts.cpp
 
 	# Models
 	src/model/feature_extractor.cpp
@@ -75,6 +82,7 @@ add_library(drla STATIC
 	src/model/soft_actor_critic_model.cpp
 	src/model/random_model.cpp
 	src/model/qnet_model.cpp
+	src/model/muzero_model.cpp
 
 	# Output distributions
 	src/distributions/bernoulli.cpp
@@ -101,6 +109,7 @@ target_include_directories(drla
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/buffers>
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/distributions>
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/model>
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/mcts>
 )
 
 target_link_libraries(drla

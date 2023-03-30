@@ -11,6 +11,13 @@
 namespace drla
 {
 
+/// @brief The opponent agent to use when running the environment
+enum class OpponentType
+{
+	kSelf,	 // The opponent agent uses the same agent
+	kExpert, // The opponent agent uses the environments expert agent
+};
+
 namespace Config
 {
 
@@ -80,8 +87,36 @@ struct OffPolicyAgent : public AgentBase
 	bool asynchronous_env = false;
 };
 
+/// @brief MCTS agent specific configuration
+struct MCTSAgent : public AgentBase
+{
+	// Root prior exploration noise
+	double root_dirichlet_alpha = 0.25;
+	// Root prior exploration noise
+	double root_exploration_fraction = 0.25;
+	// Number of future moves self-simulated
+	int num_simulations = 50;
+	// UCB formula c_base constant
+	double pb_c_base = 19652;
+	// UCB formula c_init constant
+	double pb_c_init = 1.25;
+	// The discount factor for value calculation
+	std::vector<float> gamma = {0.997F};
+	// The number of moves before dropping the temperature to 0 (ie selecting the best action). If 0, the provided
+	// temperature is used every time.
+	int temperature_threshold = 0;
+	// Determines how greedy the action selection is for MCTS based agents. 0 is maximally greedy and the larger tha value
+	// the more random.
+	float temperature = 0.0F;
+	// The index for the agent to use in the environment (only relevent for multi actor environments). When < 0 a random
+	// index is assigned.
+	int actor_index = 0;
+	// The opponent agent to use for multi actor environments.
+	OpponentType opponent_type = OpponentType::kExpert;
+};
+
 /// @brief The agent configuration
-using Agent = std::variant<AgentBase, InteractiveAgent, OnPolicyAgent, OffPolicyAgent>;
+using Agent = std::variant<AgentBase, InteractiveAgent, OnPolicyAgent, OffPolicyAgent, MCTSAgent>;
 
 } // namespace Config
 

@@ -89,6 +89,40 @@ void to_json(nlohmann::json& json, const OffPolicyAlgorithm& off_policy_algorith
 	json["target_update_interval"] = off_policy_algorithm.target_update_interval;
 }
 
+void from_json(const nlohmann::json& json, MCTSAlgorithm& mcts_algorithm)
+{
+	from_json(json, static_cast<TrainAlgorithm&>(mcts_algorithm));
+	mcts_algorithm.buffer_size << optional_input{json, "buffer_size"};
+	mcts_algorithm.start_buffer_size << optional_input{json, "start_buffer_size"};
+	mcts_algorithm.batch_size << optional_input{json, "batch_size"};
+	mcts_algorithm.td_steps << optional_input{json, "td_steps"};
+	mcts_algorithm.unroll_steps << optional_input{json, "unroll_steps"};
+	mcts_algorithm.min_reanalyse_train_steps << optional_input{json, "min_reanalyse_train_steps"};
+	mcts_algorithm.min_reanalyse_buffer_size << optional_input{json, "min_reanalyse_buffer_size"};
+	mcts_algorithm.per_alpha << optional_input{json, "per_alpha"};
+	mcts_algorithm.temperature_step << optional_input{json, "temperature_step"};
+	mcts_algorithm.train_ratio << optional_input{json, "train_ratio"};
+	mcts_algorithm.self_play_gpus << optional_input{json, "self_play_gpus"};
+	mcts_algorithm.train_gpus << optional_input{json, "train_gpus"};
+}
+
+void to_json(nlohmann::json& json, const MCTSAlgorithm& mcts_algorithm)
+{
+	to_json(json, static_cast<const TrainAlgorithm&>(mcts_algorithm));
+	json["buffer_size"] = mcts_algorithm.buffer_size;
+	json["start_buffer_size"] = mcts_algorithm.start_buffer_size;
+	json["batch_size"] = mcts_algorithm.batch_size;
+	json["td_steps"] = mcts_algorithm.td_steps;
+	json["unroll_steps"] = mcts_algorithm.unroll_steps;
+	json["min_reanalyse_train_steps"] = mcts_algorithm.min_reanalyse_train_steps;
+	json["min_reanalyse_buffer_size"] = mcts_algorithm.min_reanalyse_buffer_size;
+	json["per_alpha"] = mcts_algorithm.per_alpha;
+	json["temperature_step"] = mcts_algorithm.temperature_step;
+	json["train_ratio"] = mcts_algorithm.train_ratio;
+	json["self_play_gpus"] = mcts_algorithm.self_play_gpus;
+	json["train_gpus"] = mcts_algorithm.train_gpus;
+}
+
 void from_json(const nlohmann::json& json, A2C& alg_a2c)
 {
 	from_json(json, static_cast<OnPolicyAlgorithm&>(alg_a2c));
@@ -171,6 +205,27 @@ void to_json(nlohmann::json& json, const SAC& alg_sac)
 	json["target_entropy_scale"] = alg_sac.target_entropy_scale;
 }
 
+void from_json(const nlohmann::json& json, MuZero& alg_muzero)
+{
+	from_json(json, static_cast<MCTSAlgorithm&>(alg_muzero));
+	alg_muzero.value_loss_weight << optional_input{json, "value_loss_weight"};
+	alg_muzero.weight_decay << optional_input{json, "weight_decay"};
+	alg_muzero.epsilon << optional_input{json, "epsilon"};
+	alg_muzero.momentum << optional_input{json, "momentum"};
+	alg_muzero.optimiser << optional_input{json, "optimiser"};
+}
+
+void to_json(nlohmann::json& json, const MuZero& alg_muzero)
+{
+	json["train_algorithm_type"] = TrainAlgorithmType::kMuZero;
+	to_json(json, static_cast<const MCTSAlgorithm&>(alg_muzero));
+	json["value_loss_weight"] = alg_muzero.value_loss_weight;
+	json["weight_decay"] = alg_muzero.weight_decay;
+	json["epsilon"] = alg_muzero.epsilon;
+	json["momentum"] = alg_muzero.momentum;
+	json["optimiser"] = alg_muzero.optimiser;
+}
+
 void from_json(const nlohmann::json& json, AgentTrainAlgorithm& train_algorithm)
 {
 	TrainAlgorithmType train_algorithm_type = TrainAlgorithmType::kNone;
@@ -181,6 +236,7 @@ void from_json(const nlohmann::json& json, AgentTrainAlgorithm& train_algorithm)
 		case TrainAlgorithmType::kPPO: train_algorithm = json.get<PPO>(); break;
 		case TrainAlgorithmType::kDQN: train_algorithm = json.get<DQN>(); break;
 		case TrainAlgorithmType::kSAC: train_algorithm = json.get<SAC>(); break;
+		case TrainAlgorithmType::kMuZero: train_algorithm = json.get<MuZero>(); break;
 		case TrainAlgorithmType::kNone: break;
 	}
 }
@@ -519,6 +575,69 @@ void to_json(nlohmann::json& json, const QNetModelConfig& dqn_model)
 	json["q_net"] = dqn_model.q_net;
 }
 
+void from_json(const nlohmann::json& json, DynamicsNetworkConfig& dyn_net)
+{
+	dyn_net.num_blocks << optional_input{json, "num_blocks"};
+	dyn_net.num_channels << optional_input{json, "num_channels"};
+	dyn_net.reduced_channels_reward << optional_input{json, "reduced_channels_reward"};
+	dyn_net.resblock << optional_input{json, "resblock"};
+	dyn_net.fc_reward << required_input{json, "fc_reward"};
+	dyn_net.fc_dynamics << optional_input{json, "fc_dynamics"};
+}
+
+void to_json(nlohmann::json& json, const DynamicsNetworkConfig& dyn_net)
+{
+	json["num_blocks"] = dyn_net.num_blocks;
+	json["num_channels"] = dyn_net.num_channels;
+	json["reduced_channels_reward"] = dyn_net.reduced_channels_reward;
+	json["resblock"] = dyn_net.resblock;
+	json["fc_reward"] = dyn_net.fc_reward;
+	json["fc_dynamics"] = dyn_net.fc_dynamics;
+}
+
+void from_json(const nlohmann::json& json, PredictionNetworkConfig& pred_net)
+{
+	pred_net.num_blocks << optional_input{json, "num_blocks"};
+	pred_net.num_channels << optional_input{json, "num_channels"};
+	pred_net.reduced_channels_value << optional_input{json, "reduced_channels_value"};
+	pred_net.reduced_channels_policy << optional_input{json, "reduced_channels_policy"};
+	pred_net.resblock << optional_input{json, "resblock"};
+	pred_net.fc_value << required_input{json, "fc_value"};
+	pred_net.fc_policy << required_input{json, "fc_policy"};
+}
+
+void to_json(nlohmann::json& json, const PredictionNetworkConfig& pred_net)
+{
+	json["num_blocks"] = pred_net.num_blocks;
+	json["num_channels"] = pred_net.num_channels;
+	json["reduced_channels_value"] = pred_net.reduced_channels_value;
+	json["reduced_channels_policy"] = pred_net.reduced_channels_policy;
+	json["resblock"] = pred_net.resblock;
+	json["fc_value"] = pred_net.fc_value;
+	json["fc_policy"] = pred_net.fc_policy;
+}
+
+void from_json(const nlohmann::json& json, MuZeroModelConfig& muzero_config)
+{
+	from_json(json, static_cast<CommonModelConfig&>(muzero_config));
+	muzero_config.representation_network << required_input{json, "representation_network"};
+	muzero_config.dynamics_network << required_input{json, "dynamics_network"};
+	muzero_config.prediction_network << required_input{json, "prediction_network"};
+	muzero_config.support_size << optional_input{json, "support_size"};
+	muzero_config.stacked_observations << optional_input{json, "stacked_observations"};
+}
+
+void to_json(nlohmann::json& json, const MuZeroModelConfig& muzero_config)
+{
+	json["model_type"] = AgentPolicyModelType::kMuZero;
+	to_json(json, static_cast<const CommonModelConfig&>(muzero_config));
+	json["representation_network"] = muzero_config.representation_network;
+	json["dynamics_network"] = muzero_config.dynamics_network;
+	json["prediction_network"] = muzero_config.prediction_network;
+	json["support_size"] = muzero_config.support_size;
+	json["stacked_observations"] = muzero_config.stacked_observations;
+}
+
 void from_json([[maybe_unused]] const nlohmann::json& json, [[maybe_unused]] RandomConfig& random)
 {
 }
@@ -538,6 +657,7 @@ void from_json(const nlohmann::json& json, ModelConfig& model)
 		case AgentPolicyModelType::kActorCritic: model = json.get<ActorCriticConfig>(); break;
 		case AgentPolicyModelType::kSoftActorCritic: model = json.get<SoftActorCriticConfig>(); break;
 		case AgentPolicyModelType::kQNet: model = json.get<QNetModelConfig>(); break;
+		case AgentPolicyModelType::kMuZero: model = json.get<MuZeroModelConfig>(); break;
 	}
 }
 
@@ -610,6 +730,30 @@ void to_json(nlohmann::json& json, const Config::OffPolicyAgent& agent)
 	to_json(json, static_cast<const Config::AgentBase&>(agent));
 }
 
+void from_json(const nlohmann::json& json, Config::MCTSAgent& agent)
+{
+	from_json(json, static_cast<Config::AgentBase&>(agent));
+	agent.root_dirichlet_alpha << optional_input{json, "root_dirichlet_alpha"};
+	agent.root_exploration_fraction << optional_input{json, "root_exploration_fraction"};
+	agent.num_simulations << optional_input{json, "num_simulations"};
+	agent.pb_c_base << optional_input{json, "pb_c_base"};
+	agent.pb_c_init << optional_input{json, "pb_c_init"};
+	agent.gamma << optional_input{json, "gamma"};
+	agent.temperature << optional_input{json, "temperature"};
+}
+
+void to_json(nlohmann::json& json, const Config::MCTSAgent& agent)
+{
+	to_json(json, static_cast<const Config::AgentBase&>(agent));
+	json["root_dirichlet_alpha"] = agent.root_dirichlet_alpha;
+	json["root_exploration_fraction"] = agent.root_exploration_fraction;
+	json["num_simulations"] = agent.num_simulations;
+	json["pb_c_base"] = agent.pb_c_base;
+	json["pb_c_init"] = agent.pb_c_init;
+	json["gamma"] = agent.gamma;
+	json["temperature"] = agent.temperature;
+}
+
 void to_json(nlohmann::json& json, const Config::Agent& agent)
 {
 	std::visit([&](auto& agent) { to_json(json, agent); }, agent);
@@ -628,6 +772,7 @@ void from_json(const nlohmann::json& json, Config::Agent& agent)
 			case AgentPolicyModelType::kActorCritic: agent = json.get<Config::OnPolicyAgent>(); break;
 			case AgentPolicyModelType::kSoftActorCritic: agent = json.get<Config::OffPolicyAgent>(); break;
 			case AgentPolicyModelType::kQNet: agent = json.get<Config::OffPolicyAgent>(); break;
+			case AgentPolicyModelType::kMuZero: agent = json.get<Config::MCTSAgent>(); break;
 		}
 	}
 	else

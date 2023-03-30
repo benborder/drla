@@ -16,6 +16,7 @@ enum class TrainAlgorithmType
 	kPPO,
 	kDQN,
 	kSAC,
+	kMuZero,
 };
 
 /// @brief The schedule type for learning rate decay configuration
@@ -24,6 +25,13 @@ enum class LearningRateScheduleType
 	kConstant,
 	kLinear,
 	kExponential,
+};
+
+/// @brief The optimiser type to use for training
+enum class OptimiserType
+{
+	kAdam,
+	kSGD,
 };
 
 namespace Config
@@ -157,8 +165,59 @@ struct PPO : public OnPolicyAlgorithm
 	double kl_target = 0.01;
 };
 
+/// @brief MCTS based training algorithms. This assumes episodic prioritised replay buffer and MCTS algorithm is used
+/// for action generation.
+struct MCTSAlgorithm : public TrainAlgorithm
+{
+	// The number of episodes to keep in the PER buffer
+	int buffer_size = 1'000'000;
+	// The minimum number of episodes before training starts
+	int start_buffer_size = 10;
+	// The number of samples to use in a train update step
+	int batch_size = 256;
+	// Don't start reanalysing until the min number of training steps are performed
+	int min_reanalyse_train_steps = 10;
+	// Don't start reanalysing until the min size of the buffer is reached
+	int min_reanalyse_buffer_size = 100;
+	// The ammount of prioritised experience replay to use
+	float per_alpha = 1.0F;
+
+	// The td steps for value target calculation
+	int td_steps = 5;
+	// The unroll steps for training
+	int unroll_steps = 10;
+
+	// The temperature to use for action selection for a training step range. i.e. {{100e3,1.0},{200e3,0.5}} means between
+	// 0 to 100e3 use 1.0 and between 100e3 and 200e3 use 0.5, otherwise use default
+	std::vector<std::pair<int, float>> temperature_step;
+	// The ratio of self play episodes to train steps. The agent will delay a training while the self play episodes are
+	// less than train_ratio * train steps
+	double train_ratio = 0;
+
+	// The GPU indexs to use for self play. A single -1 entry will use all available GPUs. Leave empty to force CPU use.
+	std::vector<int> self_play_gpus = {-1};
+	// The GPU indexs to use for training. A single -1 entry will use all available GPUs. Leave empty to force CPU use.
+	std::vector<int> train_gpus = {-1};
+};
+
+/// @brief MuZero algorithm configuration.
+struct MuZero : public MCTSAlgorithm
+{
+	// Scale the value loss to avoid overfitting of the value function, paper recommends 0.25 (See paper appendix
+	// Reanalyze)
+	float value_loss_weight = 0.25F;
+	// L2 weights regularization
+	double weight_decay = 1e-4;
+	// Epsilon coef for adam optimiser
+	double epsilon = 1e-8;
+	// momentum for SGD optimiser
+	double momentum = 0.9;
+	// The optimiser type to use
+	OptimiserType optimiser = OptimiserType::kSGD;
+};
+
 /// @brief The agent training configuration
-using AgentTrainAlgorithm = std::variant<A2C, PPO, DQN, SAC>;
+using AgentTrainAlgorithm = std::variant<A2C, PPO, DQN, SAC, MuZero>;
 
 } // namespace Config
 

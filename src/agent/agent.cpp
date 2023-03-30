@@ -2,6 +2,8 @@
 
 #include "actor_critic_model.h"
 #include "interactive_agent.h"
+#include "mcts_agent.h"
+#include "muzero_model.h"
 #include "off_policy_agent.h"
 #include "on_policy_agent.h"
 #include "qnet_model.h"
@@ -241,6 +243,13 @@ PredictOutput Agent::predict_action(const EnvStepData& env_data, bool determinis
 	return model_->predict(env_data.observation, deterministic);
 }
 
+PredictOutput
+Agent::predict_action([[maybe_unused]] const std::vector<StepData>& step_history, [[maybe_unused]] bool deterministic)
+{
+	spdlog::error("The agent type does not support `predict_action()` unless it has a history of previous step data.");
+	throw std::runtime_error("Unsupported agent functionality");
+}
+
 void Agent::reset()
 {
 	training_ = false;
@@ -283,6 +292,11 @@ void Agent::load_model(bool force_reload)
 				model_ = std::make_shared<QNetModel>(base_config_.model, env_config);
 				break;
 			}
+			case AgentPolicyModelType::kMuZero:
+			{
+				model_ = std::make_shared<MuZeroModel>(base_config_.model, env_config, reward_shape);
+				break;
+			}
 			default:
 			{
 				spdlog::error("Invalid model type selected!");
@@ -318,6 +332,10 @@ std::unique_ptr<Agent> drla::make_agent(
 	if (std::holds_alternative<Config::OffPolicyAgent>(config))
 	{
 		return std::make_unique<OffPolicyAgent>(config, environment_manager, callback, data_path);
+	}
+	if (std::holds_alternative<Config::MCTSAgent>(config))
+	{
+		return std::make_unique<MCTSAgent>(config, environment_manager, callback, data_path);
 	}
 
 	return std::make_unique<Agent>(config, environment_manager, callback, data_path);
