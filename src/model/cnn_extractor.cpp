@@ -156,7 +156,7 @@ CNNExtractor::CNNExtractor(const CNNExtractor& other, const c10::optional<torch:
 		std::visit(
 			[&](auto& layer) {
 				using layer_type = std::decay_t<decltype(layer)>;
-				if constexpr (std::is_same_v<std::function<torch::Tensor(const torch::Tensor&)>, layer_type>)
+				if constexpr (std::is_same_v<ActivationFunction, layer_type>)
 				{
 					cnn_layers_.emplace_back(layer);
 				}

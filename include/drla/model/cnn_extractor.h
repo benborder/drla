@@ -3,6 +3,7 @@
 #include "drla/configuration/model.h"
 #include "drla/model/feature_extractor.h"
 #include "drla/model/res_block.h"
+#include "drla/types.h"
 
 #include <torch/torch.h>
 
@@ -49,7 +50,7 @@ private:
 		torch::nn::AvgPool2d,
 		torch::nn::AdaptiveAvgPool2d,
 		ResBlock2d,
-		std::function<torch::Tensor(const torch::Tensor&)>>;
+		ActivationFunction>;
 	std::vector<Layer> cnn_layers_;
 	std::vector<int64_t> out_shape_;
 };

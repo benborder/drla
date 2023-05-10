@@ -49,6 +49,8 @@ using ObservationDataTypes = std::vector<torch::ScalarType>;
 using RewardTypes = std::vector<std::string>;
 /// @brief The list of discrete actions available to perform in the environment.
 using ActionSet = std::vector<int>;
+/// @brief Activation function alias
+using ActivationFunction = std::function<torch::Tensor(const torch::Tensor&)>;
 
 /// @brief Describes the configuration of the environment. Shapes and data types for observations, actions space and
 /// reward types.

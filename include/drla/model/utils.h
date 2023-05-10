@@ -23,7 +23,7 @@ inline torch::Tensor flatten(const std::vector<torch::Tensor>& features)
 /// @brief Creates and activation function based on the type specified
 /// @param activation The activation function type
 /// @return A std::function of the activation function
-inline std::function<torch::Tensor(const torch::Tensor&)> make_activation(Config::Activation activation)
+inline ActivationFunction make_activation(Config::Activation activation)
 {
 	switch (activation)
 	{
