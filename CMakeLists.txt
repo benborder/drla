@@ -14,32 +14,8 @@ project(drla
 # Building the DRLA library
 # ----------------------------------------------------------------------------
 
-find_package(spdlog QUIET)
-if(${spdlog_FOUND})
-	message(STATUS "Found spdlog ${spdlog_DIR}")
-else()
-	include(FetchContent)
-	FetchContent_Declare(
-		spdlog
-		GIT_REPOSITORY https://github.com/gabime/spdlog.git
-		GIT_TAG        v1.10.0
-	)
-	FetchContent_MakeAvailable(spdlog)
-	# Add an alias to use the same target name as find_package mode when linking
-	add_library(spdlog::spdlog ALIAS spdlog)
-endif()
-
-find_package(nlohmann_json QUIET)
-if(${nlohmann_json_FOUND})
-	message(STATUS "Found nlohmann_json ${nlohmann_json_DIR}")
-else()
-	FetchContent_Declare(
-		nlohmann_json
-		GIT_REPOSITORY https://github.com/nlohmann/json.git
-		GIT_TAG        v3.10.5
-	)
-	FetchContent_MakeAvailable(nlohmann_json)
-endif()
+include(cmake/spdlog.cmake)
+include(cmake/nlohmann_json.cmake)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)  # Set -pthreads
 find_package(Threads REQUIRED)
