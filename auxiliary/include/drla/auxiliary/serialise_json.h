@@ -66,6 +66,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 		{TrainAlgorithmType::kSAC, "SAC"},
 		{TrainAlgorithmType::kDQN, "DQN"},
 		{TrainAlgorithmType::kMuZero, "MuZero"},
+		{TrainAlgorithmType::kDreamer, "Dreamer"},
 	})
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
@@ -76,6 +77,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 		{AgentPolicyModelType::kSoftActorCritic, "SoftActorCritic"},
 		{AgentPolicyModelType::kQNet, "QNet"},
 		{AgentPolicyModelType::kMuZero, "MuZero"},
+		{AgentPolicyModelType::kDreamer, "Dreamer"},
 	})
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
@@ -235,6 +237,10 @@ void from_json(const nlohmann::json& json, MCTSAlgorithm& mcts_algorithm);
 
 void to_json(nlohmann::json& json, const MCTSAlgorithm& mcts_algorithm);
 
+void from_json(const nlohmann::json& json, HybridAlgorithm& mcts_algorithm);
+
+void to_json(nlohmann::json& json, const HybridAlgorithm& mcts_algorithm);
+
 void from_json(const nlohmann::json& json, A2C& alg_a2c);
 
 void to_json(nlohmann::json& json, const A2C& alg_a2c);
@@ -383,6 +389,23 @@ void from_json(const nlohmann::json& json, TrainConfig& alg_muzero);
 void to_json(nlohmann::json& json, const TrainConfig& alg_muzero);
 
 } // namespace MuZero
+
+namespace Dreamer
+{
+
+void from_json(const nlohmann::json& json, WorldModel& world_model);
+
+void to_json(nlohmann::json& json, const WorldModel& world_model);
+
+void from_json(const nlohmann::json& json, ModelConfig& model_config);
+
+void to_json(nlohmann::json& json, const ModelConfig& model_config);
+
+void from_json(const nlohmann::json& json, TrainConfig& train_config);
+
+void to_json(nlohmann::json& json, const TrainConfig& train_config);
+
+}; // namespace Dreamer
 
 } // namespace Config
 

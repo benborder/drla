@@ -2,6 +2,8 @@
 
 #include "actor_critic_model.h"
 #include "agent_utils.h"
+#include "dreamer_model.h"
+#include "hybrid_agent.h"
 #include "interactive_agent.h"
 #include "mcts_agent.h"
 #include "muzero_model.h"
@@ -154,6 +156,7 @@ void Agent::run_episode(Model* model, const State& initial_state, int env, RunOp
 	assert(model != nullptr);
 	auto environment = environment_manager_->get_environment(env);
 	auto env_config = environment->get_configuration();
+	auto device = model->parameters().back().device();
 	if (options.max_steps <= 0)
 	{
 		// Run the environment until it terminates (setting to max int should be sufficient)
@@ -194,7 +197,7 @@ void Agent::run_episode(Model* model, const State& initial_state, int env, RunOp
 		input.deterministic = options.deterministic;
 		input.prev_output = step_data.predict_result;
 		input.observations = step_data.env_data.observation;
-		for (auto& obs : input.observations) { obs = obs.unsqueeze(0).to(devices_.front()); }
+		for (auto& obs : input.observations) { obs = obs.unsqueeze(0).to(device); }
 
 		step_data.step = step;
 
@@ -299,6 +302,11 @@ void Agent::load_model(bool force_reload)
 				model_ = std::make_shared<MuZeroModel>(base_config_.model, env_config, reward_shape);
 				break;
 			}
+			case AgentPolicyModelType::kDreamer:
+			{
+				model_ = std::make_shared<DreamerModel>(base_config_.model, env_config, reward_shape);
+				break;
+			}
 			default:
 			{
 				spdlog::error("Invalid model type selected!");
@@ -338,6 +346,10 @@ std::unique_ptr<Agent> drla::make_agent(
 	if (std::holds_alternative<Config::MCTSAgent>(config))
 	{
 		return std::make_unique<MCTSAgent>(config, environment_manager, callback, data_path);
+	}
+	if (std::holds_alternative<Config::HybridAgent>(config))
+	{
+		return std::make_unique<HybridAgent>(config, environment_manager, callback, data_path);
 	}
 
 	return std::make_unique<Agent>(config, environment_manager, callback, data_path);

@@ -11,6 +11,7 @@ The DRLA library is a C++ Deep Reinforcement Learning Agent based on libtorch (p
 - Model-free On-Policy rollout based algorithms (PPO, A2C)
 - Model-free Off-Policy replay based algorithms (DQN, SAC)
 - Model-based Monte-Carlo tree search algorithms (MuZero)
+- Hybrid Model-free and Model-based algorithms (Dreamer)
 
 ## Example
 

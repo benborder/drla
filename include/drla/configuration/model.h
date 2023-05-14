@@ -18,6 +18,7 @@ enum class AgentPolicyModelType
 	kSoftActorCritic,
 	kQNet,
 	kMuZero,
+	kDreamer,
 };
 
 /// @brief The type of feature extractor. Only used in deserialisation.
@@ -264,6 +265,8 @@ struct ActorConfig : public FCConfig
 	InitType init_bias_type = InitType::kDefault;
 	// The bias values to initialise the network output layer with
 	double init_bias = 0.0;
+	// The amount of uniform probability distribution to mix into the actor distribution
+	double unimix = 0.0;
 };
 
 /// @brief Configuration for the random model
@@ -383,9 +386,61 @@ struct ModelConfig
 
 } // namespace MuZero
 
+namespace Dreamer
+{
+
+/// @brief The world model configuration for the dreamer model
+struct WorldModel
+{
+	// The encoder network configuration. Inputs observations x_t, oututs stochastic representation z_t.
+	FeatureExtractorConfig encoder_network;
+	// The decoder network configuration. Inputs recurrent state h_t and stochastic representation z_t/zhat_t, outputs
+	// predicted observations xhat_t.
+	FeatureExtractorConfig decoder_network;
+
+	// How much to mix a uniform probability with the stochastic probability.
+	float unimix = 0.01F;
+
+	// The size of the input passed into the GRU
+	int hidden_size = 512;
+
+	// The deterministic continuous hidden state h size
+	int deter_state_size = 512;
+	// The size of stochastic representations in z
+	int stoch_size = 32;
+	// The size of each stochastic representation in z
+	int class_size = 32;
+
+	// The number of bins to encode reward/values into
+	int bins = 255;
+
+	// The reward network
+	FCConfig reward = {};
+	// The continue network
+	FCConfig contin = {};
+};
+
+/// @brief Configuration for the dreamer model
+struct ModelConfig
+{
+	// The world model config
+	WorldModel world_model;
+	// The actor config to generate appropriate actions based on the environment
+	ActorConfig actor = {};
+	// The critic fully connected block configuration
+	FCConfig critic = {};
+};
+
+} // namespace Dreamer
+
 /// @brief The model configuration for the agent.
-using ModelConfig =
-	std::variant<RandomConfig, ActorCriticConfig, QNetModelConfig, SoftActorCriticConfig, MuZero::ModelConfig>;
+using ModelConfig = std::variant<
+	RandomConfig,
+	ActorCriticConfig,
+	QNetModelConfig,
+	SoftActorCriticConfig,
+	MuZero::ModelConfig,
+	Dreamer::ModelConfig>;
 
 } // namespace Config
 

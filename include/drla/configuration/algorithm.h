@@ -17,6 +17,7 @@ enum class TrainAlgorithmType
 	kDQN,
 	kSAC,
 	kMuZero,
+	kDreamer,
 };
 
 /// @brief The schedule type for learning rate decay configuration
@@ -250,6 +251,35 @@ struct MCTSAlgorithm : public TrainAlgorithm
 	std::vector<int> train_gpus = {-1};
 };
 
+struct HybridAlgorithm : public TrainAlgorithm
+{
+	// The unroll steps for world model training
+	int unroll_steps = 64;
+	// The horizon to generate an imaginary trajectory
+	int horizon = 15;
+	// The number of episodes to keep in the PER buffer
+	int buffer_size = 1'000'000;
+	// The minimum number of episodes before training starts
+	int start_buffer_size = 10;
+	// The number of samples to use in a train update step
+	int batch_size = 16;
+	// Don't start reanalysing until the min number of training steps are performed
+	int min_reanalyse_train_steps = 10;
+	// Don't start reanalysing until the min size of the buffer is reached
+	int min_reanalyse_buffer_size = 100;
+	// Use prioritised experience replay
+	bool use_per = false;
+	// The ammount of prioritised experience replay to use
+	float per_alpha = 1.0F;
+	// The ratio of self play episodes to train steps. The agent will delay a training while the self play episodes are
+	// less than train_ratio * train steps
+	double train_ratio = 0;
+	// The GPU indexs to use for self play. A single -1 entry will use all available GPUs. Leave empty to force CPU use.
+	std::vector<int> self_play_gpus = {-1};
+	// The GPU indexs to use for training. A single -1 entry will use all available GPUs. Leave empty to force CPU use.
+	std::vector<int> train_gpus = {-1};
+};
+
 namespace MuZero
 {
 /// @brief MuZero train algorithm configuration.
@@ -263,8 +293,42 @@ struct TrainConfig : public MCTSAlgorithm
 };
 } // namespace MuZero
 
+namespace Dreamer
+{
+/// @brief Dreamer train algorithm configuration.
+struct TrainConfig : public HybridAlgorithm
+{
+	// Lambda value to use when calculating the returns in imagined trajectories
+	float return_lambda = 0.95F;
+	// Ratio to mix the prediction loss with the world model loss
+	float pred_beta = 1.0F;
+	// Ratio to mix the dynamics loss with the world model loss
+	float dyn_beta = 0.5F;
+	// Ratio to mix the representation loss with the world model loss
+	float rep_beta = 0.1F;
+	// Scales the loss from the actor
+	float actor_loss_scale = 1.0F;
+	// Scales the entropy component used for regularizing the actor loss
+	float actor_entropy_scale = 1e-4;
+	// Scales the loss from the critic
+	float critic_loss_scale = 1.0F;
+	// Scales the target regularisation component of the loss
+	float target_regularisation_scale = 1.0F;
+	// Ratio of the current critic to use to update the target/slow critic
+	float tau = 0.02F;
+	// The discount factor for weighting the probability of terminating an episode
+	float discount = 0.997F;
+	// The optimiser to use for the world model. Defaults to Adam
+	Optimiser world_optimiser = OptimiserAdam{{1e-4, 0.0, LearningRateScheduleType::kLinear, 1.0, 1000}, 1e-8};
+	// The optimiser to use for the actor. Defaults to Adam
+	Optimiser actor_optimiser = OptimiserAdam{{3e-5, 0.0, LearningRateScheduleType::kLinear, 1.0, 100}, 1e-5};
+	// The optimiser to use for the critic. Defaults to Adam
+	Optimiser critic_optimiser = OptimiserAdam{{3e-5, 0.0, LearningRateScheduleType::kLinear, 1.0, 100}, 1e-5};
+};
+} // namespace Dreamer
+
 /// @brief The agent training configuration
-using AgentTrainAlgorithm = std::variant<A2C, PPO, DQN, SAC, MuZero::TrainConfig>;
+using AgentTrainAlgorithm = std::variant<A2C, PPO, DQN, SAC, MuZero::TrainConfig, Dreamer::TrainConfig>;
 
 } // namespace Config
 

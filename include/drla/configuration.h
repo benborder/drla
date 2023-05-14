@@ -115,8 +115,15 @@ struct MCTSAgent : public AgentBase
 	OpponentType opponent_type = OpponentType::kExpert;
 };
 
+/// @brief Hybrid agent specific configuration
+struct HybridAgent : public AgentBase
+{
+	// The discount factor for value calculation
+	std::vector<float> gamma = {0.997F};
+};
+
 /// @brief The agent configuration
-using Agent = std::variant<AgentBase, InteractiveAgent, OnPolicyAgent, OffPolicyAgent, MCTSAgent>;
+using Agent = std::variant<AgentBase, InteractiveAgent, OnPolicyAgent, OffPolicyAgent, MCTSAgent, HybridAgent>;
 
 } // namespace Config
 

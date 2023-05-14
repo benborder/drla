@@ -110,4 +110,18 @@ ObservationShapes stacked_observation_shape(const ObservationShapes& shape, int 
 	return stacked_shape;
 }
 
+std::vector<torch::Tensor> reconstruct(const torch::Tensor& input, const std::vector<std::vector<int64_t>>& shapes)
+{
+	std::vector<torch::Tensor> output;
+	int64_t index = 0;
+	for (auto shape : shapes)
+	{
+		auto size = flatten(shape);
+		shape = slice<0, -1>(input.sizes().vec()) + shape;
+		output.push_back(input.narrow(-1, index, size).view(shape));
+		index += size;
+	}
+	return output;
+}
+
 } // namespace drla

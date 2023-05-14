@@ -30,6 +30,7 @@ add_library(drla STATIC
 	src/agent/off_policy_agent.cpp
 	src/agent/interactive_agent.cpp
 	src/agent/mcts_agent.cpp
+	src/agent/hybrid_agent.cpp
 
 	# Buffers
 	src/buffers/rollout_buffer.cpp
@@ -38,6 +39,8 @@ add_library(drla STATIC
 	src/buffers/episodic_per_buffer.cpp
 	src/buffers/mcts_episode.cpp
 	src/buffers/mcts_replay_buffer.cpp
+	src/buffers/hybrid_episode.cpp
+	src/buffers/hybrid_replay_buffer.cpp
 	src/buffers/off_policy_episode.cpp
 
 	# Training algorithms
@@ -46,6 +49,7 @@ add_library(drla STATIC
 	src/algorithm/ppo.cpp
 	src/algorithm/sac.cpp
 	src/algorithm/muzero.cpp
+	src/algorithm/dreamer.cpp
 	src/algorithm/optimiser.cpp
 
 	# Monte Carlo Tree Search
@@ -64,6 +68,7 @@ add_library(drla STATIC
 	src/model/random_model.cpp
 	src/model/qnet_model.cpp
 	src/model/muzero_model.cpp
+	src/model/dreamer_model.cpp
 
 	# Output distributions
 	src/distributions/bernoulli.cpp

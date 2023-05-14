@@ -62,10 +62,22 @@ std::unique_ptr<Distribution> ActorImpl::forward(torch::Tensor latent)
 	if (use_logits_)
 	{
 		logits = output;
+		if (config_.unimix > 0)
+		{
+			auto prob = torch::softmax(logits, -1);
+			auto uniform = torch::ones_like(prob) / num_actions_;
+			prob = (1.0F - config_.unimix) * prob + config_.unimix * uniform;
+			logits = prob.log();
+		}
 	}
 	else
 	{
 		probs = output;
+		if (config_.unimix > 0)
+		{
+			auto uniform = torch::ones_like(probs) / num_actions_;
+			probs = (1.0F - config_.unimix) * probs + config_.unimix * uniform;
+		}
 	}
 	switch (action_space_.type)
 	{

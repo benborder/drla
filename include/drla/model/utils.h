@@ -12,8 +12,9 @@
 namespace drla
 {
 
-/// @brief Flattens the input tensor list to a single 1D output tensor
-/// @param features The input tensor list to flatten
+/// @brief Flattens the input tensor list to a single output tensor with dims [batch, ..., data]
+/// @param x The input tensor list to flatten
+/// @param dims The number of dims to keep in addition to the batch 0 dim
 /// @return The flattened output tensor
 torch::Tensor flatten(const std::vector<torch::Tensor>& x, int dims = 0);
 
@@ -132,16 +133,67 @@ std::vector<std::vector<int64_t>> condense_shape(const std::vector<std::vector<i
 /// @return The output list of condensed tensors
 std::vector<torch::Tensor> condense(const std::vector<torch::Tensor>& input, int dim = 1);
 
+/// @brief Splits and reconstructs the last dim in input to match the output shape, preserving all other dims
+/// @param input The input tensor to split and reconstruct
+/// @param shapes The shapes to reconstruct to
+/// @return The vector of reconstructed tensors
+std::vector<torch::Tensor> reconstruct(const torch::Tensor& input, const std::vector<std::vector<int64_t>>& shapes);
+
 /// @brief Gets the stacked observation shape from the input single observation
 /// @param shape The input single observation shape to base the stack from
 /// @param stack_size The size of the stack to create. The stack size cannot be negative.
 /// @return The stacked observation shape
 ObservationShapes stacked_observation_shape(const ObservationShapes& shape, int stack_size);
 
+inline torch::Tensor symlog(const torch::Tensor& x)
+{
+	return torch::sign(x) * torch::log(1.0F + torch::abs(x));
+}
+
+inline torch::Tensor symexp(const torch::Tensor& x)
+{
+	return torch::sign(x) * (torch::exp(torch::abs(x)) - 1.0F);
+}
+
 inline void
 update_params(const std::vector<torch::Tensor>& current, const std::vector<torch::Tensor>& target, double tau)
 {
 	for (size_t i = 0; i < current.size(); i++) { target[i].mul_(1.0 - tau).add_(current[i], tau); }
+}
+
+inline bool is_perfect_square(int num)
+{
+	int sqrtNum = std::sqrt(num);
+	return sqrtNum * sqrtNum == num;
+}
+
+/// @brief Automatically resize a scalar dim into 3 dims, typically for features or images, where the first is the
+/// channel/feature dim
+/// @param x The flattened shape to resize
+/// @param max_channels The max number of channels/features to use for dim 0
+/// @return A vector of the resized dims
+inline std::vector<int64_t> auto_resize(int64_t x, int max_channels = 1)
+{
+	std::vector<int64_t> dims = {1, 1, 1};
+	for (int ch = max_channels; ch > 1; --ch)
+	{
+		if ((x % ch == 0) && (is_perfect_square(x / ch) || !is_perfect_square(x / (ch - 1))))
+		{
+			dims[0] = ch;
+			x /= ch;
+			break;
+		}
+	}
+	int64_t y = std::sqrt(x);
+	while (x % y != 0) { --y; }
+	dims[1] = y;
+	dims[2] = x / y;
+	return dims;
+}
+
+inline std::vector<int64_t> auto_resize(const std::vector<int64_t>& shape, int max_channels = 1)
+{
+	return auto_resize(flatten(shape), max_channels);
 }
 
 } // namespace drla

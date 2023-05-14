@@ -103,6 +103,8 @@ struct ModelOutput
 	torch::Tensor reward = {};
 	// The predicted state (from supported models)
 	HiddenStates state = {};
+	// The prediction of continuation (non terminal) of the episode (for supported models)
+	torch::Tensor non_terminal = {};
 };
 
 /// @brief The input for the agent's model prediction

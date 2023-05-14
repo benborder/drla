@@ -207,6 +207,36 @@ void to_json(nlohmann::json& json, const MCTSAlgorithm& mcts_algorithm)
 	json["train_gpus"] = mcts_algorithm.train_gpus;
 }
 
+void from_json(const nlohmann::json& json, HybridAlgorithm& hybrid_algorithm)
+{
+	from_json(json, static_cast<TrainAlgorithm&>(hybrid_algorithm));
+	hybrid_algorithm.buffer_size << optional_input{json, "buffer_size"};
+	hybrid_algorithm.start_buffer_size << optional_input{json, "start_buffer_size"};
+	hybrid_algorithm.batch_size << optional_input{json, "batch_size"};
+	hybrid_algorithm.min_reanalyse_train_steps << optional_input{json, "min_reanalyse_train_steps"};
+	hybrid_algorithm.min_reanalyse_buffer_size << optional_input{json, "min_reanalyse_buffer_size"};
+	hybrid_algorithm.use_per << optional_input{json, "use_per"};
+	hybrid_algorithm.per_alpha << optional_input{json, "per_alpha"};
+	hybrid_algorithm.train_ratio << optional_input{json, "train_ratio"};
+	hybrid_algorithm.self_play_gpus << optional_input{json, "self_play_gpus"};
+	hybrid_algorithm.train_gpus << optional_input{json, "train_gpus"};
+}
+
+void to_json(nlohmann::json& json, const HybridAlgorithm& hybrid_algorithm)
+{
+	to_json(json, static_cast<const TrainAlgorithm&>(hybrid_algorithm));
+	json["buffer_size"] = hybrid_algorithm.buffer_size;
+	json["start_buffer_size"] = hybrid_algorithm.start_buffer_size;
+	json["batch_size"] = hybrid_algorithm.batch_size;
+	json["min_reanalyse_train_steps"] = hybrid_algorithm.min_reanalyse_train_steps;
+	json["min_reanalyse_buffer_size"] = hybrid_algorithm.min_reanalyse_buffer_size;
+	json["use_per"] = hybrid_algorithm.use_per;
+	json["per_alpha"] = hybrid_algorithm.per_alpha;
+	json["train_ratio"] = hybrid_algorithm.train_ratio;
+	json["self_play_gpus"] = hybrid_algorithm.self_play_gpus;
+	json["train_gpus"] = hybrid_algorithm.train_gpus;
+}
+
 void from_json(const nlohmann::json& json, A2C& alg_a2c)
 {
 	from_json(json, static_cast<OnPolicyAlgorithm&>(alg_a2c));
@@ -302,6 +332,7 @@ void from_json(const nlohmann::json& json, AgentTrainAlgorithm& train_algorithm)
 		case TrainAlgorithmType::kDQN: train_algorithm = json.get<DQN>(); break;
 		case TrainAlgorithmType::kSAC: train_algorithm = json.get<SAC>(); break;
 		case TrainAlgorithmType::kMuZero: train_algorithm = json.get<MuZero::TrainConfig>(); break;
+		case TrainAlgorithmType::kDreamer: train_algorithm = json.get<Dreamer::TrainConfig>(); break;
 		case TrainAlgorithmType::kNone: break;
 	}
 }
@@ -632,6 +663,7 @@ void from_json(const nlohmann::json& json, ActorConfig& actor)
 	{
 		load_init_bias_config(actor, json);
 	}
+	actor.unimix << optional_input{json, "unimix"};
 }
 
 void to_json(nlohmann::json& json, const ActorConfig& actor)
@@ -642,6 +674,7 @@ void to_json(nlohmann::json& json, const ActorConfig& actor)
 	json["init_bias"] = actor.init_bias;
 	json["init_weight_type"] = actor.init_weight_type;
 	json["init_weight"] = actor.init_weight;
+	json["unimix"] = actor.unimix;
 }
 
 void from_json(const nlohmann::json& json, ActorCriticConfig& actor_critic)
@@ -725,6 +758,7 @@ void from_json(const nlohmann::json& json, ModelConfig& model)
 		case AgentPolicyModelType::kSoftActorCritic: model = json.get<SoftActorCriticConfig>(); break;
 		case AgentPolicyModelType::kQNet: model = json.get<QNetModelConfig>(); break;
 		case AgentPolicyModelType::kMuZero: model = json.get<MuZero::ModelConfig>(); break;
+		case AgentPolicyModelType::kDreamer: model = json.get<Dreamer::ModelConfig>(); break;
 	}
 }
 
@@ -840,6 +874,7 @@ void from_json(const nlohmann::json& json, Config::Agent& agent)
 			case AgentPolicyModelType::kSoftActorCritic: agent = json.get<Config::OffPolicyAgent>(); break;
 			case AgentPolicyModelType::kQNet: agent = json.get<Config::OffPolicyAgent>(); break;
 			case AgentPolicyModelType::kMuZero: agent = json.get<Config::MCTSAgent>(); break;
+			case AgentPolicyModelType::kDreamer: agent = json.get<Config::HybridAgent>(); break;
 		}
 	}
 	else
@@ -928,5 +963,90 @@ void to_json(nlohmann::json& json, const TrainConfig& train_config)
 }
 
 } // namespace MuZero
+
+namespace Dreamer
+{
+
+void from_json(const nlohmann::json& json, WorldModel& world_model)
+{
+	world_model.encoder_network << required_input{json, "encoder_network"};
+	world_model.decoder_network << required_input{json, "decoder_network"};
+	world_model.unimix << optional_input{json, "unimix"};
+	world_model.hidden_size << optional_input{json, "hidden_size"};
+	world_model.deter_state_size << optional_input{json, "deter_state_size"};
+	world_model.stoch_size << optional_input{json, "stoch_size"};
+	world_model.class_size << optional_input{json, "class_size"};
+	world_model.bins << optional_input{json, "bins"};
+	world_model.reward << optional_input{json, "reward"};
+	world_model.contin << optional_input{json, "contin"};
+}
+
+void to_json(nlohmann::json& json, const WorldModel& world_model)
+{
+	json["encoder_network"] = world_model.encoder_network;
+	json["decoder_network"] = world_model.decoder_network;
+	json["unimix"] = world_model.unimix;
+	json["hidden_size"] = world_model.hidden_size;
+	json["deter_state_size"] = world_model.deter_state_size;
+	json["stoch_size"] = world_model.stoch_size;
+	json["class_size"] = world_model.class_size;
+	json["bins"] = world_model.bins;
+	json["reward"] = world_model.reward;
+	json["contin"] = world_model.contin;
+}
+
+void from_json(const nlohmann::json& json, ModelConfig& model_config)
+{
+	model_config.world_model << required_input{json, "world_model"};
+	model_config.actor << required_input{json, "actor"};
+	model_config.critic << required_input{json, "critic"};
+}
+
+void to_json(nlohmann::json& json, const ModelConfig& model_config)
+{
+	json["model_type"] = AgentPolicyModelType::kDreamer;
+	json["world_model"] = model_config.world_model;
+	json["actor"] = model_config.actor;
+	json["critic"] = model_config.critic;
+}
+
+void from_json(const nlohmann::json& json, TrainConfig& train_config)
+{
+	from_json(json, static_cast<HybridAlgorithm&>(train_config));
+	train_config.return_lambda << optional_input{json, "return_lambda"};
+	train_config.pred_beta << optional_input{json, "pred_beta"};
+	train_config.dyn_beta << optional_input{json, "dyn_beta"};
+	train_config.rep_beta << optional_input{json, "rep_beta"};
+	train_config.actor_loss_scale << optional_input{json, "actor_loss_scale"};
+	train_config.actor_entropy_scale << optional_input{json, "actor_entropy_scale"};
+	train_config.critic_loss_scale << optional_input{json, "critic_loss_scale"};
+	train_config.target_regularisation_scale << optional_input{json, "target_regularisation_scale"};
+	train_config.tau << optional_input{json, "tau"};
+	train_config.discount << optional_input{json, "discount"};
+	train_config.world_optimiser << optional_input{json, "world_optimiser"};
+	train_config.actor_optimiser << optional_input{json, "actor_optimiser"};
+	train_config.critic_optimiser << optional_input{json, "critic_optimiser"};
+}
+
+void to_json(nlohmann::json& json, const TrainConfig& train_config)
+{
+	json["train_algorithm_type"] = TrainAlgorithmType::kDreamer;
+	to_json(json, static_cast<const HybridAlgorithm&>(train_config));
+	json["return_lambda"] = train_config.return_lambda;
+	json["pred_beta"] = train_config.pred_beta;
+	json["dyn_beta"] = train_config.dyn_beta;
+	json["rep_beta"] = train_config.rep_beta;
+	json["actor_loss_scale"] = train_config.actor_loss_scale;
+	json["actor_entropy_scale"] = train_config.actor_entropy_scale;
+	json["critic_loss_scale"] = train_config.critic_loss_scale;
+	json["target_regularisation_scale"] = train_config.target_regularisation_scale;
+	json["tau"] = train_config.tau;
+	json["discount"] = train_config.discount;
+	json["world_optimiser"] = train_config.world_optimiser;
+	json["actor_optimiser"] = train_config.actor_optimiser;
+	json["critic_optimiser"] = train_config.critic_optimiser;
+}
+
+} // namespace Dreamer
 
 } // namespace drla::Config
