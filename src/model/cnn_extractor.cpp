@@ -80,6 +80,39 @@ CNNExtractor::CNNExtractor(const Config::CNNConfig& config, const std::vector<in
 
 					in_channels = config.out_channels;
 				}
+				if constexpr (std::is_same_v<Config::ConvTranspose2dConfig, T>)
+				{
+					auto conv = torch::nn::ConvTranspose2d(
+						torch::nn::ConvTranspose2dOptions(in_channels, config.out_channels, config.kernel_size)
+							.stride(config.stride)
+							.padding(config.padding)
+							.output_padding(config.output_padding)
+							.bias(config.use_bias));
+					register_module("cnn_conv_transpose" + std::to_string(l++), conv);
+
+					weight_init(conv->weight, config.init_weight_type, config.init_weight);
+					if (config.use_bias)
+					{
+						weight_init(conv->bias, config.init_bias_type, config.init_bias);
+					}
+
+					cnn_layers_.emplace_back(std::move(conv));
+
+					w = (w - 1) * config.stride - 2 * config.padding + config.kernel_size + config.output_padding;
+					h = (h - 1) * config.stride - 2 * config.padding + config.kernel_size + config.output_padding;
+
+					auto conv_layer = fmt::format(
+						"convTrans2d[ {}, {}, {}, {}, {} {} ]",
+						in_channels,
+						config.out_channels,
+						config.kernel_size,
+						config.padding,
+						config.output_padding,
+						config.stride);
+					spdlog::debug("{:<28}[{} {}]", conv_layer, w, h);
+
+					in_channels = config.out_channels;
+				}
 				if constexpr (std::is_same_v<Config::BatchNorm2dConfig, T>)
 				{
 					cnn_layers_.emplace_back(torch::nn::BatchNorm2d(torch::nn::BatchNorm2dOptions(in_channels)

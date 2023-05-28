@@ -30,7 +30,9 @@ enum class FeatureExtractorType
 /// @brier The layer type of a feature extractor
 enum class LayerType
 {
+	kInvalid,
 	kConv2d,
+	kConvTranspose2d,
 	kBatchNorm2d,
 	kMaxPool2d,
 	kAvgPool2d,
@@ -134,6 +136,13 @@ struct Conv2dConfig
 	bool use_bias = true;
 };
 
+/// @brief Transpose convolutional layer configuration for a feature extractor.
+struct ConvTranspose2dConfig : public Conv2dConfig
+{
+	// Additional size added to one side of each dimension in the output shape. Defaults to 0
+	int output_padding = 0;
+};
+
 /// @brief Batch Normalisation layer configuration for a feature extractor.
 struct BatchNorm2dConfig
 {
@@ -196,6 +205,7 @@ struct ResBlock2dConfig
 /// @brief The CNN layer config
 using CNNLayerConfig = std::variant<
 	Conv2dConfig,
+	ConvTranspose2dConfig,
 	BatchNorm2dConfig,
 	MaxPool2dConfig,
 	AvgPool2dConfig,

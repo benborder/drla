@@ -325,6 +325,19 @@ void to_json(nlohmann::json& json, const Conv2dConfig& conv)
 	json["use_bias"] = conv.use_bias;
 }
 
+void from_json(const nlohmann::json& json, ConvTranspose2dConfig& conv)
+{
+	from_json(json, *static_cast<Conv2dConfig*>(&conv));
+	conv.output_padding << optional_input{json, "output_padding"};
+}
+
+void to_json(nlohmann::json& json, const ConvTranspose2dConfig& conv)
+{
+	to_json(json, *static_cast<const Conv2dConfig*>(&conv));
+	json["type"] = LayerType::kConvTranspose2d;
+	json["output_padding"] = conv.output_padding;
+}
+
 void from_json(const nlohmann::json& json, BatchNorm2dConfig& batch_norm)
 {
 	batch_norm.affine << optional_input{json, "affine"};
@@ -418,6 +431,7 @@ void from_json(const nlohmann::json& json, CNNLayerConfig& cnn_layer_config)
 	switch (type)
 	{
 		case LayerType::kConv2d: cnn_layer_config = json.get<Conv2dConfig>(); break;
+		case LayerType::kConvTranspose2d: cnn_layer_config = json.get<ConvTranspose2dConfig>(); break;
 		case LayerType::kBatchNorm2d: cnn_layer_config = json.get<BatchNorm2dConfig>(); break;
 		case LayerType::kMaxPool2d: cnn_layer_config = json.get<MaxPool2dConfig>(); break;
 		case LayerType::kAvgPool2d: cnn_layer_config = json.get<AvgPool2dConfig>(); break;
@@ -426,7 +440,7 @@ void from_json(const nlohmann::json& json, CNNLayerConfig& cnn_layer_config)
 		default:
 		{
 			spdlog::error("[Config] The CNN layer type is not defined.");
-			throw std::runtime_error("The CNN layer type is not defined");
+			throw std::invalid_argument("The CNN layer type is not defined");
 			break;
 		}
 	}

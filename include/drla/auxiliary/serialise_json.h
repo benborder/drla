@@ -88,7 +88,9 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 NLOHMANN_JSON_SERIALIZE_ENUM(
 	LayerType,
 	{
+		{LayerType::kInvalid, "Invalid"},
 		{LayerType::kConv2d, "Conv2d"},
+		{LayerType::kConvTranspose2d, "ConvTranspose2d"},
 		{LayerType::kBatchNorm2d, "BatchNorm2d"},
 		{LayerType::kMaxPool2d, "MaxPool2d"},
 		{LayerType::kAvgPool2d, "AvgPool2d"},
