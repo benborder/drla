@@ -166,6 +166,12 @@ void Agent::run_episode(Model* model, const State& initial_state, int env, RunOp
 	step_data.step = 0;
 	step_data.env_data = environment->reset(initial_state);
 	step_data.predict_result.action = torch::zeros(env_config.action_space.shape);
+	auto state_shape = model->get_state_shape();
+	for (auto state : state_shape)
+	{
+		step_data.predict_result.state.push_back(torch::zeros({1, state}, devices_.front()));
+	}
+
 	step_data.reward = step_data.env_data.reward.clone();
 
 	auto agent_reset_config = agent_callback_->env_reset(step_data);
@@ -189,11 +195,15 @@ void Agent::run_episode(Model* model, const State& initial_state, int env, RunOp
 
 	for (int step = 0; step < options.max_steps; step++)
 	{
-		auto observation = step_data.env_data.observation;
-		for (auto& obs : observation) { obs = obs.unsqueeze(0).to(devices_.front()); }
+		ModelInput input;
+		input.deterministic = options.deterministic;
+		input.prev_output = step_data.predict_result;
+		input.observations = step_data.env_data.observation;
+		for (auto& obs : input.observations) { obs = obs.unsqueeze(0).to(devices_.front()); }
 
 		step_data.step = step;
-		step_data.predict_result = model->predict(observation, options.deterministic);
+
+		step_data.predict_result = model->predict(input);
 		step_data.env_data = environment->step(step_data.predict_result.action);
 		step_data.reward = step_data.env_data.reward.clone();
 		if (base_config_.rewards.reward_clamp_min != 0)
@@ -227,27 +237,32 @@ void Agent::run_episode(Model* model, const State& initial_state, int env, RunOp
 	}
 }
 
-PredictOutput Agent::predict_action(const EnvStepData& env_data, bool deterministic)
+PredictOutput Agent::predict_action(const std::vector<StepData>& step_history, bool deterministic)
 {
+	if (step_history.empty())
+	{
+		spdlog::error("'step_history' must include at least one element with the most recent environment observation!");
+		throw std::invalid_argument("step_history must not be empty");
+	}
+
 	if (model_ == nullptr)
 	{
 		spdlog::error("No model loaded! Call 'load_model()' at least once before 'predict_action()' is called.");
 		throw std::runtime_error("No model loaded!");
 	}
 
+	auto& last_step = step_history.back();
+
 	torch::NoGradGuard no_grad;
 
 	Observations observations;
-	for (auto& obs : env_data.observation) { observations.push_back(obs.unsqueeze(0).to(devices_.front())); }
+	for (auto& obs : last_step.env_data.observation) { observations.push_back(obs.unsqueeze(0).to(devices_.front())); }
 
-	return model_->predict(env_data.observation, deterministic);
-}
-
-PredictOutput
-Agent::predict_action([[maybe_unused]] const std::vector<StepData>& step_history, [[maybe_unused]] bool deterministic)
-{
-	spdlog::error("The agent type does not support `predict_action()` unless it has a history of previous step data.");
-	throw std::runtime_error("Unsupported agent functionality");
+	ModelInput input;
+	input.deterministic = deterministic;
+	input.observations = last_step.env_data.observation;
+	input.prev_output = last_step.predict_result;
+	return model_->predict(input);
 }
 
 void Agent::reset()

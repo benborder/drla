@@ -534,6 +534,7 @@ void from_json(const nlohmann::json& json, ActorCriticConfig& actor_critic)
 	actor_critic.critic << optional_input{json, "critic"};
 	actor_critic.policy_action_output << optional_input{json, "policy_action_output"};
 	actor_critic.predict_values << optional_input{json, "predict_values"};
+	actor_critic.gru_hidden_size << optional_input{json, "gru_hidden_size"};
 }
 
 void to_json(nlohmann::json& json, const ActorCriticConfig& actor_critic)
@@ -547,6 +548,7 @@ void to_json(nlohmann::json& json, const ActorCriticConfig& actor_critic)
 	json["critic"] = actor_critic.critic;
 	json["policy_action_output"] = actor_critic.policy_action_output;
 	json["predict_values"] = actor_critic.predict_values;
+	json["gru_hidden_size"] = actor_critic.gru_hidden_size;
 }
 
 void from_json(const nlohmann::json& json, SoftActorCriticConfig& sac)
@@ -559,6 +561,7 @@ void from_json(const nlohmann::json& json, SoftActorCriticConfig& sac)
 	sac.n_critics << optional_input{json, "n_critics"};
 	sac.policy_action_output << optional_input{json, "policy_action_output"};
 	sac.predict_values << optional_input{json, "predict_values"};
+	sac.gru_hidden_size << optional_input{json, "gru_hidden_size"};
 }
 
 void to_json(nlohmann::json& json, const SoftActorCriticConfig& sac)
@@ -572,6 +575,7 @@ void to_json(nlohmann::json& json, const SoftActorCriticConfig& sac)
 	json["n_critics"] = sac.n_critics;
 	json["policy_action_output"] = sac.policy_action_output;
 	json["predict_values"] = sac.predict_values;
+	json["gru_hidden_size"] = sac.gru_hidden_size;
 }
 
 void from_json(const nlohmann::json& json, QNetModelConfig& dqn_model)
@@ -579,6 +583,7 @@ void from_json(const nlohmann::json& json, QNetModelConfig& dqn_model)
 	from_json(json, static_cast<CommonModelConfig&>(dqn_model));
 	dqn_model.feature_extractor << required_input{json, "feature_extractor"};
 	dqn_model.q_net << required_input{json, "q_net"};
+	dqn_model.gru_hidden_size << optional_input{json, "gru_hidden_size"};
 }
 
 void to_json(nlohmann::json& json, const QNetModelConfig& dqn_model)
@@ -587,6 +592,7 @@ void to_json(nlohmann::json& json, const QNetModelConfig& dqn_model)
 	to_json(json, static_cast<const CommonModelConfig&>(dqn_model));
 	json["feature_extractor"] = dqn_model.feature_extractor;
 	json["q_net"] = dqn_model.q_net;
+	json["gru_hidden_size"] = dqn_model.gru_hidden_size;
 }
 
 void from_json(const nlohmann::json& json, DynamicsNetworkConfig& dyn_net)

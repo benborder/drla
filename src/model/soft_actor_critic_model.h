@@ -18,9 +18,10 @@ namespace drla
 
 struct ActorOutput
 {
-	torch::Tensor actions;
+	torch::Tensor action;
 	torch::Tensor actions_pi;
 	torch::Tensor log_prob;
+	std::vector<torch::Tensor> state;
 };
 
 class SoftActorCriticModel : public Model
@@ -29,11 +30,15 @@ public:
 	SoftActorCriticModel(const Config::ModelConfig& config, const EnvironmentConfiguration& env_config, int value_shape);
 	SoftActorCriticModel(const SoftActorCriticModel& other, const c10::optional<torch::Device>& device);
 
-	PredictOutput predict(const Observations& observations, bool deterministic = false) override;
+	PredictOutput predict(const ModelInput& input) override;
 
-	ActorOutput action_output(const Observations& observations);
-	std::vector<torch::Tensor> critic(const Observations& observations, const torch::Tensor& actions);
-	std::vector<torch::Tensor> critic_target(const Observations& observations, const torch::Tensor& actions);
+	StateShapes get_state_shape() const override;
+
+	ActorOutput action_output(const Observations& observations, const HiddenStates& state);
+	std::vector<torch::Tensor>
+	critic(const Observations& observations, const torch::Tensor& actions, const HiddenStates& state);
+	std::vector<torch::Tensor>
+	critic_target(const Observations& observations, const torch::Tensor& actions, const HiddenStates& state);
 
 	void update(double tau);
 
@@ -49,19 +54,30 @@ public:
 	std::shared_ptr<torch::nn::Module> clone(const c10::optional<torch::Device>& device = c10::nullopt) const override;
 
 private:
+	struct CriticModules
+	{
+		FeatureExtractor feature_extractor_ = nullptr;
+		torch::nn::GRUCell grucell_ = nullptr;
+		FCBlock critic_ = nullptr;
+	};
+
+	std::tuple<std::vector<torch::Tensor>, std::vector<torch::Tensor>> critic_values(
+		std::vector<CriticModules>& critics,
+		const Observations& observations,
+		const torch::Tensor& actions,
+		const torch::Tensor& features,
+		const HiddenStates& state);
+
+private:
 	const Config::SoftActorCriticConfig config_;
 	const int value_shape_;
 	const ActionSpace action_space_;
+	const bool use_gru_;
 
 	FeatureExtractor feature_extractor_actor_;
+	torch::nn::GRUCell grucell_;
 	FCBlock actor_;
 	PolicyActionOutput policy_action_output_;
-
-	struct CriticModules
-	{
-		FeatureExtractor feature_extractor_;
-		FCBlock critic_;
-	};
 
 	std::vector<CriticModules> critics_;
 	std::vector<CriticModules> critic_targets_;

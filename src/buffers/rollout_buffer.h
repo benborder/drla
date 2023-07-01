@@ -22,6 +22,7 @@ public:
 		int n_envs,
 		const EnvironmentConfiguration& env_config,
 		int reward_shape,
+		StateShapes state_shape,
 		torch::Tensor gamma,
 		torch::Tensor gae_lambda,
 		torch::Device device);
@@ -44,6 +45,9 @@ public:
 	torch::Tensor get_advantages() const;
 	torch::Tensor get_action_log_probs() const;
 	torch::Tensor get_actions() const;
+	HiddenStates get_states() const;
+	HiddenStates get_states(int step) const;
+	HiddenStates get_states(int step, int env) const;
 
 	void compute_returns_and_advantage(const torch::Tensor& last_values);
 	void prepare_next_batch();
@@ -63,6 +67,7 @@ private:
 	torch::Tensor action_log_probs_;
 	torch::Tensor actions_;
 	torch::Tensor episode_non_terminal_;
+	HiddenStates states_;
 
 	torch::Tensor gamma_;
 	torch::Tensor gae_lambda_;

@@ -53,7 +53,7 @@ std::vector<UpdateResult> PPO::update(int timestep)
 		auto mini_batch_buffer = buffer_.get(config_.num_mini_batch);
 		for (const auto& mini_batch : mini_batch_buffer)
 		{
-			auto eval_result = model_->evaluate_actions(mini_batch.observations, mini_batch.actions);
+			auto eval_result = model_->evaluate_actions(mini_batch.observations, mini_batch.actions, mini_batch.states);
 			total_entropy_loss += eval_result.dist_entropy.item<float>();
 
 			auto advantages = mini_batch.advantages;

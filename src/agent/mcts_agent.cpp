@@ -408,13 +408,6 @@ void MCTSAgent::run(const std::vector<State>& initial_states, RunOptions options
 	threadpool.wait_queue_empty();
 }
 
-PredictOutput
-MCTSAgent::predict_action([[maybe_unused]] const EnvStepData& env_data, [[maybe_unused]] bool deterministic)
-{
-	spdlog::error("The agent type does not support `predict_action()` unless it has a history of previous step data.");
-	throw std::runtime_error("Unsupported agent functionality");
-}
-
 PredictOutput MCTSAgent::predict_action(const std::vector<StepData>& step_history, bool deterministic)
 {
 	torch::NoGradGuard no_grad;

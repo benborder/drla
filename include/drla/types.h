@@ -45,6 +45,10 @@ using Observations = std::vector<torch::Tensor>;
 using ObservationShapes = std::vector<std::vector<int64_t>>;
 /// @brief The data type of each. For example, float, int, bool etc.
 using ObservationDataTypes = std::vector<torch::ScalarType>;
+/// @brief The hidden states for recurrent models
+using HiddenStates = std::vector<torch::Tensor>;
+/// @brief The shape of the models internal state
+using StateShapes = std::vector<int64_t>;
 /// @brief The type of rewards of the environment
 using RewardTypes = std::vector<std::string>;
 /// @brief The list of discrete actions available to perform in the environment.
@@ -126,7 +130,34 @@ struct PredictOutput
 	// The reward from model prediction (for supported models)
 	torch::Tensor reward = {};
 	// The predicted state (from supported models)
-	std::vector<torch::Tensor> state = {};
+	HiddenStates state = {};
+};
+
+/// @brief The input for the agent's model prediction
+struct ModelInput
+{
+	// The input observations to pass to the model. The observations must be on the same device as the model.
+	Observations observations;
+	// Previous model output
+	PredictOutput prev_output = {};
+	// Use a deterministic forward pass through the model to determine the action if true. Otherwise a stochastic policy
+	// gradient is used to determine the action. This option is only relevant for policy gradient based models.
+	bool deterministic = true;
+};
+
+/// @brief A batch sampled from a buffer
+struct Batch
+{
+	// episode id and episode step index
+	std::vector<std::pair<int, int>> indicies;
+	Observations observation;
+	torch::Tensor reward;
+	torch::Tensor values;
+	torch::Tensor policy;
+	torch::Tensor action;
+	torch::Tensor non_terminal;
+	torch::Tensor weight;
+	torch::Tensor gradient_scale;
 };
 
 /// @brief Training update result data
@@ -177,7 +208,7 @@ struct PredictInput
 	torch::Tensor action = {};
 };
 
-/// @brief Output data from a single step in an environment
+/// @brief Output agent/model data from a single step in an environment
 struct StepData
 {
 	// The index of environment the step is executed in

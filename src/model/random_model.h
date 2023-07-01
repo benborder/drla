@@ -19,7 +19,9 @@ public:
 	RandomModel(const Config::ModelConfig& config, const ActionSpace& action_space, int value_shape);
 	RandomModel(const RandomModel& other, const c10::optional<torch::Device>& device);
 
-	PredictOutput predict(const Observations& observations, bool deterministic = true) override;
+	PredictOutput predict(const ModelInput& input) override;
+
+	StateShapes get_state_shape() const override;
 
 	void save(const std::filesystem::path& path) override;
 	void load(const std::filesystem::path& path) override;

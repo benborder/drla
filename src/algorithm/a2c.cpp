@@ -45,7 +45,8 @@ std::vector<UpdateResult> A2C::update(int timestep)
 		observations_shape[0] = -1;
 		observations[i] = observations[i].narrow(0, 0, n_steps).view(observations_shape).to(buffer_.get_device());
 	}
-	auto evaluate_result = model_->evaluate_actions(observations, buffer_.get_actions().view({-1, action_shape}));
+	auto evaluate_result =
+		model_->evaluate_actions(observations, buffer_.get_actions().view({-1, action_shape}), buffer_.get_states());
 	observations.clear();
 	auto values = evaluate_result.values.view({n_steps, n_envs, evaluate_result.values.size(1)});
 	auto action_log_probs = evaluate_result.action_log_probs.view({n_steps, n_envs, 1});

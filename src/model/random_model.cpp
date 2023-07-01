@@ -23,13 +23,18 @@ RandomModel::RandomModel(const RandomModel& other, const c10::optional<torch::De
 {
 }
 
-PredictOutput RandomModel::predict(const Observations& observations, [[maybe_unused]] bool deterministic)
+PredictOutput RandomModel::predict(const ModelInput& input)
 {
 	// Create an output distribution to select a uniformly random action
-	auto envs = observations.front().size(0);
-	auto dist = policy_action_output_(torch::ones({envs, 1}, observations.front().device()));
+	auto envs = input.observations.front().size(0);
+	auto dist = policy_action_output_(torch::ones({envs, 1}, input.observations.front().device()));
 	auto action = dist->sample().unsqueeze(-1);
 	return {action, torch::zeros({envs, value_shape_})};
+}
+
+StateShapes RandomModel::get_state_shape() const
+{
+	return {};
 }
 
 void RandomModel::save([[maybe_unused]] const std::filesystem::path& path)

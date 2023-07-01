@@ -274,6 +274,8 @@ struct ActorCriticConfig : public CommonModelConfig
 	PolicyActionOutputConfig policy_action_output;
 	// Indicates if the a forward pass should be performed with the critic to estimate the return values
 	bool predict_values = false;
+	// The number of units to use for the GRU cell. 0 Disables the cell.
+	int gru_hidden_size = 0;
 };
 
 /// @brief Configuration for the of policy Q network model
@@ -283,6 +285,8 @@ struct QNetModelConfig : public CommonModelConfig
 	FeatureExtractorConfig feature_extractor;
 	// The Q network fully connected block configuration
 	FCConfig q_net = {};
+	// The number of units to use for the GRU cell. 0 Disables the cell.
+	int gru_hidden_size = 0;
 };
 
 /// @brief Configuration for the off policy soft actor critic model
@@ -304,6 +308,8 @@ struct SoftActorCriticConfig : public CommonModelConfig
 	size_t n_critics = 2;
 	// Indicates if the a forward pass should be performed with the critic to estimate the return values
 	bool predict_values = false;
+	// The number of units to use for the GRU cell. 0 Disables the cell.
+	int gru_hidden_size = 0;
 };
 
 /// @brief MuZero dynamics network configuration

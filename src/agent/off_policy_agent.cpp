@@ -119,7 +119,8 @@ void OffPolicyAgent::train()
 	}
 	torch::Tensor gamma = torch::from_blob(config_gamma.data(), {reward_shape}).to(devices_.front());
 
-	ReplayBuffer buffer(train_config.buffer_size, config_.env_count, env_config, reward_shape, devices_.front());
+	ReplayBuffer buffer(
+		train_config.buffer_size, config_.env_count, env_config, reward_shape, model->get_state_shape(), devices_.front());
 
 	std::unique_ptr<Algorithm> algorithm;
 
@@ -154,6 +155,7 @@ void OffPolicyAgent::train()
 	std::vector<bool> raw_capture;
 	raw_capture.resize(config_.env_count, false);
 
+	auto state_shape = model->get_state_shape();
 	// Get first observation and state for all envs
 	for (int env = 0; env < config_.env_count; env++)
 	{
@@ -162,6 +164,10 @@ void OffPolicyAgent::train()
 		reset_data.step = 0;
 		reset_data.env_data = std::move(envs_data[env]);
 		reset_data.predict_result.action = torch::zeros(env_config.action_space.shape);
+		for (auto state : state_shape)
+		{
+			reset_data.predict_result.state.push_back(torch::zeros({1, state}, devices_.front()));
+		}
 		reset_data.reward = reset_data.env_data.reward.clone();
 		auto agent_reset_config = agent_callback_->env_reset(reset_data);
 		raw_capture[env] = agent_reset_config.raw_capture;
@@ -182,12 +188,15 @@ void OffPolicyAgent::train()
 					StepData step_data;
 					step_data.env = env;
 					step_data.env_data.observation = buffer.get_observations_head(env);
+					step_data.predict_result.action = buffer.get_actions_head(env);
+					step_data.predict_result.state = buffer.get_state_head(env);
 					for (int step = 0; step < train_config.horizon_steps; step++)
 					{
 						step_data.step = step;
 						{
 							torch::NoGradGuard no_grad;
-							step_data.predict_result = model->predict(step_data.env_data.observation, false);
+							step_data.predict_result =
+								model->predict({step_data.env_data.observation, step_data.predict_result, false});
 						}
 						step_data.env_data = environment->step(step_data.predict_result.action);
 
@@ -251,6 +260,8 @@ void OffPolicyAgent::train()
 		{
 			TimeStepData timestep_data;
 			timestep_data.observations = buffer.get_observations_head();
+			timestep_data.predict_results.action = buffer.get_actions_head();
+			timestep_data.predict_results.state = buffer.get_state_head();
 			timestep_data.rewards = torch::empty({config_.env_count, reward_shape});
 			timestep_data.states.resize(config_.env_count);
 			bool stop = false;
@@ -259,7 +270,8 @@ void OffPolicyAgent::train()
 				timestep_data.step = step;
 				{
 					torch::NoGradGuard no_grad;
-					timestep_data.predict_results = model->predict(timestep_data.observations, false);
+					timestep_data.predict_results =
+						model->predict({timestep_data.observations, timestep_data.predict_results, false});
 				}
 
 				// Dispatch each environment on a seperate thread and step it

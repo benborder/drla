@@ -18,6 +18,7 @@ struct MiniBatch
 	torch::Tensor returns;
 	torch::Tensor old_log_probs;
 	torch::Tensor advantages;
+	std::vector<torch::Tensor> states;
 };
 
 class MiniBatchBuffer

@@ -90,8 +90,10 @@ public:
 	MuZeroModel(const Config::ModelConfig& config, const EnvironmentConfiguration& env_config, int reward_shape);
 	MuZeroModel(const MuZeroModel& other, const c10::optional<torch::Device>& device);
 
-	PredictOutput predict(const Observations& observations, bool deterministic = true) override;
+	PredictOutput predict(const ModelInput& input) override;
 	PredictOutput predict(const PredictOutput& previous_output, bool deterministic = true) override;
+
+	StateShapes get_state_shape() const override;
 
 	torch::Tensor support_to_scalar(torch::Tensor logits) override;
 	torch::Tensor scalar_to_support(torch::Tensor x) override;

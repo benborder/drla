@@ -15,12 +15,21 @@ SoftActorCriticModel::SoftActorCriticModel(
 		: config_(std::get<Config::SoftActorCriticConfig>(config))
 		, value_shape_(value_shape)
 		, action_space_(env_config.action_space)
+		, use_gru_(config_.gru_hidden_size > 0)
 		, feature_extractor_actor_(config_.feature_extractor, env_config.observation_shapes)
+		, grucell_(nullptr)
 		, actor_(nullptr)
 		, policy_action_output_(nullptr)
 {
 	register_module("feature_extractor_actor", feature_extractor_actor_);
-	actor_ = register_module("actor", FCBlock(config_.actor, "actor", feature_extractor_actor_->get_output_size()));
+	int input_size = feature_extractor_actor_->get_output_size();
+	if (use_gru_)
+	{
+		grucell_ =
+			register_module("grucell", torch::nn::GRUCell(torch::nn::GRUCellOptions(input_size, config_.gru_hidden_size)));
+		input_size = config_.gru_hidden_size;
+	}
+	actor_ = register_module("actor", FCBlock(config_.actor, "actor", input_size));
 
 	policy_action_output_ = register_module(
 		"policy_action_output",
@@ -28,27 +37,35 @@ SoftActorCriticModel::SoftActorCriticModel(
 
 	auto actions = std::accumulate(action_space_.shape.begin(), action_space_.shape.end(), 0);
 	auto make_critic = [&](std::string postfix) {
-		CriticModules cm{nullptr, nullptr};
+		CriticModules cm;
+		int cm_input_size;
 		if (config_.shared_feature_extractor)
 		{
 			cm.feature_extractor_ = feature_extractor_actor_;
+			cm_input_size = cm.feature_extractor_->get_output_size();
 		}
 		else
 		{
 			cm.feature_extractor_ = register_module(
 				"feature_extractor_critic_" + postfix,
 				FeatureExtractor(config_.feature_extractor, env_config.observation_shapes));
+			cm_input_size = cm.feature_extractor_->get_output_size();
+			if (use_gru_)
+			{
+				cm.grucell_ = register_module(
+					"grucell" + postfix, torch::nn::GRUCell(torch::nn::GRUCellOptions(cm_input_size, config_.gru_hidden_size)));
+				cm_input_size = config_.gru_hidden_size;
+			}
 		}
 
-		int critic_input = cm.feature_extractor_->get_output_size();
 		int critic_output = actions * value_shape_;
 		if (!is_action_discrete(action_space_))
 		{
-			critic_input += actions;
+			cm_input_size += actions;
 			critic_output = value_shape_;
 		}
 		auto name = "critic_" + postfix;
-		cm.critic_ = register_module(name, FCBlock(config_.critic, name, critic_input, critic_output));
+		cm.critic_ = register_module(name, FCBlock(config_.critic, name, cm_input_size, critic_output));
 		return cm;
 	};
 	for (size_t i = 0; i < config_.n_critics; ++i)
@@ -76,19 +93,24 @@ SoftActorCriticModel::SoftActorCriticModel(
 		: config_(other.config_)
 		, value_shape_(other.value_shape_)
 		, action_space_(other.action_space_)
-		, feature_extractor_actor_(nullptr)
-		, actor_(nullptr)
-		, policy_action_output_(nullptr)
+		, use_gru_(other.use_gru_)
+		, feature_extractor_actor_(
+				std::dynamic_pointer_cast<FeatureExtractorImpl>(other.feature_extractor_actor_->clone(device)))
+		, grucell_(use_gru_ ? std::dynamic_pointer_cast<torch::nn::GRUCellImpl>(other.grucell_->clone(device)) : nullptr)
+		, actor_(std::dynamic_pointer_cast<FCBlockImpl>(other.actor_->clone(device)))
+		, policy_action_output_(
+				std::dynamic_pointer_cast<PolicyActionOutputImpl>(other.policy_action_output_->clone(device)))
 {
-	feature_extractor_actor_ =
-		std::dynamic_pointer_cast<FeatureExtractorImpl>(other.feature_extractor_actor_->clone(device));
 	register_module("feature_extractor_actor", feature_extractor_actor_);
-
-	policy_action_output_ = std::dynamic_pointer_cast<PolicyActionOutputImpl>(other.policy_action_output_->clone(device));
 	register_module("policy_action_output", policy_action_output_);
+	register_module("actor", actor_);
+	if (use_gru_)
+	{
+		register_module("grucell", grucell_);
+	}
 
 	auto make_critic = [&](const CriticModules& other, std::string postfix) {
-		CriticModules cm{nullptr, nullptr};
+		CriticModules cm;
 		if (config_.shared_feature_extractor)
 		{
 			cm.feature_extractor_ = feature_extractor_actor_;
@@ -97,6 +119,11 @@ SoftActorCriticModel::SoftActorCriticModel(
 		{
 			cm.feature_extractor_ = std::dynamic_pointer_cast<FeatureExtractorImpl>(other.feature_extractor_->clone(device));
 			register_module("feature_extractor_actor" + postfix, cm.feature_extractor_);
+			if (use_gru_)
+			{
+				cm.grucell_ = std::dynamic_pointer_cast<torch::nn::GRUCellImpl>(other.grucell_->clone(device));
+				register_module("grucell" + postfix, cm.grucell_);
+			}
 		}
 
 		cm.critic_ = std::dynamic_pointer_cast<FCBlockImpl>(other.critic_->clone(device));
@@ -110,133 +137,159 @@ SoftActorCriticModel::SoftActorCriticModel(
 		critics_.push_back(make_critic(other.critics_[i], "critic_" + std::to_string(i)));
 		critic_targets_.push_back(make_critic(other.critic_targets_[i], "critic_target_" + std::to_string(i)));
 	}
-
-	actor_ = std::dynamic_pointer_cast<FCBlockImpl>(other.actor_->clone(device));
-	register_module("actor", actor_);
 }
 
-PredictOutput SoftActorCriticModel::predict(const Observations& observations, [[maybe_unused]] bool deterministic)
+PredictOutput SoftActorCriticModel::predict(const ModelInput& input)
 {
-	torch::Tensor features = flatten(feature_extractor_actor_(observations));
-	auto latent_pi = actor_(features);
-	auto dist = policy_action_output_(latent_pi);
-	auto action = dist->sample();
+	torch::Tensor features = flatten(feature_extractor_actor_(input.observations));
+	PredictOutput output;
+	if (use_gru_)
+	{
+		features = grucell_(features, input.prev_output.state.at(0));
+		output.state = {features};
+	}
+	auto dist = policy_action_output_(actor_(features));
+
+	output.action = dist->sample();
 
 	if (is_action_discrete(action_space_))
 	{
-		action = action.unsqueeze(-1);
+		output.action.unsqueeze_(-1);
 	}
 
-	torch::Tensor value;
-	if (config_.predict_values)
+	if (config_.predict_values || (use_gru_ && !config_.shared_feature_extractor && is_training()))
 	{
-		std::vector<torch::Tensor> qvalues;
-		for (auto& critic_module : critics_)
+		torch::NoGradGuard no_grad_guard;
+		auto [qvalues, state] =
+			critic_values(critics_, input.observations, dist->get_action_output(), features, input.prev_output.state);
+		if (use_gru_)
 		{
-			torch::NoGradGuard no_grad_guard;
-			torch::Tensor q_value_input = features;
-			if (!config_.shared_feature_extractor)
-			{
-				q_value_input = flatten(critic_module.feature_extractor_(observations));
-			}
-			if (!is_action_discrete(action_space_))
-			{
-				q_value_input = torch::cat({q_value_input, dist->get_action_output()}, 1);
-			}
-			qvalues.push_back(critic_module.critic_(q_value_input));
+			output.state.insert(output.state.end(), state.begin(), state.end());
 		}
 
-		value = std::get<0>(torch::min(torch::stack(qvalues), 0));
+		output.values = std::get<0>(torch::min(torch::stack(qvalues), 0));
 		// Select the value based on the action (rather than returning all qvalues)
-		value = value.gather(1, action.to(torch::kLong));
+		output.values = output.values.gather(1, output.action.to(torch::kLong));
 	}
 	else
 	{
-		value = torch::zeros({action.size(0), value_shape_});
+		output.values = torch::zeros({output.action.size(0), value_shape_});
 	}
 
-	return {action, value};
+	return output;
 }
 
-ActorOutput SoftActorCriticModel::action_output(const Observations& observations)
+StateShapes SoftActorCriticModel::get_state_shape() const
+{
+	if (use_gru_)
+	{
+		StateShapes shape = {config_.gru_hidden_size};
+		for (size_t i = 0; i < critics_.size(); ++i) { shape.push_back(config_.gru_hidden_size); }
+		return shape;
+	}
+	else
+	{
+		return {};
+	}
+}
+
+ActorOutput SoftActorCriticModel::action_output(const Observations& observations, const HiddenStates& state)
 {
 	torch::Tensor features = flatten(feature_extractor_actor_(observations));
+	if (grucell_)
+	{
+		features = grucell_(features, state.at(0));
+	}
 	auto latent_pi = actor_(features);
 	auto dist = policy_action_output_(latent_pi);
-	auto action = dist->sample();
+	ActorOutput output;
+	output.action = dist->sample();
+	output.state = {features};
 	torch::Tensor log_probs;
 	if (is_action_discrete(action_space_))
 	{
 		auto logits = dist->get_action_output();
-		log_probs = torch::log_softmax(logits, -1);
+		output.log_prob = torch::log_softmax(logits, -1);
 	}
 	else
 	{
-		log_probs = dist->action_log_prob(action).sum(-1, true);
+		output.log_prob = dist->action_log_prob(output.action).sum(-1, true);
 	}
-	return {action.unsqueeze(-1), dist->get_action_output(), log_probs};
+	output.action.unsqueeze_(-1);
+	output.actions_pi = dist->get_action_output();
+	return output;
 }
 
-std::vector<torch::Tensor> SoftActorCriticModel::critic(const Observations& observations, const torch::Tensor& actions)
+std::vector<torch::Tensor>
+SoftActorCriticModel::critic(const Observations& observations, const torch::Tensor& actions, const HiddenStates& state)
 {
-	std::vector<torch::Tensor> qvalues;
 	torch::Tensor features;
 	if (config_.shared_feature_extractor)
 	{
 		torch::NoGradGuard no_grad_guard;
 		features = flatten(critics_.front().feature_extractor_(observations));
+		if (use_gru_)
+		{
+			features = grucell_(features, state.at(0));
+		}
 	}
-	for (auto& critic : critics_)
-	{
-		if (!config_.shared_feature_extractor)
-		{
-			features = flatten(critic.feature_extractor_(observations));
-		}
-		torch::Tensor q_value_input;
-		if (is_action_discrete(action_space_))
-		{
-			q_value_input = features;
-		}
-		else
-		{
-			q_value_input = torch::cat({features, actions}, 1);
-		}
-
-		qvalues.push_back(critic.critic_(q_value_input));
-	}
+	auto [qvalues, _] = critic_values(critics_, observations, actions, features, state);
 	return qvalues;
 }
 
-std::vector<torch::Tensor>
-SoftActorCriticModel::critic_target(const Observations& observations, const torch::Tensor& actions)
+std::vector<torch::Tensor> SoftActorCriticModel::critic_target(
+	const Observations& observations, const torch::Tensor& actions, const HiddenStates& state)
 {
 	torch::NoGradGuard no_grad_guard;
-	std::vector<torch::Tensor> qvalues;
 	torch::Tensor features;
 	if (config_.shared_feature_extractor)
 	{
 		features = flatten(critic_targets_.front().feature_extractor_(observations));
+		if (use_gru_)
+		{
+			features = grucell_(features, state.at(0));
+		}
 	}
-	for (auto& critic : critic_targets_)
+	auto [qvalues, _] = critic_values(critics_, observations, actions, features, state);
+	return qvalues;
+}
+
+std::tuple<std::vector<torch::Tensor>, std::vector<torch::Tensor>> SoftActorCriticModel::critic_values(
+	std::vector<CriticModules>& critics,
+	const Observations& observations,
+	const torch::Tensor& actions,
+	const torch::Tensor& features,
+	const HiddenStates& state)
+{
+	std::vector<torch::Tensor> qvalues;
+	std::vector<torch::Tensor> output_state;
+	for (size_t c = 0, len = critics.size(); c < len; ++c)
 	{
+		auto& critic_module = critics[c];
+
+		torch::Tensor q_value_input = features;
 		if (!config_.shared_feature_extractor)
 		{
-			features = flatten(critic.feature_extractor_(observations));
+			q_value_input = flatten(critic_module.feature_extractor_(observations));
+			if (use_gru_)
+			{
+				q_value_input = critic_module.grucell_(q_value_input, state.at(c + 1));
+				output_state.push_back(q_value_input);
+			}
 		}
-		torch::Tensor q_value_input;
-		if (is_action_discrete(action_space_))
+		if (!is_action_discrete(action_space_))
 		{
-			q_value_input = features;
+			q_value_input = torch::cat({q_value_input, actions}, 1);
 		}
-		else
-		{
-			q_value_input = torch::cat({features, actions}, 1);
-		}
-
-		qvalues.push_back(critic.critic_(q_value_input));
+		qvalues.push_back(critic_module.critic_(q_value_input));
 	}
+	return {qvalues, output_state};
+}
 
-	return qvalues;
+inline void
+update_params(const std::vector<torch::Tensor>& current, const std::vector<torch::Tensor>& target, double tau)
+{
+	for (size_t i = 0; i < current.size(); i++) { target[i].mul_(1.0 - tau).add_(current[i], tau); }
 }
 
 void SoftActorCriticModel::update(double tau)
@@ -244,20 +297,16 @@ void SoftActorCriticModel::update(double tau)
 	torch::NoGradGuard no_grad;
 	for (size_t i = 0; i < config_.n_critics; ++i)
 	{
-		const auto current_params = critics_[i].critic_->parameters();
-		auto target_params = critic_targets_[i].critic_->parameters();
-
-		for (size_t p = 0; p < current_params.size(); ++p)
+		auto& current = critics_[i];
+		auto& target = critic_targets_[i];
+		update_params(current.critic_->parameters(), target.critic_->parameters(), tau);
+		if (!config_.shared_feature_extractor)
 		{
-			target_params[p].mul_(1.0 - tau).add_(current_params[p], tau);
-		}
-
-		const auto feature_current_params = critics_[i].feature_extractor_->parameters();
-		auto feature_target_params = critic_targets_[i].feature_extractor_->parameters();
-
-		for (size_t p = 0; p < feature_current_params.size(); ++p)
-		{
-			feature_target_params[p].mul_(1.0 - tau).add_(feature_current_params[p], tau);
+			update_params(current.feature_extractor_->parameters(), target.feature_extractor_->parameters(), tau);
+			if (use_gru_)
+			{
+				update_params(current.grucell_->parameters(), target.grucell_->parameters(), tau);
+			}
 		}
 	}
 }
@@ -267,11 +316,19 @@ void SoftActorCriticModel::train(bool train)
 	feature_extractor_actor_->train(train);
 	actor_->train(train);
 	policy_action_output_->train(train);
+	if (use_gru_)
+	{
+		grucell_->train(train);
+	}
 	for (auto& critic : critics_)
 	{
 		if (!config_.shared_feature_extractor)
 		{
 			critic.feature_extractor_->train(train);
+			if (use_gru_)
+			{
+				critic.grucell_->train(train);
+			}
 		}
 		critic.critic_->train(train);
 	}
@@ -281,6 +338,10 @@ void SoftActorCriticModel::train(bool train)
 		if (!config_.shared_feature_extractor)
 		{
 			critic.feature_extractor_->train(false);
+			if (use_gru_)
+			{
+				critic.grucell_->train(false);
+			}
 		}
 		critic.critic_->train(false);
 	}
@@ -305,6 +366,11 @@ std::vector<torch::Tensor> SoftActorCriticModel::actor_parameters(bool recursive
 
 	const auto feature_actor_params = feature_extractor_actor_->parameters(recursive);
 	params.insert(params.end(), feature_actor_params.begin(), feature_actor_params.end());
+	if (use_gru_)
+	{
+		const auto grucell_params = grucell_->parameters(recursive);
+		params.insert(params.end(), grucell_params.begin(), grucell_params.end());
+	}
 	const auto actor_params = actor_->parameters(recursive);
 	params.insert(params.end(), actor_params.begin(), actor_params.end());
 	const auto policy_action_output_params = policy_action_output_->parameters(recursive);
@@ -323,6 +389,11 @@ std::vector<torch::Tensor> SoftActorCriticModel::critic_parameters(bool recursiv
 		{
 			const auto feature_critic_params = critic.feature_extractor_->parameters(recursive);
 			params.insert(params.end(), feature_critic_params.begin(), feature_critic_params.end());
+			if (use_gru_)
+			{
+				const auto grucell_critic_params = critic.grucell_->parameters(recursive);
+				params.insert(params.end(), grucell_critic_params.begin(), grucell_critic_params.end());
+			}
 		}
 		const auto critic_params = critic.critic_->parameters(recursive);
 		params.insert(params.end(), critic_params.begin(), critic_params.end());

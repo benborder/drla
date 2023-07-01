@@ -43,12 +43,12 @@ std::vector<UpdateResult> DQN::update(int timestep)
 		torch::Tensor target_q_values;
 		{
 			torch::NoGradGuard no_grad;
-			auto next_q_values = model_->forward_target(replay_data.next_observations);
+			auto next_q_values = model_->forward_target(replay_data.next_observations, replay_data.next_state);
 			std::tie(next_q_values, std::ignore) = next_q_values.max(1);
 			next_q_values = next_q_values.reshape({-1, 1});
 			target_q_values = replay_data.rewards + replay_data.episode_non_terminal * gamma_ * next_q_values;
 		}
-		auto current_q_values = model_->forward(replay_data.observations);
+		auto current_q_values = model_->forward(replay_data.observations, replay_data.state);
 		current_q_values = torch::gather(current_q_values, 1, replay_data.actions.to(torch::kLong));
 
 		auto loss = torch::nn::functional::smooth_l1_loss(current_q_values, target_q_values);

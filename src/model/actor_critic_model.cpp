@@ -14,17 +14,19 @@ ActorCriticModel::ActorCriticModel(
 	const Config::ModelConfig& config, const EnvironmentConfiguration& env_config, int value_shape, bool predict_values)
 		: config_(std::get<Config::ActorCriticConfig>(config))
 		, predict_values_(config_.predict_values || predict_values)
+		, use_gru_(config_.gru_hidden_size > 0)
 		, action_space_(env_config.action_space)
 		, feature_extractor_(config_.feature_extractor, env_config.observation_shapes)
 		, feature_extractor_critic_(nullptr)
 		, shared_(nullptr)
 		, critic_(nullptr)
 		, actor_(nullptr)
+		, grucell_(nullptr)
 		, policy_action_output_(nullptr)
 {
 	register_module("feature_extractor", feature_extractor_);
 	int input_size = feature_extractor_->get_output_size();
-	if (config_.use_shared_extractor)
+	if (config_.use_shared_extractor || use_gru_)
 	{
 		shared_ = register_module("shared", FCBlock(config_.shared, "shared", input_size));
 		input_size = shared_->get_output_size();
@@ -33,6 +35,13 @@ ActorCriticModel::ActorCriticModel(
 	{
 		feature_extractor_critic_ = register_module(
 			"feature_extractor_critic", FeatureExtractor(config_.feature_extractor, env_config.observation_shapes));
+	}
+
+	if (use_gru_)
+	{
+		grucell_ =
+			register_module("grucell", torch::nn::GRUCell(torch::nn::GRUCellOptions(input_size, config_.gru_hidden_size)));
+		input_size = config_.gru_hidden_size;
 	}
 
 	critic_ = register_module("critic", FCBlock(config_.critic, "critic", input_size, value_shape));
@@ -60,15 +69,17 @@ ActorCriticModel::ActorCriticModel(
 ActorCriticModel::ActorCriticModel(const ActorCriticModel& other, const c10::optional<torch::Device>& device)
 		: config_(other.config_)
 		, predict_values_(other.predict_values_)
+		, use_gru_(other.use_gru_)
 		, action_space_(other.action_space_)
-		, feature_extractor_(nullptr)
+		, feature_extractor_(std::dynamic_pointer_cast<FeatureExtractorImpl>(other.feature_extractor_->clone(device)))
 		, feature_extractor_critic_(nullptr)
 		, shared_(nullptr)
-		, critic_(nullptr)
-		, actor_(nullptr)
-		, policy_action_output_(nullptr)
+		, critic_(std::dynamic_pointer_cast<FCBlockImpl>(other.critic_->clone(device)))
+		, actor_(std::dynamic_pointer_cast<FCBlockImpl>(other.actor_->clone(device)))
+		, grucell_(use_gru_ ? std::dynamic_pointer_cast<torch::nn::GRUCellImpl>(other.grucell_->clone(device)) : nullptr)
+		, policy_action_output_(
+				std::dynamic_pointer_cast<PolicyActionOutputImpl>(other.policy_action_output_->clone(device)))
 {
-	feature_extractor_ = std::dynamic_pointer_cast<FeatureExtractorImpl>(other.feature_extractor_->clone(device));
 	register_module("feature_extractor", feature_extractor_);
 
 	if (config_.use_shared_extractor)
@@ -83,79 +94,93 @@ ActorCriticModel::ActorCriticModel(const ActorCriticModel& other, const c10::opt
 		register_module("feature_extractor_critic", feature_extractor_critic_);
 	}
 
-	critic_ = std::dynamic_pointer_cast<FCBlockImpl>(other.critic_->clone(device));
 	register_module("critic", critic_);
-
-	actor_ = std::dynamic_pointer_cast<FCBlockImpl>(other.actor_->clone(device));
 	register_module("actor", actor_);
-
-	policy_action_output_ = std::dynamic_pointer_cast<PolicyActionOutputImpl>(other.policy_action_output_->clone(device));
+	if (use_gru_)
+	{
+		register_module("grucell", grucell_);
+	}
 	register_module("policy_action_output", policy_action_output_);
 }
 
-PredictOutput ActorCriticModel::predict(const Observations& observations, bool deterministic)
+PredictOutput ActorCriticModel::predict(const ModelInput& input)
 {
-	auto features = flatten(feature_extractor_(observations));
-	torch::Tensor hidden;
-	torch::Tensor values;
-	if (config_.use_shared_extractor)
+	torch::Tensor features = flatten(feature_extractor_(input.observations));
+	PredictOutput output;
+	if (config_.use_shared_extractor || use_gru_)
 	{
-		hidden = shared_(features);
+		features = shared_(features);
+		// GRU can only be used with shared extractors
+		if (use_gru_)
+		{
+			features = grucell_(features, input.prev_output.state[0]);
+			output.state = {features};
+		}
 		if (predict_values_)
 		{
-			values = critic_(hidden);
+			output.values = critic_(features);
 		}
 	}
 	else
 	{
-		hidden = features;
 		if (predict_values_)
 		{
-			values = critic_(flatten(feature_extractor_critic_(observations)));
+			output.values = critic_(flatten(feature_extractor_critic_(input.observations)));
 		}
 	}
-	auto dist = policy_action_output_(actor_(hidden));
-	auto action = dist->sample(deterministic);
+	auto dist = policy_action_output_(actor_(features));
+	output.action = dist->sample(input.deterministic);
 
-	if (deterministic)
+	if (input.deterministic)
 	{
-		return {action, values};
+		return output;
 	}
 	else
 	{
-		auto action_log_probs = dist->action_log_prob(action);
+		output.action_log_probs = dist->action_log_prob(output.action);
 
 		if (is_action_discrete(action_space_))
 		{
-			action = action.unsqueeze(-1);
-			action_log_probs = action_log_probs.unsqueeze(-1);
+			output.action.unsqueeze_(-1);
+			output.action_log_probs.unsqueeze_(-1);
 		}
 		else
 		{
-			action_log_probs = action_log_probs.sum(-1, true);
+			output.action_log_probs = output.action_log_probs.sum(-1, true);
 		}
 
-		return {action, values, action_log_probs};
+		return output;
 	}
 }
 
-ActionPolicyEvaluation
-ActorCriticModel::evaluate_actions(const Observations& observations, const torch::Tensor& actions)
+StateShapes ActorCriticModel::get_state_shape() const
 {
-	auto features = flatten(feature_extractor_(observations));
-	torch::Tensor hidden;
+	if (use_gru_)
+		return {config_.gru_hidden_size};
+	else
+		return {};
+}
+
+ActionPolicyEvaluation ActorCriticModel::evaluate_actions(
+	const Observations& observations, const torch::Tensor& actions, const HiddenStates& states)
+{
+	torch::Tensor features = flatten(feature_extractor_(observations));
 	torch::Tensor values;
-	if (config_.use_shared_extractor)
+	if (config_.use_shared_extractor || use_gru_)
 	{
-		hidden = shared_(features);
-		values = critic_(hidden);
+		features = shared_(features);
+		// GRU can only be used with shared extractors
+		if (use_gru_)
+		{
+			features = grucell_(features, states[0]);
+		}
+		values = critic_(features);
 	}
 	else
 	{
-		hidden = features;
 		values = critic_(flatten(feature_extractor_critic_(observations)));
 	}
-	auto dist = policy_action_output_(actor_(hidden));
+	auto dist = policy_action_output_(actor_(features));
 
 	torch::Tensor action_log_probs;
 	if (is_action_discrete(action_space_))

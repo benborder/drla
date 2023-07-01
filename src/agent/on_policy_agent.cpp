@@ -115,7 +115,14 @@ void OnPolicyAgent::train()
 	torch::Tensor gamma = torch::from_blob(config_gamma.data(), {reward_shape}).to(devices_.front());
 
 	RolloutBuffer buffer(
-		train_config.horizon_steps, config_.env_count, env_config, reward_shape, gamma, gae_lambda, devices_.front());
+		train_config.horizon_steps,
+		config_.env_count,
+		env_config,
+		reward_shape,
+		model->get_state_shape(),
+		gamma,
+		gae_lambda,
+		devices_.front());
 
 	std::unique_ptr<Algorithm> algorithm;
 
@@ -178,13 +185,15 @@ void OnPolicyAgent::train()
 					StepData step_data;
 					step_data.env = env;
 					step_data.env_data.observation = buffer.get_observations(0, env);
+					step_data.predict_result.state = buffer.get_states(0, env);
 					for (int step = 0; step < train_config.horizon_steps; step++)
 					{
 						step_data.step = step;
 						{
 							torch::NoGradGuard no_grad;
 							for (auto& obs : step_data.env_data.observation) { obs = obs.unsqueeze(0).to(devices_.front()); }
-							step_data.predict_result = model->predict(step_data.env_data.observation, false);
+							step_data.predict_result =
+								model->predict({step_data.env_data.observation, step_data.predict_result, false});
 						}
 						step_data.env_data = environment->step(step_data.predict_result.action);
 
@@ -229,6 +238,7 @@ void OnPolicyAgent::train()
 							}
 							auto agent_reset_config = agent_callback_->env_reset(reset_data);
 							step_data.env_data.observation = reset_data.env_data.observation;
+							step_data.predict_result.state = reset_data.predict_result.state;
 							raw_capture[env] = agent_reset_config.raw_capture;
 							if (agent_reset_config.stop)
 							{
@@ -250,6 +260,7 @@ void OnPolicyAgent::train()
 			timestep_data.observations = buffer.get_observations(0);
 			timestep_data.rewards = torch::empty({config_.env_count, reward_shape});
 			timestep_data.states.resize(config_.env_count);
+			timestep_data.predict_results.state = buffer.get_states(0);
 			bool stop = false;
 			for (int step = 0; step < train_config.horizon_steps && !stop; step++)
 			{
@@ -257,7 +268,7 @@ void OnPolicyAgent::train()
 				{
 					torch::NoGradGuard no_grad;
 					auto observations = buffer.get_observations(step);
-					timestep_data.predict_results = model->predict(observations, false);
+					timestep_data.predict_results = model->predict({observations, timestep_data.predict_results, false});
 				}
 
 				// Dispatch each environment on a seperate thread and step it
@@ -272,6 +283,10 @@ void OnPolicyAgent::train()
 						step_data.predict_result.action = timestep_data.predict_results.action[env];
 						step_data.predict_result.action_log_probs = timestep_data.predict_results.action_log_probs[env];
 						step_data.predict_result.values = timestep_data.predict_results.values[env];
+						for (auto& state : timestep_data.predict_results.state)
+						{
+							step_data.predict_result.state.push_back(state[env]);
+						}
 
 						step_data.env_data = environment->step(step_data.predict_result.action);
 
@@ -312,6 +327,10 @@ void OnPolicyAgent::train()
 							}
 							auto agent_reset_config = agent_callback_->env_reset(reset_data);
 							step_data.env_data.observation = reset_data.env_data.observation;
+							for (size_t i = 0; i < reset_data.predict_result.state.size(); ++i)
+							{
+								timestep_data.predict_results.state[i][env] = reset_data.predict_result.state[i][0];
+							}
 							raw_capture[env] = agent_reset_config.raw_capture;
 							stop |= agent_reset_config.stop;
 						}
@@ -347,8 +366,11 @@ void OnPolicyAgent::train()
 		torch::Tensor last_values;
 		{
 			torch::NoGradGuard no_grad;
-			Observations obs = buffer.get_observations(-1); // get the last step observation
-			last_values = model->predict(obs).values.detach();
+			ModelInput input;
+			input.deterministic = true;
+			input.observations = buffer.get_observations(-1); // get the last step observation
+			input.prev_output.state = buffer.get_states(-1);
+			last_values = model->predict(input).values.detach();
 		}
 		buffer.compute_returns_and_advantage(last_values);
 

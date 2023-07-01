@@ -304,11 +304,11 @@ MuZeroModel::MuZeroModel(const MuZeroModel& other, const c10::optional<torch::De
 	register_module("prediction_network", prediction_network_);
 }
 
-PredictOutput MuZeroModel::predict(const Observations& observations, [[maybe_unused]] bool deterministic)
+PredictOutput MuZeroModel::predict(const ModelInput& input)
 {
 	PredictOutput output;
 
-	output.state = condense(representation_network_(observations));
+	output.state = condense(representation_network_(input.observations));
 	for (auto& state : output.state) { state = normalise(state); }
 	std::tie(output.policy, output.values) = prediction_network_(output.state);
 	output.reward = scalar_to_support(torch::zeros({output.values.size(0), 1, reward_shape_}, output.values.device()));
@@ -343,6 +343,11 @@ PredictOutput MuZeroModel::predict(const PredictOutput& previous_output, [[maybe
 	std::tie(output.policy, output.values) = prediction_network_(output.state);
 
 	return output;
+}
+
+StateShapes MuZeroModel::get_state_shape() const
+{
+	return {};
 }
 
 namespace

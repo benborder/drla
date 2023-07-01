@@ -53,4 +53,10 @@ void MiniBatchBuffer::Iterator::get_minibatch()
 	minibatch_.old_values = buffer_.get_values().narrow(0, 0, steps).view({-1, value_shape}).index({index});
 	minibatch_.returns = buffer_.get_returns().narrow(0, 0, steps).view({-1, value_shape}).index({index});
 	minibatch_.advantages = buffer_.get_advantages().narrow(0, 0, steps).view({-1, value_shape}).index({index});
+	auto states = buffer_.get_states();
+	for (size_t i = 0; i < states.size(); i++)
+	{
+		auto state = states[i];
+		minibatch_.states.push_back(state.narrow(0, 0, steps).view({-1, state.size(2)}).index({index}));
+	}
 }

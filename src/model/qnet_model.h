@@ -30,10 +30,12 @@ public:
 	QNetModel(const Config::ModelConfig& config, const EnvironmentConfiguration& env_config);
 	QNetModel(const QNetModel& other, const c10::optional<torch::Device>& device);
 
-	torch::Tensor forward(const Observations& observations);
-	PredictOutput predict(const Observations& observations, bool deterministic) override;
+	torch::Tensor forward(const Observations& observations, const HiddenStates& state);
+	PredictOutput predict(const ModelInput& input) override;
 
-	torch::Tensor forward_target(const Observations& observations);
+	StateShapes get_state_shape() const override;
+
+	torch::Tensor forward_target(const Observations& observations, const HiddenStates& state);
 	void update(double tau);
 
 	std::vector<torch::Tensor> parameters(bool recursive = true) const;
@@ -47,11 +49,13 @@ public:
 
 private:
 	const Config::QNetModelConfig config_;
-
 	const ActionSpace action_space_;
+	const bool use_gru_;
 
 	FeatureExtractor feature_extractor_;
 	FeatureExtractor feature_extractor_target_;
+	torch::nn::GRUCell grucell_;
+	torch::nn::GRUCell grucell_target_;
 	FCBlock q_net_;
 	FCBlock q_net_target_;
 	double exploration_ = 0;

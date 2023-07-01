@@ -26,9 +26,12 @@ public:
 		bool predict_Values = false);
 	ActorCriticModel(const ActorCriticModel& other, const c10::optional<torch::Device>& device);
 
-	PredictOutput predict(const Observations& observations, bool deterministic = true) override;
+	PredictOutput predict(const ModelInput& input) override;
 
-	ActionPolicyEvaluation evaluate_actions(const Observations& observations, const torch::Tensor& actions);
+	StateShapes get_state_shape() const override;
+
+	ActionPolicyEvaluation
+	evaluate_actions(const Observations& observations, const torch::Tensor& actions, const HiddenStates& states) override;
 
 	void save(const std::filesystem::path& path) override;
 	void load(const std::filesystem::path& path) override;
@@ -38,6 +41,7 @@ public:
 private:
 	const Config::ActorCriticConfig config_;
 	const bool predict_values_;
+	const bool use_gru_;
 
 	const ActionSpace action_space_;
 
@@ -47,6 +51,7 @@ private:
 	FCBlock shared_;
 	FCBlock critic_;
 	FCBlock actor_;
+	torch::nn::GRUCell grucell_;
 	PolicyActionOutput policy_action_output_;
 };
 } // namespace drla

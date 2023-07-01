@@ -17,13 +17,13 @@ public:
 	virtual ~Model() = default;
 
 	/// @brief Model prediction. Predicts the action and/or value for the given observations
-	/// @param observations The input observations to pass to the model. The observations must be on the same device as
-	/// the model.
-	/// @param deterministic Use a deterministic forward pass through the model to determine the action if true. Otherwise
-	/// a stochastic policy gradient is used to determine the action. This option is only relevant for policy gradient
-	/// based models.
+	/// @param input The input for the agent's model prediction.
 	/// @return The predicted action and/or value from the forward pass through the model.
-	virtual PredictOutput predict(const Observations& observations, bool deterministic = true) = 0;
+	virtual PredictOutput predict(const ModelInput& input) = 0;
+
+	/// @brief Gets the shape of internal hidden state of the model for recurrent based models
+	/// @return The shape of internal hidden state.
+	virtual StateShapes get_state_shape() const = 0;
 
 	/// @brief Save the model to file at the specified directory path
 	/// @param path The full directory path to save the model to
@@ -49,7 +49,13 @@ public:
 	/// @brief Virtual destructor
 	virtual ~ActorCriticModelInterface() = default;
 
-	virtual ActionPolicyEvaluation evaluate_actions(const Observations& observations, const torch::Tensor& actions) = 0;
+	/// @brief Evaluate the action policy given the observations and actions taken
+	/// @param observations The observations used to determine the actions
+	/// @param actions The actions taken given the observations
+	/// @param states The previous step hidden states output from recurrent models
+	/// @return Evaluation of the actor critic model
+	virtual ActionPolicyEvaluation evaluate_actions(
+		const Observations& observations, const torch::Tensor& actions, const std::vector<torch::Tensor>& states) = 0;
 };
 
 /// @brief Common actor critic model interface
@@ -59,9 +65,9 @@ public:
 	/// @brief Virtual destructor
 	virtual ~QNetModelInterface() = default;
 
-	virtual torch::Tensor forward(const Observations& observations) = 0;
+	virtual torch::Tensor forward(const Observations& observations, const HiddenStates& state) = 0;
 
-	virtual torch::Tensor forward_target(const Observations& observations) = 0;
+	virtual torch::Tensor forward_target(const Observations& observations, const HiddenStates& state) = 0;
 	virtual void update(double tau) = 0;
 
 	virtual std::vector<torch::Tensor> parameters(bool recursive = true) const = 0;

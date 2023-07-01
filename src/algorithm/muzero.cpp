@@ -53,7 +53,7 @@ std::vector<UpdateResult> MuZero::update(int timestep)
 	batch.values = model_->scalar_to_support(batch.values);
 	batch.reward = model_->scalar_to_support(batch.reward);
 
-	auto prediction = std::dynamic_pointer_cast<Model>(model_)->predict(batch.observation);
+	auto prediction = static_cast<Model*>(model_.get())->predict({batch.observation});
 
 	std::vector<PredictOutput> predictions{prediction};
 

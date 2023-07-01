@@ -20,7 +20,7 @@ namespace drla
 class Model;
 class MCTSEpisode;
 
-/// @brief An agent for training muzero based models
+/// @brief A Monte Carlo Tree Search based agent
 class MCTSAgent final : public Agent
 {
 public:
@@ -40,15 +40,12 @@ public:
 
 	/// @brief Creates/Resets environments and runs the agent for a max number of steps or until the environment
 	/// terminates with an episode end. By default the first time 'run()' is called a model is loaded if no model has been
-	/// loaded yet. Subsequent calls to will use the model already loaded.
+	/// loaded yet. Subsequent calls to `run()` will use the model already loaded.
 	/// @param initial_states The initial state for each environment. The number of initial state elements determins the
 	/// number of environments to run the agent in.
 	/// @param options Options which change various behaviours of the agent. See RunOptions for more detail on available
 	/// options.
 	void run(const std::vector<State>& initial_states, RunOptions options = {}) override;
-
-	/// @brief Unsupported for MCTSAgent, will throw if called.
-	PredictOutput predict_action(const EnvStepData& env_data, bool deterministic = true) override;
 
 	/// @brief Predicts the next action to perform given the input observations. Effectively performs a forward pass
 	/// through the model. **NOTE** 'load_model()' must be called at least once before calling this method.
@@ -74,7 +71,7 @@ protected:
 	Observations get_stacked_observations(const std::vector<StepData>& step_history, int stack_size, int num_actions);
 
 protected:
-	// On policy specific agent configuration
+	// MCTS model based specific agent configuration
 	const Config::MCTSAgent config_;
 
 	std::mt19937 gen_;

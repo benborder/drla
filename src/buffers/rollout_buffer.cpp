@@ -15,6 +15,7 @@ RolloutBuffer::RolloutBuffer(
 	int n_envs,
 	const EnvironmentConfiguration& env_config,
 	int reward_shape,
+	StateShapes state_shape,
 	torch::Tensor gamma,
 	torch::Tensor gae_lambda,
 	torch::Device device)
@@ -48,6 +49,10 @@ RolloutBuffer::RolloutBuffer(
 
 	actions_ = torch::zeros(action_shape, torch::TensorOptions(device).dtype(action_type));
 	episode_non_terminal_ = torch::ones({buffer_size_ + 1, n_envs, reward_shape}, torch::TensorOptions(device));
+	for (auto state_size : state_shape)
+	{
+		states_.push_back(torch::zeros({buffer_size_ + 1, n_envs, state_size}, torch::TensorOptions(device)));
+	}
 	pos_.resize(n_envs, 0);
 }
 
@@ -58,6 +63,7 @@ void RolloutBuffer::initialise(const StepData& step_data)
 	{
 		observations_[i][0][step_data.env].copy_(step_data.env_data.observation[i]);
 	}
+	for (size_t i = 0; i < states_.size(); ++i) { states_[i][0].copy_(step_data.predict_result.state[i]); }
 }
 
 void RolloutBuffer::reset()
@@ -70,6 +76,7 @@ void RolloutBuffer::reset()
 	action_log_probs_.zero_();
 	actions_.zero_();
 	episode_non_terminal_.fill_(1.0F);
+	for (auto& state : states_) { state.zero_(); }
 	std::fill(pos_.begin(), pos_.end(), 0);
 }
 
@@ -79,6 +86,10 @@ void RolloutBuffer::add(const StepData& step_data)
 	for (size_t i = 0; i < observations_.size(); i++)
 	{
 		observations_[i][pos + 1][step_data.env].copy_(step_data.env_data.observation[i]);
+	}
+	for (size_t i = 0; i < states_.size(); ++i)
+	{
+		states_[i][pos + 1][step_data.env].copy_(step_data.predict_result.state[i]);
 	}
 	actions_[pos][step_data.env].copy_(step_data.predict_result.action[0]);
 	action_log_probs_[pos][step_data.env].copy_(step_data.predict_result.action_log_probs[0]);
@@ -101,6 +112,7 @@ void RolloutBuffer::add(const TimeStepData& timestep_data)
 {
 	int pos = pos_[0];
 	for (size_t i = 0; i < observations_.size(); i++) { observations_[i][pos + 1].copy_(timestep_data.observations[i]); }
+	for (size_t i = 0; i < states_.size(); ++i) { states_[i][pos + 1].copy_(timestep_data.predict_results.state[i]); }
 	actions_[pos].copy_(timestep_data.predict_results.action);
 	action_log_probs_[pos].copy_(timestep_data.predict_results.action_log_probs);
 	values_[pos].copy_(timestep_data.predict_results.values);
@@ -127,7 +139,7 @@ MiniBatchBuffer RolloutBuffer::get(int num_mini_batch)
 	auto batch_size = env_size * buffer_size_;
 	if (batch_size < num_mini_batch)
 	{
-		throw std::runtime_error(
+		throw std::invalid_argument(
 			"The number of samples '" + std::to_string(env_size * buffer_size_) +
 			"' must be >= to the number of minibatches '" + std::to_string(num_mini_batch) + "'");
 	}
@@ -184,6 +196,25 @@ torch::Tensor RolloutBuffer::get_actions() const
 	return actions_;
 }
 
+HiddenStates RolloutBuffer::get_states() const
+{
+	return states_;
+}
+
+HiddenStates RolloutBuffer::get_states(int step) const
+{
+	HiddenStates states;
+	for (const auto& state : states_) { states.push_back(state[step].to(device_)); }
+	return states;
+}
+
+HiddenStates RolloutBuffer::get_states(int step, int env) const
+{
+	HiddenStates states;
+	for (const auto& state : states_) { states.push_back(state[step][env].to(device_)); }
+	return states;
+}
+
 void RolloutBuffer::compute_returns_and_advantage(const torch::Tensor& last_values)
 {
 	torch::NoGradGuard no_grad;
@@ -202,6 +233,7 @@ void RolloutBuffer::prepare_next_batch()
 {
 	for (auto& observation_group : observations_) { observation_group[0].copy_(observation_group[-1]); }
 	episode_non_terminal_[0].copy_(episode_non_terminal_[-1]);
+	for (auto& state : states_) { state[0].copy_(state[-1]); }
 }
 
 int RolloutBuffer::get_buffer_sample_size() const
@@ -218,6 +250,7 @@ void RolloutBuffer::to(torch::Device device)
 	action_log_probs_ = action_log_probs_.to(device);
 	actions_ = actions_.to(device);
 	episode_non_terminal_ = episode_non_terminal_.to(device);
+	for (auto& state : states_) { state = state.to(device); }
 	gamma_ = gamma_.to(device);
 	gae_lambda_ = gae_lambda_.to(device);
 }

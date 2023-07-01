@@ -3,7 +3,12 @@
 using namespace drla;
 
 ReplayBuffer::ReplayBuffer(
-	int buffer_size, int n_envs, const EnvironmentConfiguration& env_config, int reward_shape, torch::Device device)
+	int buffer_size,
+	int n_envs,
+	const EnvironmentConfiguration& env_config,
+	int reward_shape,
+	StateShapes state_shape,
+	torch::Device device)
 		: device_(device), buffer_size_(buffer_size / n_envs)
 {
 	for (size_t i = 0; i < env_config.observation_shapes.size(); i++)
@@ -15,6 +20,10 @@ ReplayBuffer::ReplayBuffer(
 			torch::zeros(observations_shape, torch::TensorOptions(torch::kCPU).dtype(env_config.observation_dtypes[i])));
 	}
 	rewards_ = torch::zeros({buffer_size_, n_envs, reward_shape}, torch::TensorOptions(device));
+	for (auto state_size : state_shape)
+	{
+		state_.push_back(torch::zeros({buffer_size_, n_envs, state_size}, torch::TensorOptions(device)));
+	}
 	std::vector<int64_t> action_shape{buffer_size_, n_envs};
 	c10::ScalarType action_type;
 	if (is_action_discrete(env_config.action_space))
@@ -38,6 +47,7 @@ void ReplayBuffer::reset()
 	rewards_.zero_();
 	actions_.zero_();
 	episode_non_terminal_.fill_(1.0F);
+	for (auto& state : state_) { state.zero_(); }
 	std::fill(pos_.begin(), pos_.end(), 0);
 	full_ = false;
 }
@@ -52,6 +62,10 @@ void ReplayBuffer::add(const StepData& step_data)
 		observations_[i][next_pos][step_data.env].copy_(step_data.env_data.observation[i]);
 	}
 	actions_[pos][step_data.env].copy_(step_data.predict_result.action[0]);
+	for (size_t i = 0; i < step_data.predict_result.state.size(); ++i)
+	{
+		state_[i][pos][step_data.env].copy_(step_data.predict_result.state[i][0]);
+	}
 	if (rewards_.size(2) == 1 && rewards_.size(2) != step_data.reward.size(0))
 	{
 		rewards_[pos][step_data.env].copy_(step_data.reward.sum());
@@ -74,6 +88,10 @@ void ReplayBuffer::add(const TimeStepData& timestep_data)
 	full_ |= next_pos < pos;
 	for (size_t i = 0; i < observations_.size(); i++) { observations_[i][next_pos].copy_(timestep_data.observations[i]); }
 	actions_[pos].copy_(timestep_data.predict_results.action);
+	for (size_t i = 0; i < timestep_data.predict_results.state.size(); ++i)
+	{
+		state_[i][pos].copy_(timestep_data.predict_results.state[0]);
+	}
 	if (rewards_.size(2) == 1 && rewards_.size(2) != timestep_data.rewards.size(1))
 	{
 		rewards_[pos].copy_(timestep_data.rewards.sum({1}));
@@ -105,7 +123,7 @@ Observations ReplayBuffer::get_observations_head() const
 		obs_shape.erase(obs_shape.begin());
 		torch::Tensor obs_grp = torch::empty(obs_shape, device_);
 		for (size_t i = 0; i < pos_.size(); i++) { obs_grp[i] = observation_group[pos_[i]][i].to(device_); }
-		obs.push_back(obs_grp);
+		obs.push_back(std::move(obs_grp));
 	}
 	return obs;
 }
@@ -118,6 +136,41 @@ Observations ReplayBuffer::get_observations_head(int env) const
 		obs.push_back(observation_group[pos_[env]][env].unsqueeze(0).to(device_));
 	}
 	return obs;
+}
+
+torch::Tensor ReplayBuffer::get_actions_head() const
+{
+	auto action_shape = actions_.sizes().vec();
+	action_shape.erase(action_shape.begin());
+	torch::Tensor actions_head = torch::empty(action_shape, device_);
+	for (size_t i = 0; i < pos_.size(); i++) { actions_head[i] = actions_[pos_[i]][i]; }
+	return actions_head;
+}
+
+std::vector<torch::Tensor> ReplayBuffer::get_state_head() const
+{
+	std::vector<torch::Tensor> states;
+	for (auto& state : state_)
+	{
+		auto state_shape = state.sizes().vec();
+		state_shape.erase(state_shape.begin());
+		torch::Tensor state_head = torch::empty(state_shape, device_);
+		for (size_t i = 0; i < pos_.size(); i++) { state_head[i] = state[pos_[i]][i]; }
+		states.push_back(std::move(state_head));
+	}
+	return states;
+}
+
+torch::Tensor ReplayBuffer::get_actions_head(int env) const
+{
+	return actions_[pos_[env]][env];
+}
+
+std::vector<torch::Tensor> ReplayBuffer::get_state_head(int env) const
+{
+	std::vector<torch::Tensor> states;
+	for (auto& state : state_) { states.push_back(state[pos_[env]][env]); }
+	return states;
 }
 
 ReplayBufferSamples ReplayBuffer::sample(int sample_size)
@@ -148,6 +201,11 @@ ReplayBufferSamples ReplayBuffer::sample(int sample_size)
 
 	data.actions = actions_.index({step_indices, env_indices}).to(device_);
 	data.rewards = rewards_.index({step_indices, env_indices}).to(device_);
+	for (size_t i = 0; i < state_.size(); ++i)
+	{
+		data.state.push_back(state_[i].index({step_indices, env_indices}).to(device_));
+		data.next_state.push_back(state_[i].index({next_step_indices, env_indices}).to(device_));
+	}
 	data.episode_non_terminal = episode_non_terminal_.index({step_indices, env_indices}).to(device_);
 	return data;
 }

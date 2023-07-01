@@ -219,29 +219,19 @@ void EpisodicPERBuffer::reanalyse(std::shared_ptr<Model> model)
 	torch::NoGradGuard no_grad;
 
 	int len = episode->length();
-	Observations observations;
-	auto observation_shapes = episodes_.front()->get_observation_shapes();
-	for (auto& obs_shape : observation_shapes)
-	{
-		obs_shape.insert(obs_shape.begin(), len);
-		observations.push_back(torch::empty(obs_shape, device));
-	}
-
+	torch::Tensor values = torch::zeros({len, options_.reward_shape});
+	PredictOutput prediction;
 	for (int step = 0; step < len; ++step)
 	{
-		auto stacked_obs = episode->get_stacked_observations(step, device);
-		for (size_t obs_grp = 0; obs_grp < observations.size(); ++obs_grp)
-		{
-			observations[obs_grp][step] = stacked_obs[obs_grp];
-		}
+		ModelInput input;
+		input.observations = episode->get_stacked_observations(step, device);
+		for (auto& obs : input.observations) { obs.unsqueeze_(0); }
+		input.prev_output = prediction;
+		prediction = model->predict(input);
+		values[step] = (value_decoder_ ? value_decoder_(prediction.values) : prediction.values).squeeze(0);
 	}
 
-	auto prediction = model->predict(observations);
-	if (value_decoder_)
-	{
-		prediction.values = value_decoder_(prediction.values);
-	}
-	episode->update_values(prediction.values);
+	episode->update_values(values);
 	++reanalysed_count_;
 }
 

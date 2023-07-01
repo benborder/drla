@@ -101,7 +101,7 @@ MCTSResult MCTS::search(MCTSModelInterface* model, const MCTSInput& input)
 	Observations observation;
 	for (auto& obs : input.observation) { observation.push_back(obs.to(device)); }
 
-	auto predict_output = static_cast<Model*>(model)->predict(observation);
+	auto predict_output = static_cast<Model*>(model)->predict({observation});
 	predict_output.reward = model->support_to_scalar(predict_output.reward);
 	predict_output.values = model->support_to_scalar(predict_output.values);
 

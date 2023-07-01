@@ -58,7 +58,7 @@ std::vector<UpdateResult> SAC::update(int timestep)
 		auto replay_data = buffer_.sample(config_.batch_size);
 
 		// Action by the current actor for the sampled state
-		auto action_output = model_->action_output(replay_data.observations);
+		auto action_output = model_->action_output(replay_data.observations, replay_data.state);
 
 		// The entropy coefficient or entropy can be learned automatically see Automating Entropy Adjustment for Maximum
 		// Entropy RL section of https://arxiv.org/abs/1812.05905
@@ -82,10 +82,10 @@ std::vector<UpdateResult> SAC::update(int timestep)
 		{
 			torch::NoGradGuard no_grad;
 			// Select action according to policy
-			auto next_action_output = model_->action_output(replay_data.next_observations);
+			auto next_action_output = model_->action_output(replay_data.next_observations, replay_data.next_state);
 			// Compute the next Q values: min over all critics targets
-			auto next_q_values =
-				torch::stack(model_->critic_target(replay_data.next_observations, next_action_output.actions));
+			auto next_q_values = torch::stack(
+				model_->critic_target(replay_data.next_observations, next_action_output.action, replay_data.next_state));
 			next_q_values = std::get<0>(torch::min(next_q_values, 0));
 			if (is_action_discrete(action_space_))
 			{
@@ -103,7 +103,7 @@ std::vector<UpdateResult> SAC::update(int timestep)
 		}
 
 		// Get current Q-values estimates for each critic network using action from the replay buffer
-		auto current_q_values_list = model_->critic(replay_data.observations, replay_data.actions);
+		auto current_q_values_list = model_->critic(replay_data.observations, replay_data.actions, replay_data.state);
 		torch::Tensor critic_loss = torch::zeros({1}, target_q_values.device());
 		for (auto& current_q_values : current_q_values_list)
 		{
@@ -126,7 +126,7 @@ std::vector<UpdateResult> SAC::update(int timestep)
 		torch::Tensor min_qf_pi;
 		{
 			torch::NoGradGuard no_grad;
-			auto q_values_pi = model_->critic(replay_data.observations, action_output.actions_pi);
+			auto q_values_pi = model_->critic(replay_data.observations, action_output.actions_pi, replay_data.state);
 			min_qf_pi = std::get<0>(torch::min(torch::stack(q_values_pi), 0));
 		}
 		auto actor_loss = config_.actor_loss_coef * (ent_coef * action_output.log_prob - min_qf_pi);

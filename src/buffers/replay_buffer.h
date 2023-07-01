@@ -19,13 +19,20 @@ struct ReplayBufferSamples
 	torch::Tensor rewards;
 	torch::Tensor actions;
 	torch::Tensor episode_non_terminal;
+	HiddenStates state;
+	HiddenStates next_state;
 };
 
 class ReplayBuffer
 {
 public:
 	ReplayBuffer(
-		int buffer_size, int n_envs, const EnvironmentConfiguration& env_config, int reward_shape, torch::Device device);
+		int buffer_size,
+		int n_envs,
+		const EnvironmentConfiguration& env_config,
+		int reward_shape,
+		StateShapes state_shape,
+		torch::Device device);
 
 	void reset();
 
@@ -35,6 +42,10 @@ public:
 	const Observations& get_observations() const;
 	Observations get_observations_head() const;
 	Observations get_observations_head(int env) const;
+	torch::Tensor get_actions_head() const;
+	torch::Tensor get_actions_head(int env) const;
+	std::vector<torch::Tensor> get_state_head() const;
+	std::vector<torch::Tensor> get_state_head(int env) const;
 
 	ReplayBufferSamples sample(int sample_size);
 
@@ -47,6 +58,7 @@ private:
 	torch::Tensor rewards_;
 	torch::Tensor actions_;
 	torch::Tensor episode_non_terminal_;
+	std::vector<torch::Tensor> state_;
 
 	const int buffer_size_;
 	std::vector<int> pos_;
