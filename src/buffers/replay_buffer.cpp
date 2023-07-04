@@ -1,5 +1,10 @@
 #include "replay_buffer.h"
 
+#include "off_policy_episode.h"
+#include "utils.h"
+
+#include <spdlog/spdlog.h>
+
 using namespace drla;
 
 ReplayBuffer::ReplayBuffer(
@@ -8,205 +13,182 @@ ReplayBuffer::ReplayBuffer(
 	const EnvironmentConfiguration& env_config,
 	int reward_shape,
 	StateShapes state_shape,
+	const std::vector<float>& gamma,
+	float per_alpha,
 	torch::Device device)
-		: device_(device), buffer_size_(buffer_size / n_envs)
+		: EpisodicPERBuffer(gamma, {buffer_size, reward_shape, 1, per_alpha, env_config.action_space})
+		, device_(device)
+		, n_envs_(n_envs)
+		, episode_queue_(1)
+		, action_shape_({n_envs})
+		, state_shapes_(state_shape)
 {
+	current_episodes_.resize(n_envs);
 	for (size_t i = 0; i < env_config.observation_shapes.size(); i++)
 	{
-		std::vector<int64_t> observations_shape{buffer_size_, n_envs};
+		std::vector<int64_t> observations_shape{n_envs};
 		observations_shape.insert(
 			observations_shape.end(), env_config.observation_shapes[i].begin(), env_config.observation_shapes[i].end());
-		observations_.push_back(
-			torch::zeros(observations_shape, torch::TensorOptions(torch::kCPU).dtype(env_config.observation_dtypes[i])));
+		observation_shape_.push_back(std::move(observations_shape));
 	}
-	rewards_ = torch::zeros({buffer_size_, n_envs, reward_shape}, torch::TensorOptions(device));
-	for (auto state_size : state_shape)
-	{
-		state_.push_back(torch::zeros({buffer_size_, n_envs, state_size}, torch::TensorOptions(device)));
-	}
-	std::vector<int64_t> action_shape{buffer_size_, n_envs};
-	c10::ScalarType action_type;
 	if (is_action_discrete(env_config.action_space))
 	{
-		action_type = torch::kLong;
-		for (size_t i = 0; i < env_config.action_space.shape.size(); i++) { action_shape.push_back(1); }
+		for (size_t i = 0; i < env_config.action_space.shape.size(); i++) { action_shape_.push_back(1); }
 	}
 	else
 	{
-		action_type = torch::kFloat;
-		action_shape.insert(action_shape.end(), env_config.action_space.shape.begin(), env_config.action_space.shape.end());
+		action_shape_.insert(
+			action_shape_.end(), env_config.action_space.shape.begin(), env_config.action_space.shape.end());
 	}
-	actions_ = torch::zeros(action_shape, torch::TensorOptions(device).dtype(action_type));
-	episode_non_terminal_ = torch::ones({buffer_size_, n_envs, reward_shape}, torch::TensorOptions(device));
-	pos_.resize(n_envs, 0);
+	gamma_ = gamma_.to(device_);
 }
 
-void ReplayBuffer::reset()
+void ReplayBuffer::add_episode(std::shared_ptr<Episode> episode)
 {
-	for (auto& obs : observations_) { obs.zero_(); }
-	rewards_.zero_();
-	actions_.zero_();
-	episode_non_terminal_.fill_(1.0F);
-	for (auto& state : state_) { state.zero_(); }
-	std::fill(pos_.begin(), pos_.end(), 0);
-	full_ = false;
-}
+	if (episode->length() == 0)
+	{
+		spdlog::error("Episode length must be non zero. The episode has not been added to the buffer.");
+		return;
+	}
 
-void ReplayBuffer::add(const StepData& step_data)
-{
-	int pos = pos_[step_data.env];
-	int next_pos = (pos + 1) % buffer_size_;
-	full_ |= next_pos < pos;
-	for (size_t i = 0; i < observations_.size(); i++)
+	std::lock_guard lock(m_episodes_);
+
+	episode->set_id(total_episodes_++);
+	episode->init_priorities(gamma_, options_.per_alpha);
+
+	total_steps_ += episode->length();
+	if (get_num_samples() < options_.buffer_size)
 	{
-		observations_[i][next_pos][step_data.env].copy_(step_data.env_data.observation[i]);
-	}
-	actions_[pos][step_data.env].copy_(step_data.predict_result.action[0]);
-	for (size_t i = 0; i < step_data.predict_result.state.size(); ++i)
-	{
-		state_[i][pos][step_data.env].copy_(step_data.predict_result.state[i][0]);
-	}
-	if (rewards_.size(2) == 1 && rewards_.size(2) != step_data.reward.size(0))
-	{
-		rewards_[pos][step_data.env].copy_(step_data.reward.sum());
+		episodes_.push_back(std::move(episode));
 	}
 	else
 	{
-		rewards_[pos][step_data.env].copy_(step_data.reward);
+		total_steps_ -= episodes_.back()->length();
+		while (get_num_samples() >= options_.buffer_size)
+		{
+			episodes_.pop_back();
+			total_steps_ -= episodes_.back()->length();
+		}
+		episodes_.back() = std::move(episode);
 	}
-
-	// When the episode ends zero all masks
-	episode_non_terminal_[pos][step_data.env] = step_data.env_data.state.episode_end ? 0.0F : 1.0F;
-
-	pos_[step_data.env] = next_pos;
+	std::sort(episodes_.begin(), episodes_.end(), [](const auto& e1, const auto& e2) {
+		return e1->get_priority() > e2->get_priority();
+	});
 }
 
-void ReplayBuffer::add(const TimeStepData& timestep_data)
+void ReplayBuffer::add(StepData step_data)
 {
-	int pos = pos_[0];
-	int next_pos = (pos + 1) % buffer_size_;
-	full_ |= next_pos < pos;
-	for (size_t i = 0; i < observations_.size(); i++) { observations_[i][next_pos].copy_(timestep_data.observations[i]); }
-	actions_[pos].copy_(timestep_data.predict_results.action);
-	for (size_t i = 0; i < timestep_data.predict_results.state.size(); ++i)
-	{
-		state_[i][pos].copy_(timestep_data.predict_results.state[0]);
-	}
-	if (rewards_.size(2) == 1 && rewards_.size(2) != timestep_data.rewards.size(1))
-	{
-		rewards_[pos].copy_(timestep_data.rewards.sum({1}));
-	}
-	else
-	{
-		rewards_[pos].copy_(timestep_data.rewards);
-	}
+	auto& episode = current_episodes_.at(step_data.env);
+	bool episode_end = step_data.env_data.state.episode_end;
+	episode.push_back(std::move(step_data));
 
-	for (size_t i = 0; i < pos_.size(); i++)
+	if (episode_end)
 	{
-		// When the episode ends zero all masks
-		episode_non_terminal_[pos][i] = timestep_data.states[i].episode_end ? 0.0F : 1.0F;
-		pos_[i] = next_pos;
+		episode_queue_.queue_task([this, episode = std::move(episode)]() {
+			add_episode(std::make_shared<OffPolicyEpisode>(
+				std::move(episode), OffPolicyEpisodeOptions{static_cast<int>(flatten(options_.action_space.shape))}));
+		});
 	}
-}
-
-const Observations& ReplayBuffer::get_observations() const
-{
-	return observations_;
 }
 
 Observations ReplayBuffer::get_observations_head() const
 {
-	Observations obs;
-	for (const auto& observation_group : observations_)
+	Observations obs_head;
+	for (auto& shape : observation_shape_) { obs_head.push_back(torch::empty(shape, device_)); }
+	for (int env = 0; env < n_envs_; ++env)
 	{
-		auto obs_shape = observation_group.sizes().vec();
-		obs_shape.erase(obs_shape.begin());
-		torch::Tensor obs_grp = torch::empty(obs_shape, device_);
-		for (size_t i = 0; i < pos_.size(); i++) { obs_grp[i] = observation_group[pos_[i]][i].to(device_); }
-		obs.push_back(std::move(obs_grp));
+		auto& episode = current_episodes_[env];
+		auto& step_data = episode.back();
+		for (size_t i = 0; i < obs_head.size(); ++i) { obs_head[i][env] = step_data.env_data.observation[i]; }
 	}
-	return obs;
+	return obs_head;
 }
 
 Observations ReplayBuffer::get_observations_head(int env) const
 {
-	Observations obs;
-	for (const auto& observation_group : observations_)
-	{
-		obs.push_back(observation_group[pos_[env]][env].unsqueeze(0).to(device_));
-	}
-	return obs;
+	return current_episodes_.at(env).back().env_data.observation;
 }
 
 torch::Tensor ReplayBuffer::get_actions_head() const
 {
-	auto action_shape = actions_.sizes().vec();
-	action_shape.erase(action_shape.begin());
-	torch::Tensor actions_head = torch::empty(action_shape, device_);
-	for (size_t i = 0; i < pos_.size(); i++) { actions_head[i] = actions_[pos_[i]][i]; }
+	torch::Tensor actions_head = torch::empty(action_shape_, device_);
+	for (int env = 0; env < n_envs_; ++env) { actions_head[env] = current_episodes_[env].back().predict_result.action; }
 	return actions_head;
-}
-
-std::vector<torch::Tensor> ReplayBuffer::get_state_head() const
-{
-	std::vector<torch::Tensor> states;
-	for (auto& state : state_)
-	{
-		auto state_shape = state.sizes().vec();
-		state_shape.erase(state_shape.begin());
-		torch::Tensor state_head = torch::empty(state_shape, device_);
-		for (size_t i = 0; i < pos_.size(); i++) { state_head[i] = state[pos_[i]][i]; }
-		states.push_back(std::move(state_head));
-	}
-	return states;
 }
 
 torch::Tensor ReplayBuffer::get_actions_head(int env) const
 {
-	return actions_[pos_[env]][env];
+	return current_episodes_.at(env).back().predict_result.action;
+}
+
+std::vector<torch::Tensor> ReplayBuffer::get_state_head() const
+{
+	std::vector<torch::Tensor> states_head;
+	for (auto& shape : state_shapes_) { states_head.push_back(torch::empty({n_envs_, shape}, device_)); }
+	for (int env = 0; env < n_envs_; ++env)
+	{
+		auto& step_data = current_episodes_[env].back();
+		for (size_t i = 0; i < states_head.size(); ++i) { states_head[i][env] = step_data.predict_result.state[i]; }
+	}
+	return states_head;
 }
 
 std::vector<torch::Tensor> ReplayBuffer::get_state_head(int env) const
 {
-	std::vector<torch::Tensor> states;
-	for (auto& state : state_) { states.push_back(state[pos_[env]][env]); }
-	return states;
+	return current_episodes_.at(env).back().predict_result.state;
 }
 
 ReplayBufferSamples ReplayBuffer::sample(int sample_size)
 {
-	int n_envs = static_cast<int>(pos_.size());
-	torch::Tensor step_indices;
-	torch::Tensor env_indices;
-	// The most recent sample is not valid (there is no next observation)
-	if (full_)
-	{
-		step_indices = (torch::randint(buffer_size_, {sample_size}) + pos_.front() + 1) % buffer_size_;
-	}
-	else
-	{
-		step_indices = torch::randint(pos_.front() - 2, {sample_size});
-	}
-	auto next_step_indices = (step_indices + 1) % buffer_size_;
-
-	env_indices = torch::randint(n_envs, {step_indices.size(0)});
+	std::vector<int64_t> action_shape(action_shape_);
+	action_shape[0] = sample_size;
+	c10::ScalarType action_type = is_action_discrete(options_.action_space) ? torch::kLong : torch::kFloat;
 
 	ReplayBufferSamples data;
-	for (size_t i = 0; i < observations_.size(); i++)
+	for (auto obs_shape : observation_shape_)
 	{
-		auto obs = observations_[i];
-		data.observations.push_back(obs.index({step_indices, env_indices}).to(device_));
-		data.next_observations.push_back(obs.index({next_step_indices, env_indices}).to(device_));
+		obs_shape[0] = sample_size;
+		data.observations.push_back(torch::empty(obs_shape, device_));
+		data.next_observations.push_back(torch::empty(obs_shape, device_));
 	}
+	for (auto& state : state_shapes_)
+	{
+		data.state.push_back(torch::empty({sample_size, state}, device_));
+		data.next_state.push_back(torch::empty({sample_size, state}, device_));
+	}
+	data.actions = torch::empty(action_shape, torch::TensorOptions(device_).dtype(action_type));
+	data.rewards = torch::empty({sample_size, options_.reward_shape}, device_);
+	data.values = torch::empty({sample_size, options_.reward_shape}, device_);
+	data.episode_non_terminal = torch::empty({sample_size, 1}, device_);
 
-	data.actions = actions_.index({step_indices, env_indices}).to(device_);
-	data.rewards = rewards_.index({step_indices, env_indices}).to(device_);
-	for (size_t i = 0; i < state_.size(); ++i)
+	int sample_index = 0;
+	auto episodes = sample_episodes(sample_size);
+	for (const auto& [episode, episode_prob] : episodes)
 	{
-		data.state.push_back(state_[i].index({step_indices, env_indices}).to(device_));
-		data.next_state.push_back(state_[i].index({next_step_indices, env_indices}).to(device_));
+		auto [index, probs] = episode->sample_position(gen_);
+		auto target = episode->make_target(index, gamma_);
+		auto next_target = episode->make_target(index + 1, gamma_);
+		auto sample_obs = episode->get_stacked_observations(index, device_);
+		auto sample_next_obs = episode->get_stacked_observations(index + 1, device_);
+
+		data.indicies.emplace_back(episode->get_id(), index);
+
+		for (size_t i = 0; i < data.observations.size(); ++i)
+		{
+			data.observations[i][sample_index] = sample_obs[i].detach().to(device_);
+			data.next_observations[i][sample_index] = sample_next_obs[i].detach().to(device_);
+		}
+		data.actions[sample_index] = target.actions.detach().to(device_);
+		data.rewards[sample_index] = target.rewards.detach().to(device_);
+		data.values[sample_index] = target.values.detach().to(device_);
+		for (size_t i = 0; i < data.state.size(); ++i)
+		{
+			data.state[sample_index] = target.states[i];
+			data.next_state[sample_index] = next_target.states[i];
+		}
+		data.episode_non_terminal[sample_index] = target.non_terminal.detach().to(device_);
+		++sample_index;
 	}
-	data.episode_non_terminal = episode_non_terminal_.index({step_indices, env_indices}).to(device_);
 	return data;
 }
 

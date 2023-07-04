@@ -22,8 +22,7 @@ public:
 		const Config::AgentTrainAlgorithm& config,
 		const ActionSpace& action_space,
 		ReplayBuffer& buffer,
-		std::shared_ptr<Model> model,
-		torch::Tensor gamma);
+		std::shared_ptr<Model> model);
 
 	std::string name() const override;
 	std::vector<UpdateResult> update(int batch) override;
@@ -43,7 +42,6 @@ private:
 	torch::optim::Adam actor_optimiser_;
 	torch::optim::Adam critic_optimiser_;
 	torch::optim::Adam ent_coef_optimiser_;
-	torch::Tensor gamma_;
 	double target_entropy_;
 	double lr_param_;
 };

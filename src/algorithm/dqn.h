@@ -18,8 +18,7 @@ class QNetModel;
 class DQN final : public Algorithm
 {
 public:
-	DQN(
-		const Config::AgentTrainAlgorithm& config, ReplayBuffer& buffer, std::shared_ptr<Model> model, torch::Tensor gamma);
+	DQN(const Config::AgentTrainAlgorithm& config, ReplayBuffer& buffer, std::shared_ptr<Model> model);
 
 	std::string name() const override;
 	std::vector<UpdateResult> update(int timestep) override;
@@ -36,7 +35,6 @@ private:
 	ReplayBuffer& buffer_;
 	std::shared_ptr<QNetModelInterface> model_;
 	torch::optim::Adam optimiser_;
-	torch::Tensor gamma_;
 	double lr_param_;
 	double exploration_param_;
 	int n_updates_ = 0;

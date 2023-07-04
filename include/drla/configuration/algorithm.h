@@ -103,6 +103,8 @@ struct OffPolicyAlgorithm : public TrainAlgorithm
 	int gradient_steps = 1;
 	// Number of gradient steps to delay updating the target network
 	int target_update_interval = 1;
+	// The ammount of prioritised experience replay to use
+	float per_alpha = 1.0F;
 };
 
 /// @brief DQN training algorithm specific configuration

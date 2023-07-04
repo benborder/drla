@@ -16,8 +16,7 @@ SAC::SAC(
 	const Config::AgentTrainAlgorithm& config,
 	const ActionSpace& action_space,
 	ReplayBuffer& buffer,
-	std::shared_ptr<Model> model,
-	torch::Tensor gamma)
+	std::shared_ptr<Model> model)
 		: config_(std::get<Config::SAC>(config))
 		, action_space_(action_space)
 		, buffer_(buffer)
@@ -28,7 +27,6 @@ SAC::SAC(
 		, critic_optimiser_(
 				model_->critic_parameters(), torch::optim::AdamOptions(config_.learning_rate).eps(config_.epsilon))
 		, ent_coef_optimiser_({log_ent_coef_}, torch::optim::AdamOptions(config_.learning_rate).eps(config_.epsilon))
-		, gamma_(gamma)
 		, target_entropy_(-static_cast<double>(action_space_.shape.size()))
 {
 	if (is_action_discrete(action_space_))
@@ -99,7 +97,7 @@ std::vector<UpdateResult> SAC::update(int timestep)
 				next_q_values -= ent_coef * next_action_output.log_prob;
 			}
 			// td error
-			target_q_values = replay_data.rewards + replay_data.episode_non_terminal * gamma_ * next_q_values;
+			target_q_values = replay_data.rewards + replay_data.episode_non_terminal * buffer_.get_gamma() * next_q_values;
 		}
 
 		// Get current Q-values estimates for each critic network using action from the replay buffer
@@ -114,6 +112,11 @@ std::vector<UpdateResult> SAC::update(int timestep)
 			// Compute critic loss
 			critic_loss += config_.value_loss_coef * torch::nn::functional::mse_loss(current_q_values, target_q_values);
 		}
+
+		auto values = std::get<0>(torch::min(torch::stack(current_q_values_list), 0));
+		auto priorities =
+			torch::pow((values.detach() - replay_data.values).abs(), config_.per_alpha).sum(-1).clamp_min(1e-8);
+		buffer_.update_priorities(priorities, replay_data.indicies);
 
 		critic_losses += critic_loss.item<float>();
 

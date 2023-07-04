@@ -7,19 +7,16 @@
 namespace drla
 {
 
-struct MCTSEpisodeOptions
+struct OffPolicyEpisodeOptions
 {
 	int num_actions;
-	int td_steps = 10;
-	int unroll_steps = 10;
-	int stack_size = 1;
 };
 
 // This is stored on the CPU
-class MCTSEpisode final : public Episode
+class OffPolicyEpisode final : public Episode
 {
 public:
-	MCTSEpisode(std::vector<StepData> episode_data, MCTSEpisodeOptions options);
+	OffPolicyEpisode(std::vector<StepData> episode_data, OffPolicyEpisodeOptions options);
 	// TODO: add another constructor for loading from file
 
 	void set_id(int id) override;
@@ -30,15 +27,12 @@ public:
 	void update_priorities(int index, torch::Tensor priorities) override;
 	float get_priority() const override;
 	std::pair<int, float> sample_position(std::mt19937& gen, bool force_uniform = false) const override;
-	// The value target is the discounted root value of the search tree td_steps into the future, plus the discounted sum
-	// of all rewards until then.
-	torch::Tensor compute_target_value(int index, torch::Tensor gamma) const;
 	EpisodeSampleTargets make_target(int index, torch::Tensor gamma) const override;
 	void update_values(torch::Tensor values) override;
 	int length() const override;
 
 private:
-	const MCTSEpisodeOptions options_;
+	const OffPolicyEpisodeOptions options_;
 	const int episode_length_;
 	int id_ = -1;
 
@@ -53,15 +47,13 @@ private:
 	Observations observations_;
 	// The actions performed
 	torch::Tensor actions_;
-	// The root values
+	// The predicted values
 	torch::Tensor values_;
 	// The rewards (may be scaled if enabled)
 	torch::Tensor rewards_;
-	// The policy generated from mcts
-	torch::Tensor policy_;
-	// Indicates the agents turn
-	std::vector<int> turn_index_;
-	// The reanalysed root values
+	// The reanalysed values
 	torch::Tensor reanalysed_values_;
+	// The hidden state for recurrent models
+	HiddenStates state_;
 };
 } // namespace drla

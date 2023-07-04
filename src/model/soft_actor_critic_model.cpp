@@ -157,7 +157,7 @@ ModelOutput SoftActorCriticModel::predict(const ModelInput& input)
 		output.action.unsqueeze_(-1);
 	}
 
-	if (config_.predict_values || (use_gru_ && !config_.shared_feature_extractor && is_training()))
+	if (config_.predict_values || is_training())
 	{
 		torch::NoGradGuard no_grad_guard;
 		auto [qvalues, state] =

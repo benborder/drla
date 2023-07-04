@@ -21,6 +21,7 @@ struct EpisodeSampleTargets
 	torch::Tensor policies;
 	torch::Tensor rewards;
 	torch::Tensor values;
+	HiddenStates states;
 	torch::Tensor non_terminal;
 };
 
@@ -35,9 +36,6 @@ public:
 	virtual void update_priorities(int index, torch::Tensor priorities) = 0;
 	virtual float get_priority() const = 0;
 	virtual std::pair<int, float> sample_position(std::mt19937& gen, bool force_uniform = false) const = 0;
-	// The value target is the discounted root value of the search tree td_steps into the future, plus the discounted sum
-	// of all rewards until then.
-	virtual torch::Tensor compute_target_value(int index, torch::Tensor gamma) const = 0;
 	virtual EpisodeSampleTargets make_target(int index, torch::Tensor gamma) const = 0;
 	virtual void update_values(torch::Tensor values) = 0;
 	virtual int length() const = 0;
@@ -60,7 +58,7 @@ public:
 
 	/// @brief Adds an episode to the buffer
 	/// @param episode The episode to add
-	void add_episode(std::shared_ptr<Episode> episode);
+	virtual void add_episode(std::shared_ptr<Episode> episode);
 
 	/// @brief Gets the number of episodes currently stored in the buffer
 	/// @return The number of episodes stored in the buffer
@@ -106,7 +104,11 @@ public:
 	/// @param decoder The decoder function to use
 	void set_value_decoder(std::function<torch::Tensor(torch::Tensor&)> decoder);
 
-private:
+	/// @brief Returns the discount factor gamma
+	/// @return the gamma tensor
+	torch::Tensor get_gamma() const;
+
+protected:
 	const EpisodicPERBufferOptions options_;
 
 	std::vector<std::shared_ptr<Episode>> episodes_;

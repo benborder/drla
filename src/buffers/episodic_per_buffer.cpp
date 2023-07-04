@@ -24,13 +24,13 @@ EpisodicPERBuffer::EpisodicPERBuffer(std::vector<float> gamma, EpisodicPERBuffer
 
 void EpisodicPERBuffer::add_episode(std::shared_ptr<Episode> episode)
 {
-	std::lock_guard lock(m_episodes_);
-
 	if (episode->length() == 0)
 	{
-		spdlog::error("Episode length must be non 0. The episode has not been added to the buffer.");
+		spdlog::error("Episode length must be non zero. The episode has not been added to the buffer.");
 		return;
 	}
+
+	std::lock_guard lock(m_episodes_);
 
 	episode->set_id(total_episodes_++);
 	episode->init_priorities(gamma_, options_.per_alpha);
@@ -42,10 +42,12 @@ void EpisodicPERBuffer::add_episode(std::shared_ptr<Episode> episode)
 	}
 	else
 	{
-		total_steps_ -= episodes_[buffer_index_]->length();
-		episodes_[buffer_index_] = std::move(episode);
-		buffer_index_ = (buffer_index_ + 1) % static_cast<size_t>(options_.buffer_size);
+		total_steps_ -= episodes_.back()->length();
+		episodes_.back() = std::move(episode);
 	}
+	std::sort(episodes_.begin(), episodes_.end(), [](const auto& e1, const auto& e2) {
+		return e1->get_priority() > e2->get_priority();
+	});
 }
 
 int EpisodicPERBuffer::get_num_episodes() const
@@ -243,4 +245,9 @@ int EpisodicPERBuffer::get_reanalysed_count() const
 void EpisodicPERBuffer::set_value_decoder(std::function<torch::Tensor(torch::Tensor&)> decoder)
 {
 	value_decoder_ = std::move(decoder);
+}
+
+torch::Tensor EpisodicPERBuffer::get_gamma() const
+{
+	return gamma_;
 }

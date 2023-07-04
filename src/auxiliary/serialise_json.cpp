@@ -74,6 +74,7 @@ void from_json(const nlohmann::json& json, OffPolicyAlgorithm& off_policy_algori
 	off_policy_algorithm.tau << optional_input{json, "tau"};
 	off_policy_algorithm.gradient_steps << optional_input{json, "gradient_steps"};
 	off_policy_algorithm.target_update_interval << optional_input{json, "target_update_interval"};
+	off_policy_algorithm.per_alpha << optional_input{json, "per_alpha"};
 }
 
 void to_json(nlohmann::json& json, const OffPolicyAlgorithm& off_policy_algorithm)
@@ -87,6 +88,7 @@ void to_json(nlohmann::json& json, const OffPolicyAlgorithm& off_policy_algorith
 	json["tau"] = off_policy_algorithm.tau;
 	json["gradient_steps"] = off_policy_algorithm.gradient_steps;
 	json["target_update_interval"] = off_policy_algorithm.target_update_interval;
+	json["per_alpha"] = off_policy_algorithm.per_alpha;
 }
 
 void from_json(const nlohmann::json& json, MCTSAlgorithm& mcts_algorithm)

@@ -113,14 +113,15 @@ void OffPolicyAgent::train()
 	}
 	model->to(devices_.front());
 
-	if (config_gamma.size() < static_cast<size_t>(reward_shape))
-	{
-		config_gamma.resize(reward_shape, config_gamma.front());
-	}
-	torch::Tensor gamma = torch::from_blob(config_gamma.data(), {reward_shape}).to(devices_.front());
-
 	ReplayBuffer buffer(
-		train_config.buffer_size, config_.env_count, env_config, reward_shape, model->get_state_shape(), devices_.front());
+		train_config.buffer_size,
+		config_.env_count,
+		env_config,
+		reward_shape,
+		model->get_state_shape(),
+		config_gamma,
+		train_config.per_alpha,
+		devices_.front());
 
 	std::unique_ptr<Algorithm> algorithm;
 
@@ -128,12 +129,12 @@ void OffPolicyAgent::train()
 	{
 		case TrainAlgorithmType::kDQN:
 		{
-			algorithm = std::make_unique<DQN>(config_.train_algorithm, buffer, model, gamma);
+			algorithm = std::make_unique<DQN>(config_.train_algorithm, buffer, model);
 			break;
 		}
 		case TrainAlgorithmType::kSAC:
 		{
-			algorithm = std::make_unique<SAC>(config_.train_algorithm, env_config.action_space, buffer, model, gamma);
+			algorithm = std::make_unique<SAC>(config_.train_algorithm, env_config.action_space, buffer, model);
 			break;
 		}
 		default:
@@ -163,7 +164,7 @@ void OffPolicyAgent::train()
 		reset_data.env = env;
 		reset_data.step = 0;
 		reset_data.env_data = std::move(envs_data[env]);
-		reset_data.predict_result.action = torch::zeros(env_config.action_space.shape);
+		reset_data.predict_result.action = torch::zeros(static_cast<int>(env_config.action_space.shape.size()));
 		for (auto state : state_shape)
 		{
 			reset_data.predict_result.state.push_back(torch::zeros({1, state}, devices_.front()));
@@ -215,12 +216,14 @@ void OffPolicyAgent::train()
 						}
 
 						bool stop = agent_callback_->env_step(step_data);
+						bool episode_end = step_data.env_data.state.episode_end;
+						buffer.add(step_data);
 						if (stop)
 						{
 							break;
 						}
 
-						if (step_data.env_data.state.episode_end)
+						if (episode_end)
 						{
 							// If the episode has ended reset the environment and call env_reset
 							StepData reset_data;
@@ -240,15 +243,13 @@ void OffPolicyAgent::train()
 								reset_data.raw_observation = environment->get_raw_observations();
 							}
 							auto agent_reset_config = agent_callback_->env_reset(reset_data);
-							step_data.env_data.observation = reset_data.env_data.observation;
 							raw_capture[env] = agent_reset_config.raw_capture;
+							buffer.add(std::move(reset_data));
 							if (agent_reset_config.stop)
 							{
 								break;
 							}
 						}
-
-						buffer.add(step_data);
 					}
 				});
 			}
@@ -303,8 +304,16 @@ void OffPolicyAgent::train()
 						}
 
 						stop |= agent_callback_->env_step(step_data);
+						bool episode_end = step_data.env_data.state.episode_end;
+						timestep_data.rewards[env] = step_data.reward;
+						timestep_data.states[env] = step_data.env_data.state;
+						for (size_t i = 0; i < step_data.env_data.observation.size(); i++)
+						{
+							timestep_data.observations[i][env] = step_data.env_data.observation[i];
+						}
+						buffer.add(std::move(step_data));
 
-						if (step_data.env_data.state.episode_end)
+						if (episode_end)
 						{
 							// If the episode has ended reset the environment and call env_reset
 							StepData reset_data;
@@ -324,21 +333,18 @@ void OffPolicyAgent::train()
 								reset_data.raw_observation = environment->get_raw_observations();
 							}
 							auto agent_reset_config = agent_callback_->env_reset(reset_data);
-							step_data.env_data.observation = reset_data.env_data.observation;
+							timestep_data.states[env] = reset_data.env_data.state;
+							for (size_t i = 0; i < reset_data.env_data.observation.size(); i++)
+							{
+								timestep_data.observations[i][env] = reset_data.env_data.observation[i];
+							}
+							buffer.add(std::move(reset_data));
 							raw_capture[env] = agent_reset_config.raw_capture;
 							stop |= agent_reset_config.stop;
 						}
-
-						for (size_t i = 0; i < step_data.env_data.observation.size(); i++)
-						{
-							timestep_data.observations[i][env] = step_data.env_data.observation[i];
-						}
-						timestep_data.rewards[env] = std::move(step_data.reward);
-						timestep_data.states[env] = std::move(step_data.env_data.state);
 					});
 				}
 				threadpool.wait_queue_empty();
-				buffer.add(timestep_data);
 			}
 		}
 
