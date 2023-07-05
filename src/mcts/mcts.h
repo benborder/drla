@@ -25,11 +25,11 @@ public:
 
 	std::optional<torch::Tensor> get_value() const;
 
-	void expand(const ActionSet& legal_actions, int turn_index, const PredictOutput& prediction);
+	void expand(const ActionSet& legal_actions, int turn_index, const ModelOutput& prediction);
 
 	void add_exploration_noise(std::mt19937& gen, float dirichlet_alpha, float exploration_fraction);
 
-	PredictOutput get_prediction() const;
+	ModelOutput get_prediction() const;
 
 	const std::vector<SearchNode>& get_children() const;
 

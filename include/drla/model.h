@@ -19,7 +19,7 @@ public:
 	/// @brief Model prediction. Predicts the action and/or value for the given observations
 	/// @param input The input for the agent's model prediction.
 	/// @return The predicted action and/or value from the forward pass through the model.
-	virtual PredictOutput predict(const ModelInput& input) = 0;
+	virtual ModelOutput predict(const ModelInput& input) = 0;
 
 	/// @brief Gets the shape of internal hidden state of the model for recurrent based models
 	/// @return The shape of internal hidden state.
@@ -87,7 +87,7 @@ public:
 	/// a stochastic policy gradient is used to determine the action. This option is only relevant for policy gradient
 	/// based models.
 	/// @return The predicted action, value and state from the forward pass through the model.
-	virtual PredictOutput predict(const PredictOutput& previous_output, bool deterministic = true) = 0;
+	virtual ModelOutput predict(const ModelOutput& previous_output, bool deterministic = true) = 0;
 
 	/// @brief Transform a categorical representation to a scalar
 	/// @param logits The transformed categorical support representation

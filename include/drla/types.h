@@ -116,7 +116,7 @@ inline std::string get_result_type_name(TrainResultType type)
 }
 
 /// @brief The output from the agent's model prediction
-struct PredictOutput
+struct ModelOutput
 {
 	// The actions the model determined should be taken
 	torch::Tensor action;
@@ -139,7 +139,7 @@ struct ModelInput
 	// The input observations to pass to the model. The observations must be on the same device as the model.
 	Observations observations;
 	// Previous model output
-	PredictOutput prev_output = {};
+	ModelOutput prev_output = {};
 	// Use a deterministic forward pass through the model to determine the action if true. Otherwise a stochastic policy
 	// gradient is used to determine the action. This option is only relevant for policy gradient based models.
 	bool deterministic = true;
@@ -222,7 +222,7 @@ struct StepData
 	EnvStepData env_data;
 
 	// Action prediction result
-	PredictOutput predict_result;
+	ModelOutput predict_result;
 
 	// The clamped/scaled reward gained when executing this step
 	torch::Tensor reward;

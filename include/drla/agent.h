@@ -68,7 +68,7 @@ public:
 	/// a stochastic policy gradient is used to determine the action. This option is only relevant for policy gradient
 	/// based models.
 	/// @return The predicted action and/or value from the forward pass through the model.
-	virtual PredictOutput predict_action(const std::vector<StepData>& step_history, bool deterministic = true);
+	virtual ModelOutput predict_action(const std::vector<StepData>& step_history, bool deterministic = true);
 
 	/// @brief Clears and resets any loaded models, environments and state
 	virtual void reset();

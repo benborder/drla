@@ -304,9 +304,9 @@ MuZeroModel::MuZeroModel(const MuZeroModel& other, const c10::optional<torch::De
 	register_module("prediction_network", prediction_network_);
 }
 
-PredictOutput MuZeroModel::predict(const ModelInput& input)
+ModelOutput MuZeroModel::predict(const ModelInput& input)
 {
-	PredictOutput output;
+	ModelOutput output;
 
 	output.state = condense(representation_network_(input.observations));
 	for (auto& state : output.state) { state = normalise(state); }
@@ -316,9 +316,9 @@ PredictOutput MuZeroModel::predict(const ModelInput& input)
 	return output;
 }
 
-PredictOutput MuZeroModel::predict(const PredictOutput& previous_output, [[maybe_unused]] bool deterministic)
+ModelOutput MuZeroModel::predict(const ModelOutput& previous_output, [[maybe_unused]] bool deterministic)
 {
-	PredictOutput output;
+	ModelOutput output;
 	std::vector<torch::Tensor> previous_state;
 
 	for (auto& state : previous_output.state)

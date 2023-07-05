@@ -26,7 +26,7 @@ public:
 		bool predict_Values = false);
 	ActorCriticModel(const ActorCriticModel& other, const c10::optional<torch::Device>& device);
 
-	PredictOutput predict(const ModelInput& input) override;
+	ModelOutput predict(const ModelInput& input) override;
 
 	StateShapes get_state_shape() const override;
 

@@ -220,7 +220,7 @@ void EpisodicPERBuffer::reanalyse(std::shared_ptr<Model> model)
 
 	int len = episode->length();
 	torch::Tensor values = torch::zeros({len, options_.reward_shape});
-	PredictOutput prediction;
+	ModelOutput prediction;
 	for (int step = 0; step < len; ++step)
 	{
 		ModelInput input;

@@ -90,9 +90,9 @@ torch::Tensor QNetModel::forward(const Observations& observations, const HiddenS
 	return q_net_(features);
 }
 
-PredictOutput QNetModel::predict(const ModelInput& input)
+ModelOutput QNetModel::predict(const ModelInput& input)
 {
-	PredictOutput output;
+	ModelOutput output;
 	auto features = flatten(feature_extractor_(input.observations));
 	if (use_gru_)
 	{

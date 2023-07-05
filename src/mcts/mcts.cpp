@@ -22,7 +22,7 @@ std::optional<torch::Tensor> SearchNode::get_value() const
 	return visit_count_ > 0 ? std::make_optional(value_sum_.div(visit_count_)) : std::nullopt;
 }
 
-void SearchNode::expand(const ActionSet& legal_actions, int turn_index, const PredictOutput& prediction)
+void SearchNode::expand(const ActionSet& legal_actions, int turn_index, const ModelOutput& prediction)
 {
 	turn_index_ = turn_index;
 	reward_ = prediction.reward[0];
@@ -49,9 +49,9 @@ void SearchNode::add_exploration_noise(std::mt19937& gen, float dirichlet_alpha,
 	}
 }
 
-PredictOutput SearchNode::get_prediction() const
+ModelOutput SearchNode::get_prediction() const
 {
-	PredictOutput prediction;
+	ModelOutput prediction;
 	prediction.state = state_;
 	prediction.reward = reward_;
 	prediction.action = torch::empty({1}, state_.front().device());

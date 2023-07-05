@@ -55,7 +55,7 @@ std::vector<UpdateResult> MuZero::update(int timestep)
 
 	auto prediction = static_cast<Model*>(model_.get())->predict({batch.observation});
 
-	std::vector<PredictOutput> predictions{prediction};
+	std::vector<ModelOutput> predictions{prediction};
 
 	for (int i = 1, ilen = batch.action.size(1); i < ilen; ++i)
 	{

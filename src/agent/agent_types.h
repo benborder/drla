@@ -15,7 +15,7 @@ struct TimeStepData
 	int step = 0;
 
 	// Action prediction result
-	PredictOutput predict_results;
+	ModelOutput predict_results;
 
 	// The reward recieved from the step
 	torch::Tensor rewards;

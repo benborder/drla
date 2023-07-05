@@ -103,10 +103,10 @@ ActorCriticModel::ActorCriticModel(const ActorCriticModel& other, const c10::opt
 	register_module("policy_action_output", policy_action_output_);
 }
 
-PredictOutput ActorCriticModel::predict(const ModelInput& input)
+ModelOutput ActorCriticModel::predict(const ModelInput& input)
 {
 	torch::Tensor features = flatten(feature_extractor_(input.observations));
-	PredictOutput output;
+	ModelOutput output;
 	if (config_.use_shared_extractor || use_gru_)
 	{
 		features = shared_(features);

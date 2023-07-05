@@ -237,7 +237,7 @@ void Agent::run_episode(Model* model, const State& initial_state, int env, RunOp
 	}
 }
 
-PredictOutput Agent::predict_action(const std::vector<StepData>& step_history, bool deterministic)
+ModelOutput Agent::predict_action(const std::vector<StepData>& step_history, bool deterministic)
 {
 	if (step_history.empty())
 	{

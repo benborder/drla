@@ -139,10 +139,10 @@ SoftActorCriticModel::SoftActorCriticModel(
 	}
 }
 
-PredictOutput SoftActorCriticModel::predict(const ModelInput& input)
+ModelOutput SoftActorCriticModel::predict(const ModelInput& input)
 {
 	torch::Tensor features = flatten(feature_extractor_actor_(input.observations));
-	PredictOutput output;
+	ModelOutput output;
 	if (use_gru_)
 	{
 		features = grucell_(features, input.prev_output.state.at(0));

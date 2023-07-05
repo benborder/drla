@@ -55,7 +55,7 @@ public:
 	/// a stochastic policy gradient is used to determine the action. This option is only relevant for policy gradient
 	/// based models.
 	/// @return The predicted action and/or value from the forward pass through the model.
-	PredictOutput predict_action(const std::vector<StepData>& step_history, bool deterministic = true) override;
+	ModelOutput predict_action(const std::vector<StepData>& step_history, bool deterministic = true) override;
 
 	/// @brief Initiate training the agent, running for the number of epochs defined in the configuration file
 	void train() override;
@@ -63,7 +63,7 @@ public:
 protected:
 	std::unique_ptr<MCTSEpisode>
 	run_episode(MCTSModelInterface* model, const State& initial_state, int env, bool eval_mode, RunOptions options);
-	PredictOutput run_step(
+	ModelOutput run_step(
 		MCTSModelInterface* model,
 		const std::vector<StepData>& step_history,
 		bool deterministic = true,

@@ -30,7 +30,7 @@ public:
 	SoftActorCriticModel(const Config::ModelConfig& config, const EnvironmentConfiguration& env_config, int value_shape);
 	SoftActorCriticModel(const SoftActorCriticModel& other, const c10::optional<torch::Device>& device);
 
-	PredictOutput predict(const ModelInput& input) override;
+	ModelOutput predict(const ModelInput& input) override;
 
 	StateShapes get_state_shape() const override;
 

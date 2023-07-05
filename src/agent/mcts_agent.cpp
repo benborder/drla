@@ -408,7 +408,7 @@ void MCTSAgent::run(const std::vector<State>& initial_states, RunOptions options
 	threadpool.wait_queue_empty();
 }
 
-PredictOutput MCTSAgent::predict_action(const std::vector<StepData>& step_history, bool deterministic)
+ModelOutput MCTSAgent::predict_action(const std::vector<StepData>& step_history, bool deterministic)
 {
 	torch::NoGradGuard no_grad;
 	return run_step(
@@ -506,7 +506,7 @@ std::unique_ptr<MCTSEpisode> MCTSAgent::run_episode(
 	return std::make_unique<MCTSEpisode>(std::move(episode_data), ep_options);
 }
 
-PredictOutput MCTSAgent::run_step(
+ModelOutput MCTSAgent::run_step(
 	MCTSModelInterface* model, const std::vector<StepData>& step_history, bool deterministic, float temperature)
 {
 	auto env_config = environment_manager_->get_configuration();
@@ -562,7 +562,7 @@ PredictOutput MCTSAgent::run_step(
 		action_index = action_dist(gen_);
 	}
 
-	PredictOutput prediction;
+	ModelOutput prediction;
 	for (const auto& node : nodes)
 	{
 		if (node.get_action() == static_cast<int>(action_index))

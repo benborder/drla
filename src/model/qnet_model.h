@@ -16,14 +16,6 @@
 namespace drla
 {
 
-struct ModelOutput
-{
-	// Value estimation
-	torch::Tensor values;
-	// Action distribution for action policy based models
-	std::unique_ptr<Distribution> dist;
-};
-
 class QNetModel : public QNetModelInterface
 {
 public:
@@ -31,7 +23,7 @@ public:
 	QNetModel(const QNetModel& other, const c10::optional<torch::Device>& device);
 
 	torch::Tensor forward(const Observations& observations, const HiddenStates& state);
-	PredictOutput predict(const ModelInput& input) override;
+	ModelOutput predict(const ModelInput& input) override;
 
 	StateShapes get_state_shape() const override;
 

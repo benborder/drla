@@ -23,7 +23,7 @@ RandomModel::RandomModel(const RandomModel& other, const c10::optional<torch::De
 {
 }
 
-PredictOutput RandomModel::predict(const ModelInput& input)
+ModelOutput RandomModel::predict(const ModelInput& input)
 {
 	// Create an output distribution to select a uniformly random action
 	auto envs = input.observations.front().size(0);
