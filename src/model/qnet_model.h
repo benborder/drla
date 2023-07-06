@@ -25,6 +25,8 @@ public:
 	torch::Tensor forward(const Observations& observations, const HiddenStates& state);
 	ModelOutput predict(const ModelInput& input) override;
 
+	ModelOutput initial() const override;
+
 	StateShapes get_state_shape() const override;
 
 	torch::Tensor forward_target(const Observations& observations, const HiddenStates& state);

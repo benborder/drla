@@ -253,6 +253,7 @@ std::shared_ptr<torch::nn::Module> PredictionNetworkImpl::clone(const c10::optio
 MuZeroModel::MuZeroModel(
 	const Config::ModelConfig& config, const EnvironmentConfiguration& env_config, int reward_shape)
 		: config_(std::get<Config::MuZeroModelConfig>(config))
+		, action_space_(env_config.action_space)
 		, action_space_size_(flatten(env_config.action_space.shape))
 		, reward_shape_(reward_shape)
 		, representation_network_(
@@ -287,6 +288,7 @@ MuZeroModel::MuZeroModel(
 
 MuZeroModel::MuZeroModel(const MuZeroModel& other, const c10::optional<torch::Device>& device)
 		: config_(other.config_)
+		, action_space_(other.action_space_)
 		, action_space_size_(other.action_space_size_)
 		, reward_shape_(other.reward_shape_)
 		, representation_network_(nullptr)
@@ -342,6 +344,24 @@ ModelOutput MuZeroModel::predict(const ModelOutput& previous_output, [[maybe_unu
 	std::tie(output.state, output.reward) = dynamics_network_(previous_state);
 	std::tie(output.policy, output.values) = prediction_network_(output.state);
 
+	return output;
+}
+
+ModelOutput MuZeroModel::initial() const
+{
+	ModelOutput output;
+	auto device = prediction_network_->parameters().front().device();
+	if (is_action_discrete(action_space_))
+	{
+		output.action = torch::zeros(static_cast<int>(action_space_.shape.size()));
+	}
+	else
+	{
+		output.action = torch::zeros(action_space_.shape);
+	}
+	output.policy = torch::zeros(flatten(action_space_.shape), device);
+	output.reward = torch::zeros(reward_shape_, device);
+	output.values = torch::zeros(reward_shape_, device);
 	return output;
 }
 

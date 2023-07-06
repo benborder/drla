@@ -93,6 +93,8 @@ public:
 	ModelOutput predict(const ModelInput& input) override;
 	ModelOutput predict(const ModelOutput& previous_output, bool deterministic = true) override;
 
+	ModelOutput initial() const override;
+
 	StateShapes get_state_shape() const override;
 
 	torch::Tensor support_to_scalar(torch::Tensor logits) override;
@@ -107,6 +109,7 @@ public:
 
 private:
 	const Config::MuZeroModelConfig config_;
+	const ActionSpace action_space_;
 	const int action_space_size_;
 	const int reward_shape_;
 

@@ -1,6 +1,7 @@
 #include "off_policy_agent.h"
 
 #include "agent_types.h"
+#include "agent_utils.h"
 #include "algorithm.h"
 #include "dqn.h"
 #include "model.h"
@@ -156,7 +157,6 @@ void OffPolicyAgent::train()
 	std::vector<bool> raw_capture;
 	raw_capture.resize(config_.env_count, false);
 
-	auto state_shape = model->get_state_shape();
 	// Get first observation and state for all envs
 	for (int env = 0; env < config_.env_count; env++)
 	{
@@ -164,12 +164,8 @@ void OffPolicyAgent::train()
 		reset_data.env = env;
 		reset_data.step = 0;
 		reset_data.env_data = std::move(envs_data[env]);
-		reset_data.predict_result.action = torch::zeros(static_cast<int>(env_config.action_space.shape.size()));
-		for (auto state : state_shape)
-		{
-			reset_data.predict_result.state.push_back(torch::zeros({1, state}, devices_.front()));
-		}
-		reset_data.reward = reset_data.env_data.reward.clone();
+		reset_data.predict_result = model->initial();
+		reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
 		auto agent_reset_config = agent_callback_->env_reset(reset_data);
 		raw_capture[env] = agent_reset_config.raw_capture;
 		buffer.add(reset_data);
@@ -201,15 +197,7 @@ void OffPolicyAgent::train()
 						}
 						step_data.env_data = environment->step(step_data.predict_result.action);
 
-						step_data.reward = step_data.env_data.reward.clone();
-						if (config_.rewards.reward_clamp_min != 0)
-						{
-							step_data.reward.clamp_max_(-config_.rewards.reward_clamp_min);
-						}
-						if (config_.rewards.reward_clamp_max != 0)
-						{
-							step_data.reward.clamp_min_(-config_.rewards.reward_clamp_max);
-						}
+						step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
 						if (raw_capture[env])
 						{
 							step_data.raw_observation = environment->get_raw_observations();
@@ -229,15 +217,8 @@ void OffPolicyAgent::train()
 							StepData reset_data;
 							reset_data.env = env;
 							reset_data.env_data = environment->reset(environment_manager_->get_initial_state());
-							reset_data.reward = reset_data.env_data.reward.clone();
-							if (config_.rewards.reward_clamp_min != 0)
-							{
-								reset_data.reward.clamp_max_(-config_.rewards.reward_clamp_min);
-							}
-							if (config_.rewards.reward_clamp_max != 0)
-							{
-								reset_data.reward.clamp_min_(-config_.rewards.reward_clamp_max);
-							}
+							reset_data.predict_result = model->initial();
+							reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
 							if (raw_capture[env])
 							{
 								reset_data.raw_observation = environment->get_raw_observations();
@@ -289,15 +270,7 @@ void OffPolicyAgent::train()
 
 						step_data.env_data = environment->step(step_data.predict_result.action);
 
-						step_data.reward = step_data.env_data.reward.clone();
-						if (config_.rewards.reward_clamp_min != 0)
-						{
-							step_data.reward.clamp_max_(-config_.rewards.reward_clamp_min);
-						}
-						if (config_.rewards.reward_clamp_max != 0)
-						{
-							step_data.reward.clamp_min_(-config_.rewards.reward_clamp_max);
-						}
+						step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
 						if (raw_capture[env])
 						{
 							step_data.raw_observation = environment->get_raw_observations();
@@ -319,15 +292,8 @@ void OffPolicyAgent::train()
 							StepData reset_data;
 							reset_data.env = env;
 							reset_data.env_data = environment->reset(environment_manager_->get_initial_state());
-							reset_data.reward = reset_data.env_data.reward.clone();
-							if (config_.rewards.reward_clamp_min != 0)
-							{
-								reset_data.reward.clamp_max_(-config_.rewards.reward_clamp_min);
-							}
-							if (config_.rewards.reward_clamp_max != 0)
-							{
-								reset_data.reward.clamp_min_(-config_.rewards.reward_clamp_max);
-							}
+							reset_data.predict_result = model->initial();
+							reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
 							if (raw_capture[env])
 							{
 								reset_data.raw_observation = environment->get_raw_observations();

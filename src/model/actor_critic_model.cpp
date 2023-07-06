@@ -153,6 +153,26 @@ ModelOutput ActorCriticModel::predict(const ModelInput& input)
 	}
 }
 
+ModelOutput ActorCriticModel::initial() const
+{
+	ModelOutput output;
+	auto device = parameters().front().device();
+	if (is_action_discrete(action_space_))
+	{
+		output.action = torch::zeros(static_cast<int>(action_space_.shape.size()));
+	}
+	else
+	{
+		output.action = torch::zeros(action_space_.shape);
+	}
+	output.values = torch::zeros(critic_->get_output_size(), device);
+	if (use_gru_)
+	{
+		output.state = {torch::zeros({1, config_.gru_hidden_size}, device)};
+	}
+	return output;
+}
+
 StateShapes ActorCriticModel::get_state_shape() const
 {
 	if (use_gru_)

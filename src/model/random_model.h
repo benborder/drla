@@ -21,6 +21,8 @@ public:
 
 	ModelOutput predict(const ModelInput& input) override;
 
+	ModelOutput initial() const override;
+
 	StateShapes get_state_shape() const override;
 
 	void save(const std::filesystem::path& path) override;

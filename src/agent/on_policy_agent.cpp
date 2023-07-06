@@ -3,6 +3,7 @@
 #include "a2c.h"
 #include "actor_critic_model.h"
 #include "agent_types.h"
+#include "agent_utils.h"
 #include "model.h"
 #include "ppo.h"
 #include "random_model.h"
@@ -160,15 +161,15 @@ void OnPolicyAgent::train()
 	// Get first observation and state for all envs
 	for (int env = 0; env < config_.env_count; env++)
 	{
-		StepData step_data;
-		step_data.env = env;
-		step_data.step = 0;
-		step_data.env_data = std::move(envs_data[env]);
-		step_data.predict_result.action = torch::zeros(env_config.action_space.shape);
-		step_data.reward = step_data.env_data.reward.clone();
-		auto agent_reset_config = agent_callback_->env_reset(step_data);
+		StepData reset_data;
+		reset_data.env = env;
+		reset_data.step = 0;
+		reset_data.env_data = std::move(envs_data[env]);
+		reset_data.predict_result = model->initial();
+		reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
+		auto agent_reset_config = agent_callback_->env_reset(reset_data);
 		raw_capture[env] = agent_reset_config.raw_capture;
-		buffer.initialise(step_data);
+		buffer.initialise(reset_data);
 	}
 
 	for (; timestep < train_config.total_timesteps; timestep++)
@@ -197,15 +198,7 @@ void OnPolicyAgent::train()
 						}
 						step_data.env_data = environment->step(step_data.predict_result.action);
 
-						step_data.reward = step_data.env_data.reward.clone();
-						if (config_.rewards.reward_clamp_min != 0)
-						{
-							step_data.reward.clamp_max_(-config_.rewards.reward_clamp_min);
-						}
-						if (config_.rewards.reward_clamp_max != 0)
-						{
-							step_data.reward.clamp_min_(-config_.rewards.reward_clamp_max);
-						}
+						step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
 						if (raw_capture[env])
 						{
 							step_data.raw_observation = environment->get_raw_observations();
@@ -223,15 +216,8 @@ void OnPolicyAgent::train()
 							StepData reset_data;
 							reset_data.env = env;
 							reset_data.env_data = environment->reset(environment_manager_->get_initial_state());
-							reset_data.reward = reset_data.env_data.reward.clone();
-							if (config_.rewards.reward_clamp_min != 0)
-							{
-								reset_data.reward.clamp_max_(-config_.rewards.reward_clamp_min);
-							}
-							if (config_.rewards.reward_clamp_max != 0)
-							{
-								reset_data.reward.clamp_min_(-config_.rewards.reward_clamp_max);
-							}
+							reset_data.predict_result = model->initial();
+							reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
 							if (raw_capture[env])
 							{
 								reset_data.raw_observation = environment->get_raw_observations();
@@ -312,15 +298,8 @@ void OnPolicyAgent::train()
 							StepData reset_data;
 							reset_data.env = env;
 							reset_data.env_data = environment->reset(environment_manager_->get_initial_state());
-							reset_data.reward = reset_data.env_data.reward.clone();
-							if (config_.rewards.reward_clamp_min != 0)
-							{
-								reset_data.reward.clamp_max_(-config_.rewards.reward_clamp_min);
-							}
-							if (config_.rewards.reward_clamp_max != 0)
-							{
-								reset_data.reward.clamp_min_(-config_.rewards.reward_clamp_max);
-							}
+							reset_data.predict_result = model->initial();
+							reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
 							if (raw_capture[env])
 							{
 								reset_data.raw_observation = environment->get_raw_observations();

@@ -32,6 +32,8 @@ public:
 
 	ModelOutput predict(const ModelInput& input) override;
 
+	ModelOutput initial() const override;
+
 	StateShapes get_state_shape() const override;
 
 	ActorOutput action_output(const Observations& observations, const HiddenStates& state);

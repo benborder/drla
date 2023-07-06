@@ -1,6 +1,7 @@
 #include "mcts_agent.h"
 
 #include "agent_types.h"
+#include "agent_utils.h"
 #include "algorithm.h"
 #include "episodic_per_buffer.h"
 #include "mcts.h"
@@ -438,8 +439,8 @@ std::unique_ptr<MCTSEpisode> MCTSAgent::run_episode(
 	step_data.env = env;
 	step_data.step = 0;
 	step_data.env_data = environment->reset(initial_state);
-	step_data.predict_result.action = torch::zeros(env_config.action_space.shape.size());
-	step_data.reward = step_data.env_data.reward.clone();
+	step_data.predict_result = model->initial();
+	step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
 	auto agent_reset_config = agent_callback_->env_reset(step_data);
 	episode_data.push_back(std::move(step_data));
 
@@ -467,15 +468,7 @@ std::unique_ptr<MCTSEpisode> MCTSAgent::run_episode(
 		}
 		step_data.env_data = environment->step(step_data.predict_result.action);
 
-		step_data.reward = step_data.env_data.reward.clone();
-		if (config_.rewards.reward_clamp_min != 0)
-		{
-			step_data.reward.clamp_max_(-config_.rewards.reward_clamp_min);
-		}
-		if (config_.rewards.reward_clamp_max != 0)
-		{
-			step_data.reward.clamp_min_(-config_.rewards.reward_clamp_max);
-		}
+		step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
 		if (raw_capture)
 		{
 			step_data.raw_observation = environment->get_raw_observations();

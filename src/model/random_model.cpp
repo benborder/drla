@@ -32,6 +32,22 @@ ModelOutput RandomModel::predict(const ModelInput& input)
 	return {action, torch::zeros({envs, value_shape_})};
 }
 
+ModelOutput RandomModel::initial() const
+{
+	ModelOutput output;
+	if (is_action_discrete(action_space_))
+	{
+		output.action = torch::zeros(static_cast<int>(action_space_.shape.size()));
+	}
+	else
+	{
+		output.action = torch::zeros(action_space_.shape);
+	}
+	auto device = policy_action_output_->parameters().front().device();
+	output.values = torch::zeros(value_shape_, device);
+	return output;
+}
+
 StateShapes RandomModel::get_state_shape() const
 {
 	return {};

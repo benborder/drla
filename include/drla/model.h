@@ -18,8 +18,13 @@ public:
 
 	/// @brief Model prediction. Predicts the action and/or value for the given observations
 	/// @param input The input for the agent's model prediction.
-	/// @return The predicted action and/or value from the forward pass through the model.
+	/// @return The predicted model output, typically including action and/or value from the forward pass through the
+	/// model.
 	virtual ModelOutput predict(const ModelInput& input) = 0;
+
+	/// @brief This initialises the model output for the first step in an environment (i.e. when env reset is called)
+	/// @return The initial model output, typically zerod action and reward/value
+	virtual ModelOutput initial() const = 0;
 
 	/// @brief Gets the shape of internal hidden state of the model for recurrent based models
 	/// @return The shape of internal hidden state.

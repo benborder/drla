@@ -120,6 +120,26 @@ ModelOutput QNetModel::predict(const ModelInput& input)
 	return output;
 }
 
+ModelOutput QNetModel::initial() const
+{
+	ModelOutput output;
+	auto device = q_net_->parameters().front().device();
+	if (is_action_discrete(action_space_))
+	{
+		output.action = torch::zeros(static_cast<int>(action_space_.shape.size()));
+	}
+	else
+	{
+		output.action = torch::zeros(action_space_.shape);
+	}
+	output.values = torch::zeros(value_shape_, device);
+	if (use_gru_)
+	{
+		output.state = {torch::zeros(config_.gru_hidden_size, device)};
+	}
+	return output;
+}
+
 StateShapes QNetModel::get_state_shape() const
 {
 	if (use_gru_)
