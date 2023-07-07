@@ -19,7 +19,7 @@ namespace drla
 class QNetModel : public QNetModelInterface
 {
 public:
-	QNetModel(const Config::ModelConfig& config, const EnvironmentConfiguration& env_config);
+	QNetModel(const Config::ModelConfig& config, const EnvironmentConfiguration& env_config, int value_shape);
 	QNetModel(const QNetModel& other, const c10::optional<torch::Device>& device);
 
 	torch::Tensor forward(const Observations& observations, const HiddenStates& state);
@@ -43,6 +43,7 @@ private:
 	const Config::QNetModelConfig config_;
 	const ActionSpace action_space_;
 	const bool use_gru_;
+	const int value_shape_;
 
 	FeatureExtractor feature_extractor_;
 	FeatureExtractor feature_extractor_target_;

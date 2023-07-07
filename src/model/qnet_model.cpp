@@ -9,10 +9,11 @@
 using namespace drla;
 using namespace torch;
 
-QNetModel::QNetModel(const Config::ModelConfig& config, const EnvironmentConfiguration& env_config)
+QNetModel::QNetModel(const Config::ModelConfig& config, const EnvironmentConfiguration& env_config, int value_shape)
 		: config_(std::get<Config::QNetModelConfig>(config))
 		, action_space_(env_config.action_space)
 		, use_gru_(config_.gru_hidden_size > 0)
+		, value_shape_(value_shape)
 		, feature_extractor_(config_.feature_extractor, env_config.observation_shapes)
 		, feature_extractor_target_(config_.feature_extractor, env_config.observation_shapes)
 		, grucell_(nullptr)
@@ -22,7 +23,7 @@ QNetModel::QNetModel(const Config::ModelConfig& config, const EnvironmentConfigu
 {
 	if (!is_action_discrete(action_space_))
 	{
-		throw std::runtime_error("QNetwork model is only compatible with discrete action spaces");
+		throw std::invalid_argument("QNetwork model is only compatible with discrete action spaces");
 	}
 
 	register_module("feature_extractor", feature_extractor_);
@@ -41,8 +42,9 @@ QNetModel::QNetModel(const Config::ModelConfig& config, const EnvironmentConfigu
 
 	// DQN can not handle multi actions unless they are permuted
 	int action_shape = action_space_.shape[0];
-	q_net_ = register_module("q_net", FCBlock(config_.q_net, "q_net", input_size, action_shape));
-	q_net_target_ = register_module("q_net_target", FCBlock(config_.q_net, "q_net", input_size, action_shape));
+	q_net_ = register_module("q_net", FCBlock(config_.q_net, "q_net", input_size, action_shape * value_shape_));
+	q_net_target_ =
+		register_module("q_net_target", FCBlock(config_.q_net, "q_net", input_size, action_shape * value_shape_));
 
 	int parameter_size = 0;
 	auto params = parameters();
@@ -60,6 +62,7 @@ QNetModel::QNetModel(const QNetModel& other, const c10::optional<torch::Device>&
 		: config_(other.config_)
 		, action_space_(other.action_space_)
 		, use_gru_(other.use_gru_)
+		, value_shape_(other.value_shape_)
 		, feature_extractor_(std::dynamic_pointer_cast<FeatureExtractorImpl>(other.feature_extractor_->clone(device)))
 		, feature_extractor_target_(
 				std::dynamic_pointer_cast<FeatureExtractorImpl>(other.feature_extractor_target_->clone(device)))
@@ -87,7 +90,8 @@ torch::Tensor QNetModel::forward(const Observations& observations, const HiddenS
 	{
 		features = grucell_(features, state[0]);
 	}
-	return q_net_(features);
+	// Assume shape is [batch, value type, qvalues]
+	return q_net_(features).view({features.size(0), value_shape_, action_space_.shape[0]});
 }
 
 ModelOutput QNetModel::predict(const ModelInput& input)
@@ -99,16 +103,19 @@ ModelOutput QNetModel::predict(const ModelInput& input)
 		features = grucell_(features, input.prev_output.state[0]);
 		output.state = {features};
 	}
-	output.values = q_net_(features);
+	// Assume shape is [batch, value type, qvalues]
+	auto qvalues = q_net_(features).view({features.size(0), value_shape_, action_space_.shape.front()});
+	output.policy = qvalues.sum(1);
 
 	if (!input.deterministic && torch::rand({1}).item<float>() < exploration_)
 	{
-		output.action = torch::randint(action_space_.shape.front(), {input.observations.front().size(0), 1});
+		output.action = torch::randint(action_space_.shape.front(), {qvalues.size(0), 1}, qvalues.device());
 	}
 	else
 	{
-		output.action = output.values.argmax(1).view({-1, 1});
+		output.action = output.policy.argmax(1).view({-1, 1});
 	}
+	output.values = qvalues.gather(2, output.action.unsqueeze(1).to(torch::kLong)).squeeze(-1);
 
 	return output;
 }
@@ -128,7 +135,8 @@ torch::Tensor QNetModel::forward_target(const Observations& observations, const 
 	{
 		features = grucell_target_(features, state[0]);
 	}
-	return q_net_target_(features);
+	// Assume shape is [batch, value type, qvalues]
+	return q_net_target_(features).view({features.size(0), value_shape_, action_space_.shape[0]});
 }
 
 inline void

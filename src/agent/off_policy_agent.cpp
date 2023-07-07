@@ -97,7 +97,7 @@ void OffPolicyAgent::train()
 	{
 		case AgentPolicyModelType::kQNet:
 		{
-			model = std::make_shared<QNetModel>(config_.model, env_config);
+			model = std::make_shared<QNetModel>(config_.model, env_config, reward_shape);
 			break;
 		}
 		case AgentPolicyModelType::kSoftActorCritic:
