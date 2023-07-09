@@ -33,6 +33,7 @@ inline ActivationFunction make_activation(Config::Activation activation)
 		case Config::Activation::kTanh: return [](const torch::Tensor& x) { return torch::tanh(x); };
 		case Config::Activation::kSigmoid: return [](const torch::Tensor& x) { return torch::sigmoid(x); };
 		case Config::Activation::kELU: return [](const torch::Tensor& x) { return torch::elu(x); };
+		case Config::Activation::kSiLU: return [](const torch::Tensor& x) { return torch::silu(x); };
 		case Config::Activation::kSoftplus: return [](const torch::Tensor& x) { return torch::softplus(x); };
 	}
 	return [](const torch::Tensor& x) { return x; };
@@ -52,6 +53,7 @@ inline torch::Tensor activation(torch::Tensor x, Config::Activation activation)
 		case Config::Activation::kTanh: return torch::tanh(x);
 		case Config::Activation::kSigmoid: return torch::sigmoid(x);
 		case Config::Activation::kELU: return torch::elu(x);
+		case Config::Activation::kSiLU: return torch::silu(x);
 		case Config::Activation::kSoftplus: return torch::softplus(x);
 	}
 	return x;
@@ -70,6 +72,7 @@ inline std::string activation_name(Config::Activation activation)
 		case Config::Activation::kTanh: return "Tanh";
 		case Config::Activation::kSigmoid: return "Sigmoid";
 		case Config::Activation::kELU: return "ELU";
+		case Config::Activation::kSiLU: return "SiLU";
 		case Config::Activation::kSoftplus: return "Softplus";
 	}
 	return "Unity";

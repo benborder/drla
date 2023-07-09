@@ -135,6 +135,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 		{Activation::kSigmoid, "Sigmoid"},
 		{Activation::kTanh, "Tanh"},
 		{Activation::kELU, "ELU"},
+		{Activation::kSiLU, "SiLU"},
 		{Activation::kSoftplus, "Softplus"},
 	})
 

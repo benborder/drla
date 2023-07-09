@@ -53,6 +53,7 @@ enum class Activation
 	kSigmoid,
 	kTanh,
 	kELU,
+	kSiLU,
 	kSoftplus,
 };
 
