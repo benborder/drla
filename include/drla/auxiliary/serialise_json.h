@@ -231,10 +231,6 @@ void from_json(const nlohmann::json& json, SAC& alg_sac);
 
 void to_json(nlohmann::json& json, const SAC& alg_sac);
 
-void from_json(const nlohmann::json& json, MuZero& alg_muzero);
-
-void to_json(nlohmann::json& json, const MuZero& alg_muzero);
-
 void from_json(const nlohmann::json& json, AgentTrainAlgorithm& train_algorithm);
 
 void to_json(nlohmann::json& json, const AgentTrainAlgorithm& train_algorithm);
@@ -311,18 +307,6 @@ void from_json(const nlohmann::json& json, QNetModelConfig& dqn_model);
 
 void to_json(nlohmann::json& json, const QNetModelConfig& dqn_model);
 
-void from_json(const nlohmann::json& json, DynamicsNetworkConfig& dyn_net);
-
-void to_json(nlohmann::json& json, const DynamicsNetworkConfig& dyn_net);
-
-void from_json(const nlohmann::json& json, PredictionNetworkConfig& pred_net);
-
-void to_json(nlohmann::json& json, const PredictionNetworkConfig& pred_net);
-
-void from_json(const nlohmann::json& json, MuZeroModelConfig& muzero_config);
-
-void to_json(nlohmann::json& json, const MuZeroModelConfig& muzero_config);
-
 void from_json(const nlohmann::json& json, RandomConfig& random);
 
 void to_json(nlohmann::json& json, const RandomConfig& random);
@@ -354,6 +338,27 @@ void to_json(nlohmann::json& json, const Config::MCTSAgent& agent);
 void to_json(nlohmann::json& json, const Config::Agent& agent);
 
 void from_json(const nlohmann::json& json, Config::Agent& agent);
+
+namespace MuZero
+{
+
+void from_json(const nlohmann::json& json, DynamicsNetwork& dyn_net);
+
+void to_json(nlohmann::json& json, const DynamicsNetwork& dyn_net);
+
+void from_json(const nlohmann::json& json, PredictionNetwork& pred_net);
+
+void to_json(nlohmann::json& json, const PredictionNetwork& pred_net);
+
+void from_json(const nlohmann::json& json, ModelConfig& muzero_config);
+
+void to_json(nlohmann::json& json, const ModelConfig& muzero_config);
+
+void from_json(const nlohmann::json& json, TrainConfig& alg_muzero);
+
+void to_json(nlohmann::json& json, const TrainConfig& alg_muzero);
+
+} // namespace MuZero
 
 } // namespace Config
 

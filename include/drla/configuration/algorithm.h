@@ -202,8 +202,10 @@ struct MCTSAlgorithm : public TrainAlgorithm
 	std::vector<int> train_gpus = {-1};
 };
 
-/// @brief MuZero algorithm configuration.
-struct MuZero : public MCTSAlgorithm
+namespace MuZero
+{
+/// @brief MuZero train algorithm configuration.
+struct TrainConfig : public MCTSAlgorithm
 {
 	// Scale the value loss to avoid overfitting of the value function, paper recommends 0.25 (See paper appendix
 	// Reanalyze)
@@ -217,9 +219,10 @@ struct MuZero : public MCTSAlgorithm
 	// The optimiser type to use
 	OptimiserType optimiser = OptimiserType::kSGD;
 };
+} // namespace MuZero
 
 /// @brief The agent training configuration
-using AgentTrainAlgorithm = std::variant<A2C, PPO, DQN, SAC, MuZero>;
+using AgentTrainAlgorithm = std::variant<A2C, PPO, DQN, SAC, MuZero::TrainConfig>;
 
 } // namespace Config
 

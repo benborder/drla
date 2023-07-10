@@ -29,7 +29,7 @@ private:
 	void update_learning_rate(int timestep);
 
 private:
-	const Config::MuZero config_;
+	const Config::MuZero::TrainConfig config_;
 	std::shared_ptr<MCTSModelInterface> model_;
 	EpisodicPERBuffer& buffer_;
 

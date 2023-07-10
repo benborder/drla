@@ -490,7 +490,7 @@ std::unique_ptr<MCTSEpisode> MCTSAgent::run_episode(
 		return nullptr;
 	}
 
-	const auto& train_config = std::get<Config::MuZero>(config_.train_algorithm);
+	const auto& train_config = std::get<Config::MuZero::TrainConfig>(config_.train_algorithm);
 	MCTSEpisodeOptions ep_options;
 	ep_options.num_actions = static_cast<int>(flatten(environment->get_configuration().action_space.shape));
 	ep_options.td_steps = train_config.td_steps;

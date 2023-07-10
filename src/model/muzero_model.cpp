@@ -11,7 +11,7 @@ using namespace drla;
 using namespace torch;
 
 DynamicsNetworkImpl::DynamicsNetworkImpl(
-	const Config::DynamicsNetworkConfig& config,
+	const Config::MuZero::DynamicsNetwork& config,
 	const std::vector<std::vector<int64_t>>& input_shape,
 	const ActionSpace& action_space,
 	int reward_shape)
@@ -135,7 +135,7 @@ std::shared_ptr<torch::nn::Module> DynamicsNetworkImpl::clone(const c10::optiona
 }
 
 PredictionNetworkImpl::PredictionNetworkImpl(
-	const Config::PredictionNetworkConfig& config,
+	const Config::MuZero::PredictionNetwork& config,
 	const std::vector<std::vector<int64_t>>& input_shape,
 	const ActionSpace& action_space,
 	int value_shape)
@@ -252,7 +252,7 @@ std::shared_ptr<torch::nn::Module> PredictionNetworkImpl::clone(const c10::optio
 // muzero can only support one action at a time, hence action_space_.shape can only be 1 dimensional
 MuZeroModel::MuZeroModel(
 	const Config::ModelConfig& config, const EnvironmentConfiguration& env_config, int reward_shape)
-		: config_(std::get<Config::MuZeroModelConfig>(config))
+		: config_(std::get<Config::MuZero::ModelConfig>(config))
 		, action_space_(env_config.action_space)
 		, action_space_size_(flatten(env_config.action_space.shape))
 		, reward_shape_(reward_shape)

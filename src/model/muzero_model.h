@@ -21,7 +21,7 @@ class DynamicsNetworkImpl final : public torch::nn::Module
 {
 public:
 	DynamicsNetworkImpl(
-		const Config::DynamicsNetworkConfig& config,
+		const Config::MuZero::DynamicsNetwork& config,
 		const std::vector<std::vector<int64_t>>& input_shape,
 		const ActionSpace& action_space,
 		int reward_shape);
@@ -32,7 +32,7 @@ public:
 	std::shared_ptr<torch::nn::Module> clone(const c10::optional<torch::Device>& device = c10::nullopt) const override;
 
 private:
-	const Config::DynamicsNetworkConfig config_;
+	const Config::MuZero::DynamicsNetwork config_;
 
 	struct Dynamics2D
 	{
@@ -55,7 +55,7 @@ class PredictionNetworkImpl final : public torch::nn::Module
 {
 public:
 	PredictionNetworkImpl(
-		const Config::PredictionNetworkConfig& config,
+		const Config::MuZero::PredictionNetwork& config,
 		const std::vector<std::vector<int64_t>>& input_shape,
 		const ActionSpace& action_space,
 		int value_shape);
@@ -66,7 +66,7 @@ public:
 	std::shared_ptr<torch::nn::Module> clone(const c10::optional<torch::Device>& device = c10::nullopt) const override;
 
 private:
-	const Config::PredictionNetworkConfig config_;
+	const Config::MuZero::PredictionNetwork config_;
 
 	struct Prediction2D
 	{
@@ -108,7 +108,7 @@ public:
 	std::shared_ptr<torch::nn::Module> clone(const c10::optional<torch::Device>& device = c10::nullopt) const override;
 
 private:
-	const Config::MuZeroModelConfig config_;
+	const Config::MuZero::ModelConfig config_;
 	const ActionSpace action_space_;
 	const int action_space_size_;
 	const int reward_shape_;

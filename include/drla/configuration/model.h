@@ -313,8 +313,11 @@ struct SoftActorCriticConfig : public CommonModelConfig
 	int gru_hidden_size = 0;
 };
 
+namespace MuZero
+{
+
 /// @brief MuZero dynamics network configuration
-struct DynamicsNetworkConfig
+struct DynamicsNetwork
 {
 	// The number of residual blocks
 	int num_blocks = 16;
@@ -331,7 +334,7 @@ struct DynamicsNetworkConfig
 };
 
 /// @brief MuZero prediction network configuration
-struct PredictionNetworkConfig
+struct PredictionNetwork
 {
 	// The number of residual blocks
 	int num_blocks = 16;
@@ -350,14 +353,14 @@ struct PredictionNetworkConfig
 };
 
 /// @brief Configuration for the muzero model
-struct MuZeroModelConfig : public CommonModelConfig
+struct ModelConfig : public CommonModelConfig
 {
 	// The feature extractor configuration
 	FeatureExtractorConfig representation_network;
 	// The dynamics network configuration
-	DynamicsNetworkConfig dynamics_network;
+	DynamicsNetwork dynamics_network;
 	// The prediction network configuration
-	PredictionNetworkConfig prediction_network;
+	PredictionNetwork prediction_network;
 
 	// Value and reward are scaled (with almost sqrt) and encoded on a vector with a range of -support_size to
 	// support_size. Choose it so that support_size <= sqrt(max(abs(discounted reward)))
@@ -366,9 +369,11 @@ struct MuZeroModelConfig : public CommonModelConfig
 	int stacked_observations = 0;
 };
 
+} // namespace MuZero
+
 /// @brief The model configuration for the agent.
 using ModelConfig =
-	std::variant<RandomConfig, ActorCriticConfig, QNetModelConfig, SoftActorCriticConfig, MuZeroModelConfig>;
+	std::variant<RandomConfig, ActorCriticConfig, QNetModelConfig, SoftActorCriticConfig, MuZero::ModelConfig>;
 
 } // namespace Config
 
