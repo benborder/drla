@@ -2,6 +2,7 @@
 
 #include <condition_variable>
 #include <deque>
+#include <optional>
 #include <vector>
 
 namespace drla
