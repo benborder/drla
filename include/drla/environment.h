@@ -35,6 +35,10 @@ public:
 	/// @brief Generates an action via the environments expert agent
 	/// @return The action determined by the environments expert agent
 	virtual torch::Tensor expert_agent() = 0;
+
+	/// @brief Clones the environment and its current state. Not all environments support this and may return a nullptr.
+	/// @return A clone of this environment
+	virtual std::unique_ptr<Environment> clone() const = 0;
 };
 
 /// @brief An interface to abstract the construction of environments and creating an initial state during training
