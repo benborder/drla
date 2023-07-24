@@ -23,11 +23,11 @@ torch::Tensor Normal::entropy()
 	return (0.5 + 0.5 * std::log(2 * M_PI) + torch::log(scale_)).sum(-1);
 }
 
-torch::Tensor Normal::action_log_prob(torch::Tensor action)
+torch::Tensor Normal::log_prob(torch::Tensor value)
 {
 	auto variance = scale_.pow(2);
 	auto log_scale = scale_.log();
-	return (-(action - loc_).pow(2) / (2 * variance) - log_scale - std::log(std::sqrt(2 * M_PI)));
+	return (-(value - loc_).pow(2) / (2 * variance) - log_scale - std::log(std::sqrt(2 * M_PI)));
 }
 
 torch::Tensor Normal::sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape)

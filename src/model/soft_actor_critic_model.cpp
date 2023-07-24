@@ -237,7 +237,7 @@ ActorOutput SoftActorCriticModel::action_output(const Observations& observations
 	}
 	else
 	{
-		output.log_prob = dist->action_log_prob(output.action).sum(-1, true);
+		output.log_prob = dist->log_prob(output.action).sum(-1, true);
 	}
 	output.action.unsqueeze_(-1);
 	output.actions_pi = dist->get_action_output();

@@ -1,8 +1,5 @@
 #include "distribution.h"
 
-#include <cctype>
-#include <vector>
-
 using namespace drla;
 
 std::vector<int64_t> Distribution::extended_shape(c10::ArrayRef<int64_t> sample_shape)

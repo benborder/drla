@@ -16,7 +16,7 @@ public:
 	Bernoulli(const torch::Tensor probs = {}, const torch::Tensor logits = {});
 
 	torch::Tensor entropy() override;
-	torch::Tensor action_log_prob(torch::Tensor action) override;
+	torch::Tensor log_prob(torch::Tensor value) override;
 	torch::Tensor sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape = {}) override;
 	const torch::Tensor get_action_output() const override;
 

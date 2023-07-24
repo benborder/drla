@@ -44,9 +44,9 @@ torch::Tensor Bernoulli::entropy()
 	return torch::binary_cross_entropy_with_logits(logits_, probs_, {}, {}, torch::Reduction::None);
 }
 
-torch::Tensor Bernoulli::action_log_prob(torch::Tensor action)
+torch::Tensor Bernoulli::log_prob(torch::Tensor value)
 {
-	auto broadcasted_tensors = torch::broadcast_tensors({logits_, action});
+	auto broadcasted_tensors = torch::broadcast_tensors({logits_, value});
 	return -torch::binary_cross_entropy_with_logits(
 		broadcasted_tensors[0], broadcasted_tensors[1], {}, {}, torch::Reduction::None);
 }

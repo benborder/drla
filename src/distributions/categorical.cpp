@@ -45,13 +45,13 @@ torch::Tensor Categorical::entropy()
 	return -p_log_p.sum(-1);
 }
 
-torch::Tensor Categorical::action_log_prob(torch::Tensor action)
+torch::Tensor Categorical::log_prob(torch::Tensor value)
 {
-	action = action.to(torch::kLong).unsqueeze(-1);
-	auto broadcasted_tensors = torch::broadcast_tensors({action, logits_});
-	action = broadcasted_tensors[0];
-	action = action.narrow(-1, 0, 1);
-	return broadcasted_tensors[1].gather(-1, action).squeeze(-1);
+	value = value.to(torch::kLong).unsqueeze(-1);
+	auto broadcasted_tensors = torch::broadcast_tensors({value, logits_});
+	value = broadcasted_tensors[0];
+	value = value.narrow(-1, 0, 1);
+	return broadcasted_tensors[1].gather(-1, value).squeeze(-1);
 }
 
 torch::Tensor Categorical::sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape)
@@ -112,16 +112,13 @@ torch::Tensor MultiCategorical::entropy()
 	return torch::stack(entropy, 1).sum(1);
 }
 
-torch::Tensor MultiCategorical::action_log_prob(torch::Tensor action)
+torch::Tensor MultiCategorical::log_prob(torch::Tensor value)
 {
-	std::vector<torch::Tensor> actions;
-	auto split_actions = torch::unbind(action, 1);
-	for (size_t i = 0; i < category_dim_.size(); i++)
-	{
-		actions.push_back(category_dim_[i].action_log_prob(split_actions[i]));
-	}
+	std::vector<torch::Tensor> values;
+	auto split_values = torch::unbind(value, 1);
+	for (size_t i = 0; i < category_dim_.size(); i++) { values.push_back(category_dim_[i].log_prob(split_values[i])); }
 
-	return torch::stack(actions, 1).sum(1);
+	return torch::stack(values, 1).sum(1);
 }
 
 torch::Tensor MultiCategorical::sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape)

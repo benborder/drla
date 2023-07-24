@@ -21,21 +21,21 @@ torch::Tensor DiagonalGaussian::entropy()
 	return dist_.entropy().sum(-1);
 }
 
-torch::Tensor DiagonalGaussian::action_log_prob(torch::Tensor action)
+torch::Tensor DiagonalGaussian::log_prob(torch::Tensor value)
 {
 	if (squash_)
 	{
-		action = action.clamp(-1 + std::numeric_limits<float>::epsilon(), 1 - std::numeric_limits<float>::epsilon());
+		value = value.clamp(-1 + std::numeric_limits<float>::epsilon(), 1 - std::numeric_limits<float>::epsilon());
 		// According to stable baselines atanh has numerical stability issues, so use a custom one
-		action = 0.5 * (action.log1p() - (-action).log1p());
+		value = 0.5 * (value.log1p() - (-value).log1p());
 
-		auto log_prob = dist_.action_log_prob(action);
-		log_prob -= (1 - action.square() + epsilon_).log().sum(-1);
+		auto log_prob = dist_.log_prob(value);
+		log_prob -= (1 - value.square() + epsilon_).log().sum(-1);
 		return log_prob;
 	}
 	else
 	{
-		return dist_.action_log_prob(action).sum(-1);
+		return dist_.log_prob(value).sum(-1);
 	}
 }
 

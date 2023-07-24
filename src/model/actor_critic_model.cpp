@@ -137,7 +137,7 @@ ModelOutput ActorCriticModel::predict(const ModelInput& input)
 	}
 	else
 	{
-		output.action_log_probs = dist->action_log_prob(output.action);
+		output.action_log_probs = dist->log_prob(output.action);
 
 		if (is_action_discrete(action_space_))
 		{
@@ -205,11 +205,11 @@ ActionPolicyEvaluation ActorCriticModel::evaluate_actions(
 	torch::Tensor action_log_probs;
 	if (is_action_discrete(action_space_))
 	{
-		action_log_probs = dist->action_log_prob(actions.squeeze(-1)).view({actions.size(0), -1}).sum(-1).unsqueeze(-1);
+		action_log_probs = dist->log_prob(actions.squeeze(-1)).view({actions.size(0), -1}).sum(-1).unsqueeze(-1);
 	}
 	else
 	{
-		action_log_probs = dist->action_log_prob(actions).sum(-1, true);
+		action_log_probs = dist->log_prob(actions).sum(-1, true);
 	}
 
 	return {values, action_log_probs, dist->entropy().mean()};
