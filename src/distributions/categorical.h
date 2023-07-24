@@ -41,4 +41,13 @@ private:
 	std::vector<Categorical> category_dim_;
 };
 
+class OneHotCategorical : public Categorical
+{
+public:
+	OneHotCategorical(const torch::Tensor probs = {}, const torch::Tensor logits = {});
+
+	torch::Tensor log_prob(torch::Tensor value) override;
+	torch::Tensor sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape = {}) override;
+};
+
 } // namespace drla

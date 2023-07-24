@@ -134,3 +134,19 @@ const torch::Tensor MultiCategorical::get_action_output() const
 	for (auto& category : category_dim_) { logits.push_back(category.get_action_output()); }
 	return torch::stack(logits, 1);
 }
+
+OneHotCategorical::OneHotCategorical(const torch::Tensor probs, const torch::Tensor logits) : Categorical(probs, logits)
+{
+}
+
+torch::Tensor OneHotCategorical::log_prob(torch::Tensor value)
+{
+	auto indices = value.argmax(-1);
+	return Categorical::log_prob(indices);
+}
+
+torch::Tensor OneHotCategorical::sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape)
+{
+	auto indices = Categorical::sample(deterministic, sample_shape);
+	return torch::one_hot(indices.to(torch::kLong), num_events_).to(probs_);
+}
