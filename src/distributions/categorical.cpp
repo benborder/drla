@@ -1,7 +1,6 @@
 #include "categorical.h"
 
-#include <c10/util/ArrayRef.h>
-#include <torch/torch.h>
+#include <algorithm>
 
 using namespace drla;
 
@@ -54,27 +53,26 @@ torch::Tensor Categorical::log_prob(torch::Tensor value)
 	return broadcasted_tensors[1].gather(-1, value).squeeze(-1);
 }
 
+torch::Tensor Categorical::probs() const
+{
+	return probs_;
+}
+
+torch::Tensor Categorical::logits() const
+{
+	return logits_;
+}
+
 torch::Tensor Categorical::sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape)
 {
 	if (deterministic)
 	{
 		return probs_.argmax(-1, true);
 	}
-	auto ext_sample_shape = extended_shape(sample_shape);
-	auto param_shape = ext_sample_shape;
-	param_shape.insert(param_shape.end(), {num_events_});
-	auto exp_probs = probs_.expand(param_shape);
-	torch::Tensor probs_2d;
-	if (probs_.dim() == 1 || probs_.size(0) == 1)
-	{
-		probs_2d = exp_probs.view({-1, num_events_});
-	}
-	else
-	{
-		probs_2d = exp_probs.contiguous().view({-1, num_events_});
-	}
-	auto sample_2d = torch::multinomial(probs_2d, 1, true);
-	return sample_2d.contiguous().view(ext_sample_shape);
+	auto probs_2d = probs_.reshape({-1, num_events_});
+	int samples = std::accumulate(sample_shape.begin(), sample_shape.end(), 1, std::multiplies<>());
+	auto sample_2d = torch::multinomial(probs_2d, samples, true).t();
+	return sample_2d.reshape(extended_shape(sample_shape));
 }
 
 const torch::Tensor Categorical::get_action_output() const

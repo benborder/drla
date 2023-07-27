@@ -1,8 +1,5 @@
 #include "normal.h"
 
-#include <c10/util/ArrayRef.h>
-#include <torch/torch.h>
-
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <limits>
@@ -15,7 +12,6 @@ Normal::Normal(torch::Tensor loc, torch::Tensor scale)
 	loc_ = broadcasted_tensors[0];
 	scale_ = broadcasted_tensors[1];
 	batch_shape_ = loc_.sizes().vec();
-	event_shape_ = {};
 }
 
 torch::Tensor Normal::entropy()

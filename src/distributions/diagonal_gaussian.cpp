@@ -2,9 +2,6 @@
 
 #include "normal.h"
 
-#include <c10/util/ArrayRef.h>
-#include <torch/torch.h>
-
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <limits>
