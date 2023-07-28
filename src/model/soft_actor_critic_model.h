@@ -1,10 +1,10 @@
 #pragma once
 
+#include "actor_net.h"
 #include "configuration/model.h"
 #include "fc_block.h"
 #include "feature_extractor.h"
 #include "model.h"
-#include "policy_action_output.h"
 #include "types.h"
 
 #include <torch/torch.h>
@@ -78,8 +78,7 @@ private:
 
 	FeatureExtractor feature_extractor_actor_;
 	torch::nn::GRUCell grucell_;
-	FCBlock actor_;
-	PolicyActionOutput policy_action_output_;
+	Actor actor_;
 
 	std::vector<CriticModules> critics_;
 	std::vector<CriticModules> critic_targets_;

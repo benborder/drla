@@ -234,10 +234,10 @@ struct FeatureExtractorConfig
 
 /// @brief The policy action output configuration. Used to transform input neural units to match the action space of
 /// the environment.
-struct PolicyActionOutputConfig
+struct ActorConfig
 {
-	// The activations function to use for the action head
-	Activation activation = Activation::kNone;
+	// The fully connected network config
+	FCConfig mlp = {};
 	// The type of initialisation for the weights
 	InitType init_weight_type = InitType::kDefault;
 	// The weight values to initialise the network with
@@ -267,12 +267,10 @@ struct ActorCriticConfig : public CommonModelConfig
 	FeatureExtractorConfig feature_extractor;
 	// The shared fully connected block configuration
 	FCConfig shared = {{{512, Activation::kReLU}}};
-	// The actor fully connected block configuration
-	FCConfig actor = {};
+	// The actor config to generate appropriate actions based on the environment
+	ActorConfig actor = {};
 	// The critic fully connected block configuration
 	FCConfig critic = {};
-	// The policy action output to convert the actor output to the environment action space.
-	PolicyActionOutputConfig policy_action_output;
 	// Indicates if the a forward pass should be performed with the critic to estimate the return values
 	bool predict_values = false;
 	// The number of units to use for the GRU cell. 0 Disables the cell.
@@ -297,10 +295,8 @@ struct SoftActorCriticConfig : public CommonModelConfig
 	bool shared_feature_extractor = false;
 	// The feature extractor configuration
 	FeatureExtractorConfig feature_extractor;
-	// The policy action output to convert the actor output to the environment action space.
-	PolicyActionOutputConfig policy_action_output;
-	// The actor fully connected block configuration
-	FCConfig actor = {};
+	// The actor config to generate appropriate actions based on the environment
+	ActorConfig actor = {};
 	// The critic fully connected block configuration
 	FCConfig critic = {};
 	// The critic target fully connected block configuration

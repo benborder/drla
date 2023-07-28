@@ -19,7 +19,6 @@ SoftActorCriticModel::SoftActorCriticModel(
 		, feature_extractor_actor_(config_.feature_extractor, env_config.observation_shapes)
 		, grucell_(nullptr)
 		, actor_(nullptr)
-		, policy_action_output_(nullptr)
 {
 	register_module("feature_extractor_actor", feature_extractor_actor_);
 	int input_size = feature_extractor_actor_->get_output_size();
@@ -29,11 +28,7 @@ SoftActorCriticModel::SoftActorCriticModel(
 			register_module("grucell", torch::nn::GRUCell(torch::nn::GRUCellOptions(input_size, config_.gru_hidden_size)));
 		input_size = config_.gru_hidden_size;
 	}
-	actor_ = register_module("actor", FCBlock(config_.actor, "actor", input_size));
-
-	policy_action_output_ = register_module(
-		"policy_action_output",
-		PolicyActionOutput(config_.policy_action_output, actor_->get_output_size(), action_space_, true));
+	actor_ = register_module("actor", Actor(config_.actor, input_size, action_space_, true));
 
 	auto actions = std::accumulate(action_space_.shape.begin(), action_space_.shape.end(), 0);
 	auto make_critic = [&](std::string postfix) {
@@ -97,12 +92,9 @@ SoftActorCriticModel::SoftActorCriticModel(
 		, feature_extractor_actor_(
 				std::dynamic_pointer_cast<FeatureExtractorImpl>(other.feature_extractor_actor_->clone(device)))
 		, grucell_(use_gru_ ? std::dynamic_pointer_cast<torch::nn::GRUCellImpl>(other.grucell_->clone(device)) : nullptr)
-		, actor_(std::dynamic_pointer_cast<FCBlockImpl>(other.actor_->clone(device)))
-		, policy_action_output_(
-				std::dynamic_pointer_cast<PolicyActionOutputImpl>(other.policy_action_output_->clone(device)))
+		, actor_(std::dynamic_pointer_cast<ActorImpl>(other.actor_->clone(device)))
 {
 	register_module("feature_extractor_actor", feature_extractor_actor_);
-	register_module("policy_action_output", policy_action_output_);
 	register_module("actor", actor_);
 	if (use_gru_)
 	{
@@ -148,7 +140,7 @@ ModelOutput SoftActorCriticModel::predict(const ModelInput& input)
 		features = grucell_(features, input.prev_output.state.at(0));
 		output.state = {features};
 	}
-	auto dist = policy_action_output_(actor_(features));
+	auto dist = actor_(features);
 
 	output.action = dist->sample();
 
@@ -224,8 +216,7 @@ ActorOutput SoftActorCriticModel::action_output(const Observations& observations
 	{
 		features = grucell_(features, state.at(0));
 	}
-	auto latent_pi = actor_(features);
-	auto dist = policy_action_output_(latent_pi);
+	auto dist = actor_(features);
 	ActorOutput output;
 	output.action = dist->sample();
 	output.state = {features};
@@ -339,7 +330,6 @@ void SoftActorCriticModel::train(bool train)
 {
 	feature_extractor_actor_->train(train);
 	actor_->train(train);
-	policy_action_output_->train(train);
 	if (use_gru_)
 	{
 		grucell_->train(train);
@@ -397,8 +387,6 @@ std::vector<torch::Tensor> SoftActorCriticModel::actor_parameters(bool recursive
 	}
 	const auto actor_params = actor_->parameters(recursive);
 	params.insert(params.end(), actor_params.begin(), actor_params.end());
-	const auto policy_action_output_params = policy_action_output_->parameters(recursive);
-	params.insert(params.end(), policy_action_output_params.begin(), policy_action_output_params.end());
 
 	return params;
 }

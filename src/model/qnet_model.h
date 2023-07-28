@@ -4,7 +4,6 @@
 #include "fc_block.h"
 #include "feature_extractor.h"
 #include "model.h"
-#include "policy_action_output.h"
 #include "types.h"
 
 #include <torch/torch.h>

@@ -481,20 +481,20 @@ void to_json(nlohmann::json& json, const FeatureExtractorConfig& feature_extract
 	json = feature_extractor.feature_groups;
 }
 
-void from_json(const nlohmann::json& json, PolicyActionOutputConfig& paoc)
+void from_json(const nlohmann::json& json, ActorConfig& actor)
 {
-	paoc.activation << optional_input{json, "activation"};
-	load_init_weights_config(paoc, json);
-	load_init_bias_config(paoc, json);
+	actor.mlp << optional_input{json, "mlp"};
+	load_init_weights_config(actor, json);
+	load_init_bias_config(actor, json);
 }
 
-void to_json(nlohmann::json& json, const PolicyActionOutputConfig& paoc)
+void to_json(nlohmann::json& json, const ActorConfig& actor)
 {
-	json["activation"] = paoc.activation;
-	json["init_bias_type"] = paoc.init_bias_type;
-	json["init_bias"] = paoc.init_bias;
-	json["init_weight_type"] = paoc.init_weight_type;
-	json["init_weight"] = paoc.init_weight;
+	json["mlp"] = actor.mlp;
+	json["init_bias_type"] = actor.init_bias_type;
+	json["init_bias"] = actor.init_bias;
+	json["init_weight_type"] = actor.init_weight_type;
+	json["init_weight"] = actor.init_weight;
 }
 
 void from_json([[maybe_unused]] const nlohmann::json& json, [[maybe_unused]] CommonModelConfig& model_config)
@@ -513,7 +513,6 @@ void from_json(const nlohmann::json& json, ActorCriticConfig& actor_critic)
 	actor_critic.shared << optional_input{json, "shared"};
 	actor_critic.actor << optional_input{json, "actor"};
 	actor_critic.critic << optional_input{json, "critic"};
-	actor_critic.policy_action_output << optional_input{json, "policy_action_output"};
 	actor_critic.predict_values << optional_input{json, "predict_values"};
 	actor_critic.gru_hidden_size << optional_input{json, "gru_hidden_size"};
 }
@@ -527,7 +526,6 @@ void to_json(nlohmann::json& json, const ActorCriticConfig& actor_critic)
 	json["shared"] = actor_critic.shared;
 	json["actor"] = actor_critic.actor;
 	json["critic"] = actor_critic.critic;
-	json["policy_action_output"] = actor_critic.policy_action_output;
 	json["predict_values"] = actor_critic.predict_values;
 	json["gru_hidden_size"] = actor_critic.gru_hidden_size;
 }
@@ -540,7 +538,6 @@ void from_json(const nlohmann::json& json, SoftActorCriticConfig& sac)
 	sac.critic << optional_input{json, "critic"};
 	sac.shared_feature_extractor << optional_input{json, "shared_feature_extractor"};
 	sac.n_critics << optional_input{json, "n_critics"};
-	sac.policy_action_output << optional_input{json, "policy_action_output"};
 	sac.predict_values << optional_input{json, "predict_values"};
 	sac.gru_hidden_size << optional_input{json, "gru_hidden_size"};
 }
@@ -554,7 +551,6 @@ void to_json(nlohmann::json& json, const SoftActorCriticConfig& sac)
 	json["critic"] = sac.critic;
 	json["shared_feature_extractor"] = sac.shared_feature_extractor;
 	json["n_critics"] = sac.n_critics;
-	json["policy_action_output"] = sac.policy_action_output;
 	json["predict_values"] = sac.predict_values;
 	json["gru_hidden_size"] = sac.gru_hidden_size;
 }

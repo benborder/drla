@@ -287,9 +287,9 @@ void from_json(const nlohmann::json& json, FeatureExtractorConfig& feature_extra
 
 void to_json(nlohmann::json& json, const FeatureExtractorConfig& feature_extractor);
 
-void from_json(const nlohmann::json& json, PolicyActionOutputConfig& paoc);
+void from_json(const nlohmann::json& json, ActorConfig& paoc);
 
-void to_json(nlohmann::json& json, const PolicyActionOutputConfig& paoc);
+void to_json(nlohmann::json& json, const ActorConfig& paoc);
 
 void from_json(const nlohmann::json& json, CommonModelConfig& model_config);
 

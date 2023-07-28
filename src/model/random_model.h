@@ -1,8 +1,8 @@
 #pragma once
 
+#include "actor_net.h"
 #include "configuration/model.h"
 #include "model.h"
-#include "policy_action_output.h"
 #include "types.h"
 
 #include <torch/torch.h>
@@ -33,7 +33,7 @@ public:
 private:
 	const ActionSpace action_space_;
 	int value_shape_;
-	PolicyActionOutput policy_action_output_;
+	Actor actor_;
 };
 
 } // namespace drla

@@ -55,7 +55,7 @@ add_library(drla STATIC
 	src/model/mlp_extractor.cpp
 	src/model/fc_block.cpp
 	src/model/res_block.cpp
-	src/model/policy_action_output.cpp
+	src/model/actor_net.cpp
 	src/model/actor_critic_model.cpp
 	src/model/soft_actor_critic_model.cpp
 	src/model/random_model.cpp

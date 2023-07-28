@@ -1,10 +1,10 @@
 #pragma once
 
+#include "actor_net.h"
 #include "configuration/model.h"
 #include "fc_block.h"
 #include "feature_extractor.h"
 #include "model.h"
-#include "policy_action_output.h"
 #include "types.h"
 
 #include <torch/torch.h>
@@ -52,8 +52,7 @@ private:
 
 	FCBlock shared_;
 	FCBlock critic_;
-	FCBlock actor_;
+	Actor actor_;
 	torch::nn::GRUCell grucell_;
-	PolicyActionOutput policy_action_output_;
 };
 } // namespace drla

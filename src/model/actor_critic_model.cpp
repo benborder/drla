@@ -22,7 +22,6 @@ ActorCriticModel::ActorCriticModel(
 		, critic_(nullptr)
 		, actor_(nullptr)
 		, grucell_(nullptr)
-		, policy_action_output_(nullptr)
 {
 	register_module("feature_extractor", feature_extractor_);
 	int input_size = feature_extractor_->get_output_size();
@@ -45,14 +44,7 @@ ActorCriticModel::ActorCriticModel(
 	}
 
 	critic_ = register_module("critic", FCBlock(config_.critic, "critic", input_size, value_shape));
-	actor_ = register_module("actor", FCBlock(config_.actor, "actor", input_size));
-	if (config_.actor.layers.empty())
-	{
-		spdlog::debug("Constructing actor");
-	}
-	policy_action_output_ = register_module(
-		"policy_action_output",
-		PolicyActionOutput(config_.policy_action_output, actor_->get_output_size(), env_config.action_space));
+	actor_ = register_module("actor", Actor(config_.actor, input_size, env_config.action_space));
 
 	int parameter_size = 0;
 	auto params = parameters();
@@ -75,10 +67,8 @@ ActorCriticModel::ActorCriticModel(const ActorCriticModel& other, const c10::opt
 		, feature_extractor_critic_(nullptr)
 		, shared_(nullptr)
 		, critic_(std::dynamic_pointer_cast<FCBlockImpl>(other.critic_->clone(device)))
-		, actor_(std::dynamic_pointer_cast<FCBlockImpl>(other.actor_->clone(device)))
+		, actor_(std::dynamic_pointer_cast<ActorImpl>(other.actor_->clone(device)))
 		, grucell_(use_gru_ ? std::dynamic_pointer_cast<torch::nn::GRUCellImpl>(other.grucell_->clone(device)) : nullptr)
-		, policy_action_output_(
-				std::dynamic_pointer_cast<PolicyActionOutputImpl>(other.policy_action_output_->clone(device)))
 {
 	register_module("feature_extractor", feature_extractor_);
 
@@ -93,14 +83,13 @@ ActorCriticModel::ActorCriticModel(const ActorCriticModel& other, const c10::opt
 			std::dynamic_pointer_cast<FeatureExtractorImpl>(other.feature_extractor_critic_->clone(device));
 		register_module("feature_extractor_critic", feature_extractor_critic_);
 	}
-
-	register_module("critic", critic_);
-	register_module("actor", actor_);
 	if (use_gru_)
 	{
 		register_module("grucell", grucell_);
 	}
-	register_module("policy_action_output", policy_action_output_);
+
+	register_module("critic", critic_);
+	register_module("actor", actor_);
 }
 
 ModelOutput ActorCriticModel::predict(const ModelInput& input)
@@ -128,7 +117,7 @@ ModelOutput ActorCriticModel::predict(const ModelInput& input)
 			output.values = critic_(flatten(feature_extractor_critic_(input.observations)));
 		}
 	}
-	auto dist = policy_action_output_(actor_(features));
+	auto dist = actor_(features);
 	output.action = dist->sample(input.deterministic);
 
 	if (input.deterministic)
@@ -200,7 +189,7 @@ ActionPolicyEvaluation ActorCriticModel::evaluate_actions(
 	{
 		values = critic_(flatten(feature_extractor_critic_(observations)));
 	}
-	auto dist = policy_action_output_(actor_(features));
+	auto dist = actor_(features);
 
 	torch::Tensor action_log_probs;
 	if (is_action_discrete(action_space_))
