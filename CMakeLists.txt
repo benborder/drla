@@ -49,6 +49,7 @@ add_library(drla STATIC
 	src/mcts/mcts.cpp
 
 	# Models
+	src/model/utils.cpp
 	src/model/feature_extractor.cpp
 	src/model/cnn_extractor.cpp
 	src/model/mlp_extractor.cpp
