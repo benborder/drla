@@ -126,11 +126,11 @@ std::vector<UpdateResult> MuZero::update(int timestep)
 	buffer_.update_priorities(priorities, batch.indicies);
 
 	return {
-		{TrainResultType::kLoss, loss.item<float>()},
-		{TrainResultType::kValueLoss, value_loss.mean().item<float>()},
-		{TrainResultType::kRewardLoss, reward_loss.mean().item<float>()},
-		{TrainResultType::kPolicyLoss, policy_loss.mean().item<float>()},
-		{TrainResultType::kLearningRate, lr_}};
+		{"loss", TrainResultType::kLoss, loss.item<float>()},
+		{"loss_value", TrainResultType::kLoss, value_loss.mean().item<float>()},
+		{"loss_reward", TrainResultType::kLoss, reward_loss.mean().item<float>()},
+		{"loss_policy", TrainResultType::kLoss, policy_loss.mean().item<float>()},
+		{"learning_rate", TrainResultType::kLearningRate, lr_}};
 }
 
 void MuZero::save(const std::filesystem::path& path) const

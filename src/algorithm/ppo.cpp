@@ -123,14 +123,14 @@ std::vector<UpdateResult> PPO::update(int timestep)
 	clip_fraction /= update_count;
 
 	return {
-		{TrainResultType::kLoss, loss.mean().item<float>()},
-		{TrainResultType::kValueLoss, total_value_loss},
-		{TrainResultType::kPolicyLoss, total_policy_loss},
-		{TrainResultType::kEntropyLoss, total_entropy_loss},
-		{TrainResultType::kClipFraction, clip_fraction},
-		{TrainResultType::kKLDivergence, kl_divergence},
-		{TrainResultType::kLearningRate, lr_},
-		{TrainResultType::kExplainedVariance, explained_var}};
+		{"loss", TrainResultType::kLoss, loss.mean().item<float>()},
+		{"loss_value", TrainResultType::kLoss, total_value_loss},
+		{"loss_policy", TrainResultType::kLoss, total_policy_loss},
+		{"loss_entropy", TrainResultType::kLoss, total_entropy_loss},
+		{"clip_fraction", TrainResultType::kPolicyEvaluation, clip_fraction},
+		{"kl_divergence", TrainResultType::kPolicyEvaluation, kl_divergence},
+		{"learning_rate", TrainResultType::kLearningRate, lr_},
+		{"explained_variance", TrainResultType::kPerformanceEvaluation, explained_var}};
 }
 
 void PPO::save(const std::filesystem::path& path) const

@@ -333,7 +333,7 @@ void MCTSAgent::train()
 
 		train_update_data.update_data = algorithm->update(timestep);
 		train_update_data.update_data.push_back(
-			{TrainResultType::kReanalyseCount, static_cast<double>(buffer.get_reanalysed_count())});
+			{"reanalyse_count", TrainResultType::kBufferStats, static_cast<double>(buffer.get_reanalysed_count())});
 		model_syncer.send(std::dynamic_pointer_cast<MCTSModelInterface>(model_->clone(torch::kCPU)));
 
 		train_update_data.update_duration = std::chrono::steady_clock::now() - start;

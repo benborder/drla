@@ -71,9 +71,9 @@ std::vector<UpdateResult> DQN::update(int timestep)
 	update_exploration(timestep);
 
 	return {
-		{TrainResultType::kLoss, total_loss / config_.gradient_steps},
-		{TrainResultType::kLearningRate, static_cast<float>(lr_param_)},
-		{TrainResultType::kExploration, static_cast<float>(exploration_param_)}};
+		{"loss", TrainResultType::kLoss, total_loss / config_.gradient_steps},
+		{"learning_rate", TrainResultType::kLearningRate, static_cast<float>(lr_param_)},
+		{"exploration", TrainResultType::kPolicyEvaluation, static_cast<float>(exploration_param_)}};
 }
 
 void DQN::save(const std::filesystem::path& path) const

@@ -80,40 +80,12 @@ struct EnvironmentConfiguration
 enum class TrainResultType
 {
 	kLoss,
-	kValueLoss,
-	kPolicyLoss,
-	kRewardLoss,
-	kEntropyLoss,
-	kClipFraction,
-	kKLDivergence,
 	kLearningRate,
-	kExplainedVariance,
-	kExploration,
-	kEntropyCoeficients,
-	kReanalyseCount,
+	kPerformanceEvaluation,
+	kPolicyEvaluation,
+	kRegularisation,
+	kBufferStats,
 };
-
-/// @brief Converts a TrainResultType to a string
-/// @return A string of the TrainResultType
-inline std::string get_result_type_name(TrainResultType type)
-{
-	switch (type)
-	{
-		case TrainResultType::kLoss: return "loss";
-		case TrainResultType::kValueLoss: return "value_loss";
-		case TrainResultType::kPolicyLoss: return "policy_loss";
-		case TrainResultType::kRewardLoss: return "reward_loss";
-		case TrainResultType::kEntropyLoss: return "entropy_loss";
-		case TrainResultType::kClipFraction: return "clip_fraction";
-		case TrainResultType::kKLDivergence: return "kl_divergence";
-		case TrainResultType::kLearningRate: return "learning_rate";
-		case TrainResultType::kExplainedVariance: return "explained_variance";
-		case TrainResultType::kExploration: return "exploration";
-		case TrainResultType::kEntropyCoeficients: return "entropy_coeficients";
-		case TrainResultType::kReanalyseCount: return "reanalyse_count";
-		default: return "";
-	}
-}
 
 /// @brief The output from the agent's model prediction
 struct ModelOutput
@@ -163,9 +135,8 @@ struct Batch
 /// @brief Training update result data
 struct UpdateResult
 {
-	// The result type
+	std::string name;
 	TrainResultType type;
-	// The result value
 	double value;
 };
 

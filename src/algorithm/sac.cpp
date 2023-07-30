@@ -159,11 +159,11 @@ std::vector<UpdateResult> SAC::update(int timestep)
 	actor_losses /= static_cast<float>(config_.gradient_steps);
 
 	return {
-		{TrainResultType::kValueLoss, critic_losses},
-		{TrainResultType::kPolicyLoss, actor_losses},
-		{TrainResultType::kEntropyLoss, ent_coef_losses},
-		{TrainResultType::kLearningRate, static_cast<float>(lr_param_)},
-		{TrainResultType::kEntropyCoeficients, ent_coefs},
+		{"loss", TrainResultType::kLoss, critic_losses},
+		{"loss_policy", TrainResultType::kLoss, actor_losses},
+		{"loss_entropy", TrainResultType::kLoss, ent_coef_losses},
+		{"learning_rate", TrainResultType::kLearningRate, static_cast<float>(lr_param_)},
+		{"entropy_coeficients", TrainResultType::kRegularisation, ent_coefs},
 	};
 }
 

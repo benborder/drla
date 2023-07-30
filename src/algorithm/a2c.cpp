@@ -75,12 +75,12 @@ std::vector<UpdateResult> A2C::update(int timestep)
 	auto explained_var = explained_variance(buffer_.get_values(), buffer_.get_returns());
 
 	return {
-		{TrainResultType::kLoss, loss.mean().item<float>()},
-		{TrainResultType::kValueLoss, value_loss.item<float>()},
-		{TrainResultType::kPolicyLoss, policy_loss.item<float>()},
-		{TrainResultType::kEntropyLoss, evaluate_result.dist_entropy.item<float>()},
-		{TrainResultType::kLearningRate, lr_param_},
-		{TrainResultType::kExplainedVariance, explained_var}};
+		{"loss", TrainResultType::kLoss, loss.mean().item<float>()},
+		{"loss_value", TrainResultType::kLoss, value_loss.item<float>()},
+		{"loss_policy", TrainResultType::kLoss, policy_loss.item<float>()},
+		{"loss_entropy", TrainResultType::kLoss, evaluate_result.dist_entropy.item<float>()},
+		{"learning_rate", TrainResultType::kLearningRate, lr_param_},
+		{"explained_variance", TrainResultType::kPerformanceEvaluation, explained_var}};
 }
 
 void A2C::save(const std::filesystem::path& path) const
