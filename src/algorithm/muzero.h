@@ -20,7 +20,7 @@ public:
 		const Config::AgentTrainAlgorithm& config, std::shared_ptr<MCTSModelInterface> model, EpisodicPERBuffer& buffer);
 
 	std::string name() const override;
-	std::vector<UpdateResult> update(int batch) override;
+	std::vector<UpdateResult> update(int timestep) override;
 
 	void save(const std::filesystem::path& path) const override;
 	void load(const std::filesystem::path& path) override;

@@ -16,7 +16,7 @@ class Algorithm
 public:
 	virtual ~Algorithm();
 	virtual std::string name() const = 0;
-	virtual std::vector<UpdateResult> update(int batch) = 0;
+	virtual std::vector<UpdateResult> update(int timestep) = 0;
 
 	virtual void save(const std::filesystem::path& path) const = 0;
 	virtual void load(const std::filesystem::path& path) = 0;
