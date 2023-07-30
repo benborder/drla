@@ -248,18 +248,13 @@ struct ActorConfig
 	double init_bias = 0.0;
 };
 
-/// @brief Configuration common to all models
-struct CommonModelConfig
-{
-};
-
 /// @brief Configuration for the random model
-struct RandomConfig : public CommonModelConfig
+struct RandomConfig
 {
 };
 
 /// @brief Configuration for the on policy actor critic model
-struct ActorCriticConfig : public CommonModelConfig
+struct ActorCriticConfig
 {
 	// Use a shared feature extractor and optional shared fully connected block
 	bool use_shared_extractor = true;
@@ -278,7 +273,7 @@ struct ActorCriticConfig : public CommonModelConfig
 };
 
 /// @brief Configuration for the of policy Q network model
-struct QNetModelConfig : public CommonModelConfig
+struct QNetModelConfig
 {
 	// The feature extractor configuration
 	FeatureExtractorConfig feature_extractor;
@@ -289,7 +284,7 @@ struct QNetModelConfig : public CommonModelConfig
 };
 
 /// @brief Configuration for the off policy soft actor critic model
-struct SoftActorCriticConfig : public CommonModelConfig
+struct SoftActorCriticConfig
 {
 	// Use a shared feature extractor and optional shared fully connected block
 	bool shared_feature_extractor = false;
@@ -349,7 +344,7 @@ struct PredictionNetwork
 };
 
 /// @brief Configuration for the muzero model
-struct ModelConfig : public CommonModelConfig
+struct ModelConfig
 {
 	// The feature extractor configuration
 	FeatureExtractorConfig representation_network;

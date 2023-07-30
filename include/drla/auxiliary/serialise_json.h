@@ -291,10 +291,6 @@ void from_json(const nlohmann::json& json, ActorConfig& paoc);
 
 void to_json(nlohmann::json& json, const ActorConfig& paoc);
 
-void from_json(const nlohmann::json& json, CommonModelConfig& model_config);
-
-void to_json(nlohmann::json& json, const CommonModelConfig& model_config);
-
 void from_json(const nlohmann::json& json, ActorCriticConfig& actor_critic);
 
 void to_json(nlohmann::json& json, const ActorCriticConfig& actor_critic);

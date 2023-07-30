@@ -497,17 +497,8 @@ void to_json(nlohmann::json& json, const ActorConfig& actor)
 	json["init_weight"] = actor.init_weight;
 }
 
-void from_json([[maybe_unused]] const nlohmann::json& json, [[maybe_unused]] CommonModelConfig& model_config)
-{
-}
-
-void to_json([[maybe_unused]] nlohmann::json& json, [[maybe_unused]] const CommonModelConfig& model_config)
-{
-}
-
 void from_json(const nlohmann::json& json, ActorCriticConfig& actor_critic)
 {
-	from_json(json, static_cast<CommonModelConfig&>(actor_critic));
 	actor_critic.use_shared_extractor << optional_input{json, "use_shared_extractor"};
 	actor_critic.feature_extractor << required_input{json, "feature_extractor"};
 	actor_critic.shared << optional_input{json, "shared"};
@@ -520,7 +511,6 @@ void from_json(const nlohmann::json& json, ActorCriticConfig& actor_critic)
 void to_json(nlohmann::json& json, const ActorCriticConfig& actor_critic)
 {
 	json["model_type"] = AgentPolicyModelType::kActorCritic;
-	to_json(json, static_cast<const CommonModelConfig&>(actor_critic));
 	json["use_shared_extractor"] = actor_critic.use_shared_extractor;
 	json["feature_extractor"] = actor_critic.feature_extractor;
 	json["shared"] = actor_critic.shared;
@@ -532,7 +522,6 @@ void to_json(nlohmann::json& json, const ActorCriticConfig& actor_critic)
 
 void from_json(const nlohmann::json& json, SoftActorCriticConfig& sac)
 {
-	from_json(json, static_cast<CommonModelConfig&>(sac));
 	sac.feature_extractor << required_input{json, "feature_extractor"};
 	sac.actor << optional_input{json, "actor"};
 	sac.critic << optional_input{json, "critic"};
@@ -545,7 +534,6 @@ void from_json(const nlohmann::json& json, SoftActorCriticConfig& sac)
 void to_json(nlohmann::json& json, const SoftActorCriticConfig& sac)
 {
 	json["model_type"] = AgentPolicyModelType::kSoftActorCritic;
-	to_json(json, static_cast<const CommonModelConfig&>(sac));
 	json["feature_extractor"] = sac.feature_extractor;
 	json["actor"] = sac.actor;
 	json["critic"] = sac.critic;
@@ -557,7 +545,6 @@ void to_json(nlohmann::json& json, const SoftActorCriticConfig& sac)
 
 void from_json(const nlohmann::json& json, QNetModelConfig& dqn_model)
 {
-	from_json(json, static_cast<CommonModelConfig&>(dqn_model));
 	dqn_model.feature_extractor << required_input{json, "feature_extractor"};
 	dqn_model.q_net << required_input{json, "q_net"};
 	dqn_model.gru_hidden_size << optional_input{json, "gru_hidden_size"};
@@ -566,7 +553,6 @@ void from_json(const nlohmann::json& json, QNetModelConfig& dqn_model)
 void to_json(nlohmann::json& json, const QNetModelConfig& dqn_model)
 {
 	json["model_type"] = AgentPolicyModelType::kQNet;
-	to_json(json, static_cast<const CommonModelConfig&>(dqn_model));
 	json["feature_extractor"] = dqn_model.feature_extractor;
 	json["q_net"] = dqn_model.q_net;
 	json["gru_hidden_size"] = dqn_model.gru_hidden_size;
@@ -762,7 +748,6 @@ void to_json(nlohmann::json& json, const PredictionNetwork& pred_net)
 
 void from_json(const nlohmann::json& json, ModelConfig& muzero_config)
 {
-	from_json(json, static_cast<CommonModelConfig&>(muzero_config));
 	muzero_config.representation_network << required_input{json, "representation_network"};
 	muzero_config.dynamics_network << required_input{json, "dynamics_network"};
 	muzero_config.prediction_network << required_input{json, "prediction_network"};
@@ -773,7 +758,6 @@ void from_json(const nlohmann::json& json, ModelConfig& muzero_config)
 void to_json(nlohmann::json& json, const ModelConfig& muzero_config)
 {
 	json["model_type"] = AgentPolicyModelType::kMuZero;
-	to_json(json, static_cast<const CommonModelConfig&>(muzero_config));
 	json["representation_network"] = muzero_config.representation_network;
 	json["dynamics_network"] = muzero_config.dynamics_network;
 	json["prediction_network"] = muzero_config.prediction_network;
