@@ -26,15 +26,21 @@ torch::Tensor Normal::log_prob(torch::Tensor value)
 	return (-(value - loc_).pow(2) / (2 * variance) - log_scale - std::log(std::sqrt(2 * M_PI)));
 }
 
-torch::Tensor Normal::sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape)
+torch::Tensor Normal::sample(c10::ArrayRef<int64_t> sample_shape)
 {
-	if (deterministic)
-	{
-		return loc_;
-	}
 	auto shape = extended_shape(sample_shape);
 	torch::NoGradGuard no_grad;
 	return at::normal(loc_.expand(shape), scale_.expand(shape));
+}
+
+torch::Tensor Normal::mean() const
+{
+	return loc_;
+}
+
+torch::Tensor Normal::mode() const
+{
+	return loc_;
 }
 
 const torch::Tensor Normal::get_action_output() const

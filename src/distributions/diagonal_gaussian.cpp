@@ -36,14 +36,34 @@ torch::Tensor DiagonalGaussian::log_prob(torch::Tensor value)
 	}
 }
 
-torch::Tensor DiagonalGaussian::sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape)
+torch::Tensor DiagonalGaussian::sample(c10::ArrayRef<int64_t> sample_shape)
 {
-	auto actions = dist_.sample(deterministic, sample_shape);
+	auto actions = dist_.sample(sample_shape);
 	if (squash_)
 	{
 		actions = torch::tanh(actions);
 	}
 	return actions;
+}
+
+torch::Tensor DiagonalGaussian::mean() const
+{
+	auto mean = dist_.mean();
+	if (squash_)
+	{
+		mean = torch::tanh(mean);
+	}
+	return mean;
+}
+
+torch::Tensor DiagonalGaussian::mode() const
+{
+	auto mode = dist_.mode();
+	if (squash_)
+	{
+		mode = torch::tanh(mode);
+	}
+	return mode;
 }
 
 const torch::Tensor DiagonalGaussian::get_action_output() const

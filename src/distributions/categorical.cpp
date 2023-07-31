@@ -63,16 +63,22 @@ torch::Tensor Categorical::logits() const
 	return logits_;
 }
 
-torch::Tensor Categorical::sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape)
+torch::Tensor Categorical::sample(c10::ArrayRef<int64_t> sample_shape)
 {
-	if (deterministic)
-	{
-		return probs_.argmax(-1, true);
-	}
 	auto probs_2d = probs_.reshape({-1, num_events_});
 	int samples = std::accumulate(sample_shape.begin(), sample_shape.end(), 1, std::multiplies<>());
 	auto sample_2d = torch::multinomial(probs_2d, samples, true).t();
 	return sample_2d.reshape(extended_shape(sample_shape));
+}
+
+torch::Tensor Categorical::mean() const
+{
+	return torch::full(extended_shape(), std::numeric_limits<float>::quiet_NaN(), param_.device());
+}
+
+torch::Tensor Categorical::mode() const
+{
+	return probs_.argmax(-1, true).reshape(extended_shape());
 }
 
 const torch::Tensor Categorical::get_action_output() const
@@ -119,11 +125,25 @@ torch::Tensor MultiCategorical::log_prob(torch::Tensor value)
 	return torch::stack(values, 1).sum(1);
 }
 
-torch::Tensor MultiCategorical::sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape)
+torch::Tensor MultiCategorical::sample(c10::ArrayRef<int64_t> sample_shape)
 {
 	std::vector<torch::Tensor> actions;
-	for (auto& category : category_dim_) { actions.push_back(category.sample(deterministic, sample_shape)); }
+	for (auto& category : category_dim_) { actions.push_back(category.sample(sample_shape)); }
 	return torch::stack(actions, 1);
+}
+
+torch::Tensor MultiCategorical::mean() const
+{
+	std::vector<torch::Tensor> mean;
+	for (auto& category : category_dim_) { mean.push_back(category.mean()); }
+	return torch::stack(mean, 1);
+}
+
+torch::Tensor MultiCategorical::mode() const
+{
+	std::vector<torch::Tensor> mode;
+	for (auto& category : category_dim_) { mode.push_back(category.mode()); }
+	return torch::stack(mode, 1);
 }
 
 const torch::Tensor MultiCategorical::get_action_output() const
@@ -143,8 +163,14 @@ torch::Tensor OneHotCategorical::log_prob(torch::Tensor value)
 	return Categorical::log_prob(indices);
 }
 
-torch::Tensor OneHotCategorical::sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape)
+torch::Tensor OneHotCategorical::sample(c10::ArrayRef<int64_t> sample_shape)
 {
-	auto indices = Categorical::sample(deterministic, sample_shape);
+	auto indices = Categorical::sample(sample_shape);
+	return torch::one_hot(indices.to(torch::kLong), num_events_).to(probs_);
+}
+
+torch::Tensor OneHotCategorical::mode() const
+{
+	auto indices = Categorical::mode();
 	return torch::one_hot(indices.to(torch::kLong), num_events_).to(probs_);
 }

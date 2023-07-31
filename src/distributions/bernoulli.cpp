@@ -49,17 +49,21 @@ torch::Tensor Bernoulli::log_prob(torch::Tensor value)
 		broadcasted_tensors[0], broadcasted_tensors[1], {}, {}, torch::Reduction::None);
 }
 
-torch::Tensor Bernoulli::sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape)
+torch::Tensor Bernoulli::sample(c10::ArrayRef<int64_t> sample_shape)
 {
-	if (deterministic)
-	{
-		auto mode = (probs_ >= 0.5).to(probs_);
-		mode[probs_ == 0.5] = std::numeric_limits<float>::quiet_NaN();
-		return mode;
-	}
 	auto ext_sample_shape = extended_shape(sample_shape);
 	torch::NoGradGuard no_grad;
 	return torch::bernoulli(probs_.expand(ext_sample_shape));
+}
+
+torch::Tensor Bernoulli::mean() const
+{
+	return probs_;
+}
+
+torch::Tensor Bernoulli::mode() const
+{
+	return (probs_ > 0.5F).to(probs_);
 }
 
 const torch::Tensor Bernoulli::get_action_output() const

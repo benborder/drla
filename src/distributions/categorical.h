@@ -8,7 +8,6 @@
 namespace drla
 {
 
-// TODO: add mask to ignore certain categories
 class Categorical : public Distribution
 {
 public:
@@ -18,7 +17,9 @@ public:
 	torch::Tensor log_prob(torch::Tensor value) override;
 	torch::Tensor probs() const;
 	torch::Tensor logits() const;
-	torch::Tensor sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape = {}) override;
+	torch::Tensor sample(c10::ArrayRef<int64_t> sample_shape = {}) override;
+	torch::Tensor mean() const override;
+	torch::Tensor mode() const override;
 	const torch::Tensor get_action_output() const override;
 
 protected:
@@ -36,7 +37,9 @@ public:
 
 	torch::Tensor entropy() override;
 	torch::Tensor log_prob(torch::Tensor value) override;
-	torch::Tensor sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape = {}) override;
+	torch::Tensor sample(c10::ArrayRef<int64_t> sample_shape = {}) override;
+	torch::Tensor mean() const override;
+	torch::Tensor mode() const override;
 	const torch::Tensor get_action_output() const override;
 
 private:
@@ -49,7 +52,8 @@ public:
 	OneHotCategorical(const torch::Tensor probs = {}, const torch::Tensor logits = {});
 
 	torch::Tensor log_prob(torch::Tensor value) override;
-	torch::Tensor sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape = {}) override;
+	torch::Tensor sample(c10::ArrayRef<int64_t> sample_shape = {}) override;
+	torch::Tensor mode() const override;
 };
 
 } // namespace drla

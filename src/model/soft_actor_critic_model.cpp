@@ -142,7 +142,14 @@ ModelOutput SoftActorCriticModel::predict(const ModelInput& input)
 	}
 	auto dist = actor_(features);
 
-	output.action = dist->sample();
+	if (input.deterministic)
+	{
+		output.action = dist->mode();
+	}
+	else
+	{
+		output.action = dist->sample();
+	}
 
 	if (is_action_discrete(action_space_))
 	{

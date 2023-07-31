@@ -118,14 +118,14 @@ ModelOutput ActorCriticModel::predict(const ModelInput& input)
 		}
 	}
 	auto dist = actor_(features);
-	output.action = dist->sample(input.deterministic);
-
 	if (input.deterministic)
 	{
+		output.action = dist->mode();
 		return output;
 	}
 	else
 	{
+		output.action = dist->sample();
 		output.action_log_probs = dist->log_prob(output.action);
 
 		if (is_action_discrete(action_space_))

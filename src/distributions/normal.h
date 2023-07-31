@@ -15,7 +15,9 @@ public:
 
 	torch::Tensor entropy() override;
 	torch::Tensor log_prob(torch::Tensor value) override;
-	torch::Tensor sample(bool deterministic, c10::ArrayRef<int64_t> sample_shape = {}) override;
+	torch::Tensor sample(c10::ArrayRef<int64_t> sample_shape = {}) override;
+	torch::Tensor mean() const override;
+	torch::Tensor mode() const override;
 	const torch::Tensor get_action_output() const override;
 
 private:

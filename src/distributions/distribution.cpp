@@ -12,7 +12,7 @@ const std::vector<int64_t>& Distribution::get_event_shape() const
 	return event_shape_;
 }
 
-std::vector<int64_t> Distribution::extended_shape(c10::ArrayRef<int64_t> sample_shape)
+std::vector<int64_t> Distribution::extended_shape(c10::ArrayRef<int64_t> sample_shape) const
 {
 	std::vector<int64_t> output_shape;
 	output_shape.insert(output_shape.end(), sample_shape.begin(), sample_shape.end());
