@@ -61,4 +61,16 @@ inline std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b
 	return c;
 }
 
+template <typename T>
+inline void operator<<(std::vector<T>& a, const std::vector<T>& b)
+{
+	a.insert(a.end(), b.begin(), b.end());
+}
+
+template <typename T>
+inline void operator<<(std::vector<T>& a, std::vector<T>&& b)
+{
+	a.insert(a.end(), std::make_move_iterator(b.begin()), std::make_move_iterator(b.end()));
+}
+
 } // namespace drla
