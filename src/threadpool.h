@@ -32,7 +32,6 @@ public:
 			threads = std::min<size_t>(std::thread::hardware_concurrency(), threads);
 		}
 
-		size_t total_threads = threads;
 		std::atomic_uint running_threads = 0;
 
 		running_ = true;
@@ -69,7 +68,7 @@ public:
 		}
 
 		// block via spinlock while all threads are starting up
-		while (running_threads < total_threads)
+		while (running_threads < threads)
 			;
 	}
 
