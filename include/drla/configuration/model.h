@@ -261,7 +261,7 @@ struct ActorCriticConfig
 	// The feature extractor configuration
 	FeatureExtractorConfig feature_extractor;
 	// The shared fully connected block configuration
-	FCConfig shared = {{{512, Activation::kReLU}}};
+	FCConfig shared = {};
 	// The actor config to generate appropriate actions based on the environment
 	ActorConfig actor = {};
 	// The critic fully connected block configuration
