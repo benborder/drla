@@ -442,7 +442,7 @@ std::unique_ptr<MCTSEpisode> MCTSAgent::run_episode(
 	step_data.predict_result = model->initial();
 	step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
 	auto agent_reset_config = agent_callback_->env_reset(step_data);
-	episode_data.push_back(std::move(step_data));
+	episode_data.push_back(step_data);
 
 	torch::NoGradGuard no_grad;
 
@@ -450,7 +450,6 @@ std::unique_ptr<MCTSEpisode> MCTSAgent::run_episode(
 
 	for (int step = 1; step <= options.max_steps; step++)
 	{
-		step_data.env = env;
 		step_data.step = step;
 
 		auto turn_index = episode_data.back().env_data.turn_index;
@@ -476,7 +475,7 @@ std::unique_ptr<MCTSEpisode> MCTSAgent::run_episode(
 
 		bool stop = agent_callback_->env_step(step_data) || step_data.env_data.state.episode_end;
 
-		episode_data.push_back(std::move(step_data));
+		episode_data.push_back(step_data);
 
 		if (stop)
 		{

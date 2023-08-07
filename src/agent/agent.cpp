@@ -1,6 +1,7 @@
 #include "agent.h"
 
 #include "actor_critic_model.h"
+#include "agent_utils.h"
 #include "interactive_agent.h"
 #include "mcts_agent.h"
 #include "muzero_model.h"
@@ -165,14 +166,8 @@ void Agent::run_episode(Model* model, const State& initial_state, int env, RunOp
 	step_data.env = env;
 	step_data.step = 0;
 	step_data.env_data = environment->reset(initial_state);
-	step_data.predict_result.action = torch::zeros(env_config.action_space.shape);
-	auto state_shape = model->get_state_shape();
-	for (auto state : state_shape)
-	{
-		step_data.predict_result.state.push_back(torch::zeros({1, state}, devices_.front()));
-	}
-
-	step_data.reward = step_data.env_data.reward.clone();
+	step_data.predict_result = model->initial();
+	step_data.reward = clamp_reward(step_data.env_data.reward, base_config_.rewards);
 
 	auto agent_reset_config = agent_callback_->env_reset(step_data);
 	if (agent_reset_config.stop)
@@ -205,21 +200,13 @@ void Agent::run_episode(Model* model, const State& initial_state, int env, RunOp
 
 		step_data.predict_result = model->predict(input);
 		step_data.env_data = environment->step(step_data.predict_result.action);
-		step_data.reward = step_data.env_data.reward.clone();
-		if (base_config_.rewards.reward_clamp_min != 0)
-		{
-			step_data.reward.clamp_max_(-base_config_.rewards.reward_clamp_min);
-		}
-		if (base_config_.rewards.reward_clamp_max != 0)
-		{
-			step_data.reward.clamp_min_(-base_config_.rewards.reward_clamp_max);
-		}
+		step_data.reward = clamp_reward(step_data.env_data.reward, base_config_.rewards);
 		if (options.capture_observations)
 		{
 			step_data.raw_observation = environment->get_raw_observations();
 		}
 
-		bool stop = agent_callback_->env_step(step_data);
+		stop = agent_callback_->env_step(step_data);
 		if (stop)
 		{
 			break;
