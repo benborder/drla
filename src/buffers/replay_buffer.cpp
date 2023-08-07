@@ -168,8 +168,8 @@ ReplayBufferSamples ReplayBuffer::sample(int sample_size)
 		auto [index, probs] = episode->sample_position(gen_);
 		auto target = episode->make_target(index, gamma_);
 		auto next_target = episode->make_target(index + 1, gamma_);
-		auto sample_obs = episode->get_stacked_observations(index, device_);
-		auto sample_next_obs = episode->get_stacked_observations(index + 1, device_);
+		auto sample_obs = episode->get_observations(index, device_);
+		auto sample_next_obs = episode->get_observations(index + 1, device_);
 
 		data.indicies.emplace_back(episode->get_id(), index);
 

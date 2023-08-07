@@ -30,7 +30,7 @@ class Episode
 public:
 	virtual void set_id(int id) = 0;
 	virtual int get_id() const = 0;
-	virtual Observations get_stacked_observations(int step, torch::Device device) const = 0;
+	virtual Observations get_observations(int step, torch::Device device) const = 0;
 	virtual ObservationShapes get_observation_shapes() const = 0;
 	virtual void init_priorities(torch::Tensor gamma, float per_alpha = 1.0F) = 0;
 	virtual void update_priorities(int index, torch::Tensor priorities) = 0;

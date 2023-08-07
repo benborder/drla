@@ -65,7 +65,7 @@ int MCTSEpisode::get_id() const
 	return id_;
 }
 
-Observations MCTSEpisode::get_stacked_observations(int step, torch::Device device) const
+Observations MCTSEpisode::get_observations(int step, torch::Device device) const
 {
 	Observations stacked_obs;
 	// Clamp the step to the max episode length

@@ -174,7 +174,7 @@ Batch EpisodicPERBuffer::sample(int batch_size, torch::Device device) const
 	{
 		auto [index, probs] = episode->sample_position(gen_);
 		auto target = episode->make_target(index, gamma_);
-		auto sample_obs = episode->get_stacked_observations(index, device);
+		auto sample_obs = episode->get_observations(index, device);
 
 		batch.indicies.emplace_back(episode->get_id(), index);
 		for (size_t i = 0; i < batch.observation.size(); ++i)
@@ -226,7 +226,7 @@ void EpisodicPERBuffer::reanalyse(std::shared_ptr<Model> model)
 	for (int step = 0; step < len; ++step)
 	{
 		ModelInput input;
-		input.observations = episode->get_stacked_observations(step, device);
+		input.observations = episode->get_observations(step, device);
 		for (auto& obs : input.observations) { obs.unsqueeze_(0); }
 		input.prev_output = prediction;
 		prediction = model->predict(input);

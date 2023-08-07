@@ -69,7 +69,7 @@ int OffPolicyEpisode::get_id() const
 	return id_;
 }
 
-Observations OffPolicyEpisode::get_stacked_observations(int step, torch::Device device) const
+Observations OffPolicyEpisode::get_observations(int step, torch::Device device) const
 {
 	Observations stacked_obs;
 	for (auto& obs : observations_) { stacked_obs.push_back(obs.narrow(0, step, 1).squeeze(0).to(device)); }
