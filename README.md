@@ -8,31 +8,26 @@ The DRLA library is a C++ Deep Reinforcement Learning Agent based on libtorch (p
 
 - Agent interfaces to integrate with environments and your project
 - Multi threaded async environment functionality
-- Model free On-Policy rollout based algorithms (PPO, A2C)
-- Model free Off-Policy replay based algorithms (DQN, SAC)
-- Model based Monte-Carlo tree search algorithms (MuZero)
-
-Features to be added in the future:
-
-- Enable training via custom algorithms
-- Interfaces to use custom models
-- Additional training algorithms
-	- Rainbow DQN
+- Model-free On-Policy rollout based algorithms (PPO, A2C)
+- Model-free Off-Policy replay based algorithms (DQN, SAC)
+- Model-based Monte-Carlo tree search algorithms (MuZero)
 
 ## Example
 
-See the [drla-atari](https://github.com/benborder/drla-atari) repository for an example on how to use this library.
+See the following repositories for examples on how to use this library:
+
+- [drla-atari](https://github.com/benborder/drla-atari)
 
 ## Dependencies
 
-The library has been designed to have as few dependencies as possible with the only dependencies for the core library:
+The library has been designed to have minimal dependencies with the only dependencies for the core library:
 
 - [libtorch](https://github.com/pytorch/pytorch) (build and runtime)
 - [spdlog](https://github.com/gabime/spdlog) (build)
 - Compiler with C++17 support
 - CMake 3.14 or newer
 
-Additional auxillary functionality such as json serialisation and helper classes require the following libraries:
+Additional auxillary functionality such as config json serialisation and helper classes require the following libraries:
 
 - [nlohmann_json](https://github.com/nlohmann/json) (build)
 
@@ -68,7 +63,3 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(drla)
 ```
-
-## Acknowledgements
-
-This library used [stable baselines](https://github.com/DLR-RM/stable-baselines3) as a reference for some algorithm implementations.
