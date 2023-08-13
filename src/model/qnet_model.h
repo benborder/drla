@@ -21,19 +21,19 @@ public:
 	QNetModel(const Config::ModelConfig& config, const EnvironmentConfiguration& env_config, int value_shape);
 	QNetModel(const QNetModel& other, const c10::optional<torch::Device>& device);
 
-	torch::Tensor forward(const Observations& observations, const HiddenStates& state);
+	torch::Tensor forward(const Observations& observations, const HiddenStates& state) override;
 	ModelOutput predict(const ModelInput& input) override;
 
 	ModelOutput initial() const override;
 
 	StateShapes get_state_shape() const override;
 
-	torch::Tensor forward_target(const Observations& observations, const HiddenStates& state);
-	void update(double tau);
+	torch::Tensor forward_target(const Observations& observations, const HiddenStates& state) override;
+	void update(double tau) override;
 
-	std::vector<torch::Tensor> parameters(bool recursive = true) const;
+	std::vector<torch::Tensor> parameters(bool recursive = true) const override;
 
-	void set_exploration(double exploration);
+	void set_exploration(double exploration) override;
 
 	void save(const std::filesystem::path& path) override;
 	void load(const std::filesystem::path& path) override;
