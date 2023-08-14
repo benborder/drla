@@ -93,11 +93,17 @@ inline void weight_init(torch::Tensor weight, Config::InitType type, double init
 	}
 }
 
+/// @brief Flattens the shape into a scalar
+/// @param x The input shape to flatten
+/// @return The flattened size
 inline int64_t flatten(const std::vector<int64_t>& x)
 {
 	return std::accumulate(x.begin(), x.end(), 1, std::multiplies<>());
 }
 
+/// @brief Flattens a list of shapes into a single scalar
+/// @param x The list of input shapes to flatten
+/// @return The flattened size
 inline int64_t flatten(const std::vector<std::vector<int64_t>>& x)
 {
 	int64_t output_size = 0;
@@ -105,11 +111,25 @@ inline int64_t flatten(const std::vector<std::vector<int64_t>>& x)
 	return output_size;
 }
 
-torch::Tensor normalise(const torch::Tensor& x);
+/// @brief Normalises a tensor along its data dims (1D or 2D)
+/// @param x The tensor to normalise
+/// @param dims The number of dims to ignore when normalising starting from the first dim 0 (i.e. if dims=1,
+/// normalisation will only occur along each element in the 0 dim, for example a batch dim)
+/// @return The normalised tensor
+torch::Tensor normalise(const torch::Tensor& x, int dims);
 
+/// @brief Concatenates shapes in a vector that are identical, combining them together. If no shapes are matched, the
+/// list is unchanged.
+/// @param input_shape The input list of shapes
+/// @return The output list of condensed shapes
 std::vector<std::vector<int64_t>> condense_shape(const std::vector<std::vector<int64_t>>& input_shape);
 
-std::vector<torch::Tensor> condense(const std::vector<torch::Tensor>& input);
+/// @brief Concatenates tensors in a vector that have the same dimensions, combining them together. If no tensors are
+/// matched, the list is unchanged.
+/// @param input The input list of tensors
+/// @param dim The dimension to concatenate along
+/// @return The output list of condensed tensors
+std::vector<torch::Tensor> condense(const std::vector<torch::Tensor>& input, int dim = 1);
 
 /// @brief Gets the stacked observation shape from the input single observation
 /// @param shape The input single observation shape to base the stack from

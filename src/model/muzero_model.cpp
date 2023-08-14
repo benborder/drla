@@ -113,7 +113,7 @@ DynamicsNetworkImpl::forward(const std::vector<torch::Tensor>& next_state)
 			auto& dyn = std::get<Dynamics2D>(dyn_enc);
 			x = torch::relu(dyn.bn_(dyn.conv_(x)));
 			for (auto& resblock : dyn.resblocks_) { x = resblock(x); }
-			state.push_back(normalise(x));
+			state.push_back(normalise(x, 2));
 			x = dyn.conv1x1_reward_(x);
 			reward.push_back(x);
 		}
@@ -121,7 +121,7 @@ DynamicsNetworkImpl::forward(const std::vector<torch::Tensor>& next_state)
 		else
 		{
 			x = std::get<FCBlock>(dyn_enc)(x);
-			state.push_back(normalise(x));
+			state.push_back(normalise(x, 1));
 			reward.push_back(x);
 		}
 	}
@@ -311,7 +311,7 @@ ModelOutput MuZeroModel::predict(const ModelInput& input)
 	ModelOutput output;
 
 	output.state = condense(representation_network_(input.observations));
-	for (auto& state : output.state) { state = normalise(state); }
+	for (auto& state : output.state) { state = normalise(state, state.dim() == 4 ? 2 : 1); }
 	std::tie(output.policy, output.values) = prediction_network_(output.state);
 	output.reward = scalar_to_support(torch::zeros({output.values.size(0), 1, reward_shape_}, output.values.device()));
 
@@ -326,19 +326,22 @@ ModelOutput MuZeroModel::predict(const ModelOutput& previous_output, [[maybe_unu
 	for (auto& state : previous_output.state)
 	{
 		torch::Tensor action_one_hot;
+		torch::Tensor normed_state;
 		// The tensor dims must be of the format [batch, channels, height, width] to use resblock/convolutional networks
 		if (state.dim() == 4)
 		{
+			normed_state = normalise(state, 2);
 			action_one_hot = torch::ones({state.size(0), 1, state.size(2), state.size(3)}, previous_output.action.device());
 			action_one_hot = previous_output.action.view({-1, 1, 1, 1}) * action_one_hot / action_space_size_;
 		}
 		// data based tensor dims are assumed to be of the format [batch, data] and appended in the data dim
 		else
 		{
+			normed_state = normalise(state, 1);
 			action_one_hot = torch::zeros({state.size(0), action_space_size_}, state.device()).to(torch::kFloat);
 			action_one_hot.scatter_(1, previous_output.action.to(torch::kLong), 1.0F);
 		}
-		previous_state.push_back(torch::cat({normalise(state), action_one_hot}, 1));
+		previous_state.push_back(torch::cat({normed_state, action_one_hot}, 1));
 	}
 
 	std::tie(output.state, output.reward) = dynamics_network_(previous_state);

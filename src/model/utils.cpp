@@ -1,5 +1,7 @@
 #include "drla/model/utils.h"
 
+#include "functions.h"
+
 namespace drla
 {
 
@@ -14,22 +16,13 @@ torch::Tensor flatten(const std::vector<torch::Tensor>& x, int dims)
 	return torch::cat(reshaped, dims + 1);
 }
 
-torch::Tensor normalise(const torch::Tensor& x)
+torch::Tensor normalise(const torch::Tensor& x, int dims)
 {
-	torch::Tensor min;
-	torch::Tensor max;
-	if (x.dim() == 4)
-	{
-		min = std::get<0>(x.view({x.size(0), x.size(1), -1}).min(2)).view({x.size(0), x.size(1), 1, 1});
-		max = std::get<0>(x.view({x.size(0), x.size(1), -1}).max(2)).view({x.size(0), x.size(1), 1, 1});
-	}
-	else
-	{
-		std::vector<int64_t> shape(x.dim(), 1);
-		shape[0] = x.size(0);
-		min = std::get<0>(x.view({x.size(0), -1}).min(1)).view(shape);
-		max = std::get<0>(x.view({x.size(0), -1}).max(1)).view(shape);
-	}
+	const auto sliced_dims = x.sizes().slice(0, dims).vec();
+	const auto flatten_shape = sliced_dims + std::vector<int64_t>{-1};
+	const auto shape = sliced_dims + std::vector<int64_t>(x.dim() - dims, 1);
+	auto min = std::get<0>(x.view(flatten_shape).min(-1)).view(shape);
+	auto max = std::get<0>(x.view(flatten_shape).max(-1)).view(shape);
 	return (x - min) / (max - min).clamp_min(1e-5);
 }
 
@@ -69,7 +62,7 @@ std::vector<std::vector<int64_t>> condense_shape(const std::vector<std::vector<i
 	return output_shapes;
 }
 
-std::vector<torch::Tensor> condense(const std::vector<torch::Tensor>& input)
+std::vector<torch::Tensor> condense(const std::vector<torch::Tensor>& input, int dim)
 {
 	std::vector<torch::Tensor> output;
 
@@ -83,7 +76,7 @@ std::vector<torch::Tensor> condense(const std::vector<torch::Tensor>& input)
 				matched = true;
 				// Image based tensor dims are assumed to be of the format [batch, channels, height, width] and appended in the
 				// channels dim. Other tensors are assumed to be of the format [batch, data] and appended in the second dim
-				output_tensor = torch::cat({output_tensor, input_tensor}, 1);
+				output_tensor = torch::cat({output_tensor, input_tensor}, dim);
 			}
 		}
 		if (!matched)
