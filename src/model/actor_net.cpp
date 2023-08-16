@@ -24,7 +24,7 @@ ActorImpl::ActorImpl(const Config::ActorConfig& config, int inputs, const Action
 				"actor",
 				inputs,
 				output_size_,
-				Config::FCConfig::fc_layer{
+				Config::LinearConfig{
 					output_size_,
 					Config::Activation::kNone,
 					config.init_weight_type,

@@ -92,6 +92,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 		{LayerType::kConv2d, "Conv2d"},
 		{LayerType::kConvTranspose2d, "ConvTranspose2d"},
 		{LayerType::kBatchNorm2d, "BatchNorm2d"},
+		{LayerType::kLayerNorm, "LayerNorm"},
 		{LayerType::kMaxPool2d, "MaxPool2d"},
 		{LayerType::kAvgPool2d, "AvgPool2d"},
 		{LayerType::kAdaptiveAvgPool2d, "AdaptiveAvgPool2d"},
@@ -235,9 +236,9 @@ void from_json(const nlohmann::json& json, AgentTrainAlgorithm& train_algorithm)
 
 void to_json(nlohmann::json& json, const AgentTrainAlgorithm& train_algorithm);
 
-void from_json(const nlohmann::json& json, FCConfig::fc_layer& layer);
+void from_json(const nlohmann::json& json, LinearConfig& linear);
 
-void to_json(nlohmann::json& json, const FCConfig::fc_layer& layer);
+void to_json(nlohmann::json& json, const LinearConfig& linear);
 
 void from_json(const nlohmann::json& json, FCConfig& fc);
 
@@ -254,6 +255,10 @@ void to_json(nlohmann::json& json, const Conv2dConfig& conv);
 void from_json(const nlohmann::json& json, BatchNorm2dConfig& batch_norm);
 
 void to_json(nlohmann::json& json, const BatchNorm2dConfig& batch_norm);
+
+void from_json(const nlohmann::json& json, LayerNormConfig& layer_norm);
+
+void to_json(nlohmann::json& json, const LayerNormConfig& layer_norm);
 
 void from_json(const nlohmann::json& json, MaxPool2dConfig& maxpool);
 

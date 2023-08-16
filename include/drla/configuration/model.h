@@ -27,13 +27,14 @@ enum class FeatureExtractorType
 	kCNN,
 };
 
-/// @brier The layer type of a feature extractor
+/// @brier The layer type of a CNN feature extractor
 enum class LayerType
 {
 	kInvalid,
 	kConv2d,
 	kConvTranspose2d,
 	kBatchNorm2d,
+	kLayerNorm,
 	kMaxPool2d,
 	kAvgPool2d,
 	kAdaptiveAvgPool2d,
@@ -80,29 +81,34 @@ enum class InitType
 	kXavierNormal,
 };
 
+struct LinearConfig
+{
+	// The number of neural units in a layer
+	int size = 0;
+	// The activation function used for forward passes
+	Activation activation = Activation::kNone;
+	// The type of initialisation for the weights
+	InitType init_weight_type = InitType::kDefault;
+	// The weight values to initialise the network with (if relevant)
+	double init_weight = 1.0;
+	// The type of initialisation for the bias
+	InitType init_bias_type = InitType::kDefault;
+	// The bias values to initialise the network with
+	double init_bias = 0.0;
+	// The type of fully connected network
+	FCLayerType type = FCLayerType::kLinear;
+};
+
 /// @brief Fully connected block configuration
 struct FCConfig
 {
-	struct fc_layer
-	{
-		// The number of neural units in a layer
-		int size = 0;
-		// The activation function used for forward passes
-		Activation activation = Activation::kNone;
-		// The type of initialisation for the weights
-		InitType init_weight_type = InitType::kDefault;
-		// The weight values to initialise the network with (if relevant)
-		double init_weight = 1.0;
-		// The type of initialisation for the bias
-		InitType init_bias_type = InitType::kDefault;
-		// The bias values to initialise the network with
-		double init_bias = 0.0;
-		// The type of fully connected network
-		FCLayerType type = FCLayerType::kLinear;
-	};
-
 	// Defines each layer in the block. Default to none, passing the original tensor through unmodified.
-	std::vector<fc_layer> layers = {};
+	std::vector<LinearConfig> layers = {};
+
+	// Add a LayerNorm after each layer
+	bool use_layer_norm = false;
+	// The epsilon to use for all LayerNorms
+	float layer_norm_eps = 1e-5;
 };
 
 /// @brief Multi Layer Perceptron feature extractor config. Has identical config to the fully connected block config.
@@ -157,6 +163,13 @@ struct BatchNorm2dConfig
 	bool track_running_stats = true;
 };
 
+/// @brief Layer Normalisation configuration for a feature extractor.
+struct LayerNormConfig
+{
+	// The epsilon value added for numerical stability.
+	double eps = 1e-5;
+};
+
 /// @brief Max Pooling layer configuration for a feature extractor.
 struct MaxPool2dConfig
 {
@@ -208,6 +221,7 @@ using CNNLayerConfig = std::variant<
 	Conv2dConfig,
 	ConvTranspose2dConfig,
 	BatchNorm2dConfig,
+	LayerNormConfig,
 	MaxPool2dConfig,
 	AvgPool2dConfig,
 	AdaptiveAvgPool2dConfig,

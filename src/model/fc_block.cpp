@@ -11,7 +11,7 @@ using namespace drla;
 using namespace torch;
 
 inline Config::FCConfig
-configure_output(Config::FCConfig config, int output_size, Config::FCConfig::fc_layer output_layer_config)
+configure_output(Config::FCConfig config, int output_size, Config::LinearConfig output_layer_config)
 {
 	if (config.layers.empty() || (config.layers.back().size > 0 && config.layers.back().size != output_size))
 	{
@@ -38,6 +38,14 @@ FCBlockImpl::FCBlockImpl(const FCBlockImpl& other, const c10::optional<torch::De
 		layers_.emplace_back(std::dynamic_pointer_cast<torch::nn::LinearImpl>(layer->clone(device)));
 		register_module(other.named_children()[index++].key(), layers_.back());
 	}
+	if (config_.use_layer_norm)
+	{
+		for (auto& layer : other.norm_layers_)
+		{
+			norm_layers_.emplace_back(std::dynamic_pointer_cast<torch::nn::LayerNormImpl>(layer->clone(device)));
+			register_module(other.named_children()[index++].key(), norm_layers_.back());
+		}
+	}
 }
 
 FCBlockImpl::FCBlockImpl(const Config::FCConfig& config, const std::string& name, int input_size) : config_(config)
@@ -56,7 +64,7 @@ FCBlockImpl::FCBlockImpl(
 	const std::string& name,
 	int input_size,
 	int output_size,
-	Config::FCConfig::fc_layer output_layer_config)
+	Config::LinearConfig output_layer_config)
 		: config_(configure_output(config, output_size, std::move(output_layer_config)))
 {
 	make_fc(input_size, name);
@@ -133,8 +141,15 @@ void FCBlockImpl::make_fc(int input_size, const std::string& name)
 
 		layer_size = layer.size;
 
+		if (config_.use_layer_norm)
+		{
+			norm_layers_.emplace_back(torch::nn::LayerNormOptions({layer_size}).eps(config_.layer_norm_eps));
+		}
+
 		spdlog::debug("Layer {}: {} ({})", i, layer.type == Config::FCLayerType::kResidual ? input_size : layer.size, type);
 	}
+
+	for (i = 0; i < norm_layers_.size(); ++i) { register_module("norm_" + std::to_string(i), norm_layers_[i]); }
 
 	output_size_ = layer_size;
 }
@@ -154,6 +169,10 @@ torch::Tensor FCBlockImpl::forward(const torch::Tensor& input)
 			case Config::FCLayerType::kResidual: x = layers_[i](x) + input; break;
 			case Config::FCLayerType::kForwardInput: return i > 0 ? torch::cat({x, input}, -1) : x;
 			case Config::FCLayerType::kForwardAll: return outs;
+		}
+		if (config_.use_layer_norm)
+		{
+			x = norm_layers_[i](x);
 		}
 		x = activation(x, layer.activation);
 		if (has_multi_connected_)

@@ -227,43 +227,47 @@ void to_json(nlohmann::json& json, const AgentTrainAlgorithm& train_algorithm)
 	std::visit([&](auto& alg) { to_json(json, alg); }, train_algorithm);
 }
 
-void from_json(const nlohmann::json& json, FCConfig::fc_layer& layer)
+void from_json(const nlohmann::json& json, LinearConfig& linear)
 {
-	layer.type << optional_input{json, "type"};
+	linear.type << optional_input{json, "type"};
 	if (
-		layer.type == Config::FCLayerType::kResidual || layer.type == Config::FCLayerType::kForwardAll ||
-		layer.type == Config::FCLayerType::kForwardInput)
+		linear.type == Config::FCLayerType::kResidual || linear.type == Config::FCLayerType::kForwardAll ||
+		linear.type == Config::FCLayerType::kForwardInput)
 	{
-		layer.size << optional_input{json, "size"};
+		linear.size << optional_input{json, "size"};
 	}
 	else
 	{
-		layer.size << required_input{json, "size"};
+		linear.size << required_input{json, "size"};
 	}
-	layer.activation << optional_input{json, "activation"};
-	load_init_weights_config(layer, json);
-	load_init_bias_config(layer, json);
+	linear.activation << optional_input{json, "activation"};
+	load_init_weights_config(linear, json);
+	load_init_bias_config(linear, json);
 }
 
-void to_json(nlohmann::json& json, const FCConfig::fc_layer& layer)
+void to_json(nlohmann::json& json, const LinearConfig& linear)
 {
-	json["size"] = layer.size;
-	json["activation"] = layer.activation;
-	json["init_bias_type"] = layer.init_bias_type;
-	json["init_bias"] = layer.init_bias;
-	json["init_weight_type"] = layer.init_weight_type;
-	json["init_weight"] = layer.init_weight;
-	json["type"] = layer.type;
+	json["size"] = linear.size;
+	json["activation"] = linear.activation;
+	json["init_bias_type"] = linear.init_bias_type;
+	json["init_bias"] = linear.init_bias;
+	json["init_weight_type"] = linear.init_weight_type;
+	json["init_weight"] = linear.init_weight;
+	json["type"] = linear.type;
 }
 
 void from_json(const nlohmann::json& json, FCConfig& fc)
 {
 	fc.layers << required_input{json, "layers"};
+	fc.use_layer_norm << optional_input{json, "use_layer_norm"};
+	fc.layer_norm_eps << optional_input{json, "layer_norm_eps"};
 }
 
 void to_json(nlohmann::json& json, const FCConfig& fc)
 {
 	json["layers"] = fc.layers;
+	json["use_layer_norm"] = fc.use_layer_norm;
+	json["layer_norm_eps"] = fc.layer_norm_eps;
 }
 
 void from_json(const nlohmann::json& json, MLPConfig& mlp)
@@ -334,6 +338,17 @@ void to_json(nlohmann::json& json, const BatchNorm2dConfig& batch_norm)
 	json["eps"] = batch_norm.eps;
 	json["momentum"] = batch_norm.momentum;
 	json["track_running_stats"] = batch_norm.track_running_stats;
+}
+
+void from_json(const nlohmann::json& json, LayerNormConfig& layer_norm)
+{
+	layer_norm.eps << optional_input{json, "eps"};
+}
+
+void to_json(nlohmann::json& json, const LayerNormConfig& layer_norm)
+{
+	json["type"] = LayerType::kLayerNorm;
+	json["eps"] = layer_norm.eps;
 }
 
 void from_json(const nlohmann::json& json, MaxPool2dConfig& maxpool)
@@ -414,6 +429,7 @@ void from_json(const nlohmann::json& json, CNNLayerConfig& cnn_layer_config)
 		case LayerType::kConv2d: cnn_layer_config = json.get<Conv2dConfig>(); break;
 		case LayerType::kConvTranspose2d: cnn_layer_config = json.get<ConvTranspose2dConfig>(); break;
 		case LayerType::kBatchNorm2d: cnn_layer_config = json.get<BatchNorm2dConfig>(); break;
+		case LayerType::kLayerNorm: cnn_layer_config = json.get<LayerNormConfig>(); break;
 		case LayerType::kMaxPool2d: cnn_layer_config = json.get<MaxPool2dConfig>(); break;
 		case LayerType::kAvgPool2d: cnn_layer_config = json.get<AvgPool2dConfig>(); break;
 		case LayerType::kAdaptiveAvgPool2d: cnn_layer_config = json.get<AdaptiveAvgPool2dConfig>(); break;

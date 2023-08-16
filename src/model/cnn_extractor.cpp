@@ -39,7 +39,7 @@ CNNExtractor::CNNExtractor(const Config::CNNConfig& config, const std::vector<in
 	if (in_channels != config_in_channels && config_in_channels != 0)
 	{
 		spdlog::error(
-			"The environment has {} channels, but the network was configured for {} input channels.",
+			"The observations have {} channels, but the network was configured for {} input channels.",
 			in_channels,
 			config_in_channels);
 		throw std::runtime_error("Invalid input channels");
@@ -80,7 +80,7 @@ CNNExtractor::CNNExtractor(const Config::CNNConfig& config, const std::vector<in
 
 					in_channels = config.out_channels;
 				}
-				if constexpr (std::is_same_v<Config::ConvTranspose2dConfig, T>)
+				else if constexpr (std::is_same_v<Config::ConvTranspose2dConfig, T>)
 				{
 					auto conv = torch::nn::ConvTranspose2d(
 						torch::nn::ConvTranspose2dOptions(in_channels, config.out_channels, config.kernel_size)
@@ -113,7 +113,7 @@ CNNExtractor::CNNExtractor(const Config::CNNConfig& config, const std::vector<in
 
 					in_channels = config.out_channels;
 				}
-				if constexpr (std::is_same_v<Config::BatchNorm2dConfig, T>)
+				else if constexpr (std::is_same_v<Config::BatchNorm2dConfig, T>)
 				{
 					cnn_layers_.emplace_back(torch::nn::BatchNorm2d(torch::nn::BatchNorm2dOptions(in_channels)
 																														.affine(config.affine)
@@ -124,7 +124,15 @@ CNNExtractor::CNNExtractor(const Config::CNNConfig& config, const std::vector<in
 
 					spdlog::debug("{:<28}[{} {}]", "BatchNorm2d", w, h);
 				}
-				if constexpr (std::is_same_v<Config::MaxPool2dConfig, T>)
+				else if constexpr (std::is_same_v<Config::LayerNormConfig, T>)
+				{
+					auto layer_norm = torch::nn::LayerNorm(torch::nn::LayerNormOptions({in_channels}).eps(config.eps));
+					register_module("cnn_layernorm" + std::to_string(l++), layer_norm);
+					cnn_layers_.emplace_back(std::move(layer_norm));
+
+					spdlog::debug("{:<28}[{} {}]", "LayerNorm", w, h);
+				}
+				else if constexpr (std::is_same_v<Config::MaxPool2dConfig, T>)
 				{
 					cnn_layers_.emplace_back(torch::nn::MaxPool2d(
 						torch::nn::MaxPool2dOptions(config.kernel_size).stride(config.stride).padding(config.padding)));
@@ -137,7 +145,7 @@ CNNExtractor::CNNExtractor(const Config::CNNConfig& config, const std::vector<in
 						fmt::format("maxpool2d[ {}, {}, {} ]", config.kernel_size, config.padding, config.stride);
 					spdlog::debug("{:<28}[{} {}]", avgpool_layer, w, h);
 				}
-				if constexpr (std::is_same_v<Config::AvgPool2dConfig, T>)
+				else if constexpr (std::is_same_v<Config::AvgPool2dConfig, T>)
 				{
 					cnn_layers_.emplace_back(torch::nn::AvgPool2d(
 						torch::nn::AvgPool2dOptions(config.kernel_size).stride(config.stride).padding(config.padding)));
@@ -150,7 +158,7 @@ CNNExtractor::CNNExtractor(const Config::CNNConfig& config, const std::vector<in
 						fmt::format("avgpool2d[ {}, {}, {} ]", config.kernel_size, config.padding, config.stride);
 					spdlog::debug("{:<28}[{} {}]", avgpool_layer, w, h);
 				}
-				if constexpr (std::is_same_v<Config::AdaptiveAvgPool2dConfig, T>)
+				else if constexpr (std::is_same_v<Config::AdaptiveAvgPool2dConfig, T>)
 				{
 					cnn_layers_.emplace_back(torch::nn::AdaptiveAvgPool2d(config.size));
 					register_module(
@@ -161,17 +169,22 @@ CNNExtractor::CNNExtractor(const Config::CNNConfig& config, const std::vector<in
 
 					spdlog::debug("{:<28}[{} {}]", "adaptive_avgpool2d", w, h);
 				}
-				if constexpr (std::is_same_v<Config::ResBlock2dConfig, T>)
+				else if constexpr (std::is_same_v<Config::ResBlock2dConfig, T>)
 				{
 					cnn_layers_.emplace_back(ResBlock2d(in_channels, config));
 					register_module("cnn_resblock" + std::to_string(l++), std::get<ResBlock2d>(cnn_layers_.back()));
 
 					spdlog::debug("{:<28}[{} {}]", "resblock2d", w, h);
 				}
-				if constexpr (std::is_same_v<Config::Activation, T>)
+				else if constexpr (std::is_same_v<Config::Activation, T>)
 				{
 					cnn_layers_.emplace_back(make_activation(config));
 					spdlog::debug("{:<28}[{}]", "activation", activation_name(config));
+				}
+				else
+				{
+					spdlog::error("Config option '{}' not compatible with any CNN layer", typeid(config).name());
+					throw std::runtime_error("Incompatible CNN layer config");
 				}
 			},
 			layer_config);
@@ -209,7 +222,19 @@ torch::Tensor CNNExtractor::forward(const torch::Tensor& observation)
 	auto x = observation.to(torch::kFloat);
 	for (auto& cnn_layer : cnn_layers_)
 	{
-		x = std::visit([&x](auto& layer) { return layer(x); }, cnn_layer);
+		x = std::visit(
+			[&x](auto& layer) {
+				using layer_type = std::decay_t<decltype(layer)>;
+				if constexpr (std::is_same_v<torch::nn::LayerNorm, layer_type>)
+				{
+					return layer(x.permute({0, 2, 3, 1}).contiguous()).permute({0, 3, 1, 2}).contiguous();
+				}
+				else
+				{
+					return layer(x);
+				}
+			},
+			cnn_layer);
 	}
 
 	return x;

@@ -31,7 +31,7 @@ public:
 		const std::string& name,
 		int input_size,
 		int output_size,
-		Config::FCConfig::fc_layer output_layer_config = {});
+		Config::LinearConfig output_layer_config = {});
 	/// @brief Constructs a FCBlockImpl as a deep copy of other on the specified device
 	/// @param other The object to clone from
 	/// @param device The device to clone to
@@ -55,6 +55,7 @@ private:
 	const Config::FCConfig config_;
 
 	std::vector<torch::nn::Linear> layers_;
+	std::vector<torch::nn::LayerNorm> norm_layers_;
 	int output_size_;
 	bool has_multi_connected_ = false;
 };

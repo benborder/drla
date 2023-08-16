@@ -46,6 +46,7 @@ private:
 	using Layer = std::variant<
 		torch::nn::Conv2d,
 		torch::nn::BatchNorm2d,
+		torch::nn::LayerNorm,
 		torch::nn::MaxPool2d,
 		torch::nn::AvgPool2d,
 		torch::nn::AdaptiveAvgPool2d,
