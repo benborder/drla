@@ -308,12 +308,6 @@ std::tuple<std::vector<torch::Tensor>, std::vector<torch::Tensor>> SoftActorCrit
 	return {qvalues, output_state};
 }
 
-inline void
-update_params(const std::vector<torch::Tensor>& current, const std::vector<torch::Tensor>& target, double tau)
-{
-	for (size_t i = 0; i < current.size(); i++) { target[i].mul_(1.0 - tau).add_(current[i], tau); }
-}
-
 void SoftActorCriticModel::update(double tau)
 {
 	torch::NoGradGuard no_grad;

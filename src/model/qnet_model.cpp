@@ -159,12 +159,6 @@ torch::Tensor QNetModel::forward_target(const Observations& observations, const 
 	return q_net_target_(features).view({features.size(0), value_shape_, action_space_.shape[0]});
 }
 
-inline void
-update_params(const std::vector<torch::Tensor>& current, const std::vector<torch::Tensor>& target, double tau)
-{
-	for (size_t i = 0; i < current.size(); i++) { target[i].mul_(1.0 - tau).add_(current[i], tau); }
-}
-
 void QNetModel::update(double tau)
 {
 	torch::NoGradGuard no_grad;

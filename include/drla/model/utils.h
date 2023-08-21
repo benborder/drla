@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <string>
+#include <vector>
 
 namespace drla
 {
@@ -136,5 +137,11 @@ std::vector<torch::Tensor> condense(const std::vector<torch::Tensor>& input, int
 /// @param stack_size The size of the stack to create. The stack size cannot be negative.
 /// @return The stacked observation shape
 ObservationShapes stacked_observation_shape(const ObservationShapes& shape, int stack_size);
+
+inline void
+update_params(const std::vector<torch::Tensor>& current, const std::vector<torch::Tensor>& target, double tau)
+{
+	for (size_t i = 0; i < current.size(); i++) { target[i].mul_(1.0 - tau).add_(current[i], tau); }
+}
 
 } // namespace drla
