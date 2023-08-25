@@ -20,19 +20,26 @@ ActorImpl::ActorImpl(const Config::ActorConfig& config, int inputs, const Action
 		, output_size_(action_space_.type == ActionSpaceType::kBox ? 2 * num_actions_ : num_actions_)
 		, use_logits_(use_logits)
 		, mlp_(
-				config_.mlp,
+				config_,
 				"actor",
 				inputs,
-				output_size_,
 				Config::LinearConfig{
 					output_size_,
-					Config::Activation::kNone,
 					config.init_weight_type,
 					config.init_weight,
+					config.use_bias,
 					config.init_bias_type,
 					config.init_bias})
 {
 	register_module("mlp", mlp_);
+	if (output_size_ != mlp_->get_output_size())
+	{
+		spdlog::error(
+			"MLP output size {} does not match the output for the number of actions {}",
+			mlp_->get_output_size(),
+			output_size_);
+		throw std::runtime_error("Invalid MLP output size");
+	}
 }
 
 ActorImpl::ActorImpl(const ActorImpl& other, const c10::optional<torch::Device>& device)

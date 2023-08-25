@@ -43,7 +43,7 @@ ActorCriticModel::ActorCriticModel(
 		input_size = config_.gru_hidden_size;
 	}
 
-	critic_ = register_module("critic", FCBlock(config_.critic, "critic", input_size, value_shape));
+	critic_ = register_module("critic", FCBlock(config_.critic, "critic", input_size, Config::LinearConfig{value_shape}));
 	actor_ = register_module("actor", Actor(config_.actor, input_size, env_config.action_space));
 
 	int parameter_size = 0;

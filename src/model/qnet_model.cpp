@@ -42,9 +42,10 @@ QNetModel::QNetModel(const Config::ModelConfig& config, const EnvironmentConfigu
 
 	// DQN can not handle multi actions unless they are permuted
 	int action_shape = action_space_.shape[0];
-	q_net_ = register_module("q_net", FCBlock(config_.q_net, "q_net", input_size, action_shape * value_shape_));
-	q_net_target_ =
-		register_module("q_net_target", FCBlock(config_.q_net, "q_net", input_size, action_shape * value_shape_));
+	q_net_ = register_module(
+		"q_net", FCBlock(config_.q_net, "q_net", input_size, Config::LinearConfig{action_shape * value_shape_}));
+	q_net_target_ = register_module(
+		"q_net_target", FCBlock(config_.q_net, "q_net", input_size, Config::LinearConfig{action_shape * value_shape_}));
 
 	int parameter_size = 0;
 	auto params = parameters();

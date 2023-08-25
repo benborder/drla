@@ -1,5 +1,6 @@
 #include "fc_block.h"
 
+#include "functions.h"
 #include "model/utils.h"
 
 #include <spdlog/spdlog.h>
@@ -10,41 +11,56 @@
 using namespace drla;
 using namespace torch;
 
-inline Config::FCConfig
-configure_output(Config::FCConfig config, int output_size, Config::LinearConfig output_layer_config)
+inline Config::FCConfig configure_output(Config::FCConfig config, Config::LinearConfig output_layer_config)
 {
-	if (config.layers.empty() || (config.layers.back().size > 0 && config.layers.back().size != output_size))
+	// Find all occurences of a 0 size and replace with the output size. If there are none, then just add it onto the back
+	bool found = false;
+	for (auto& layer : config.layers)
 	{
-		output_layer_config.size = output_size;
-		config.layers.push_back(std::move(output_layer_config));
+		std::visit(
+			[&](auto& l) {
+				using layer_type = std::decay_t<decltype(l)>;
+				if constexpr (std::is_same_v<Config::LinearConfig, layer_type>)
+				{
+					if (l.size == 0)
+					{
+						l.size = output_layer_config.size;
+						found = true;
+					}
+				}
+			},
+			layer);
 	}
-	else if (config.layers.back().size <= 0)
+
+	if (!found)
 	{
-		config.layers.back().size = output_size;
+		config.layers.emplace_back(std::move(output_layer_config));
 	}
-	else
-	{
-		config.layers.back() = std::move(output_layer_config);
-	}
+
 	return config;
 }
 
 FCBlockImpl::FCBlockImpl(const FCBlockImpl& other, const c10::optional<torch::Device>& device)
-		: config_(other.config_), output_size_(other.output_size_), has_multi_connected_(other.has_multi_connected_)
+		: config_(other.config_), output_size_(other.output_size_), connections_(other.connections_)
 {
 	int index = 0;
-	for (auto& layer : other.layers_)
+	for (auto& fc_layer : other.layers_)
 	{
-		layers_.emplace_back(std::dynamic_pointer_cast<torch::nn::LinearImpl>(layer->clone(device)));
-		register_module(other.named_children()[index++].key(), layers_.back());
-	}
-	if (config_.use_layer_norm)
-	{
-		for (auto& layer : other.norm_layers_)
-		{
-			norm_layers_.emplace_back(std::dynamic_pointer_cast<torch::nn::LayerNormImpl>(layer->clone(device)));
-			register_module(other.named_children()[index++].key(), norm_layers_.back());
-		}
+		std::visit(
+			[&](auto& layer) {
+				using layer_type = std::decay_t<decltype(layer)>;
+				if constexpr (std::is_same_v<ActivationFunction, layer_type>)
+				{
+					layers_.emplace_back(layer);
+				}
+				else
+				{
+					auto l = std::dynamic_pointer_cast<typename layer_type::Impl>(layer->clone(device));
+					register_module(other.named_children()[index++].key(), l);
+					layers_.emplace_back(std::move(l));
+				}
+			},
+			fc_layer);
 	}
 }
 
@@ -60,12 +76,8 @@ FCBlockImpl::FCBlockImpl(const Config::FCConfig& config, const std::string& name
 }
 
 FCBlockImpl::FCBlockImpl(
-	const Config::FCConfig& config,
-	const std::string& name,
-	int input_size,
-	int output_size,
-	Config::LinearConfig output_layer_config)
-		: config_(configure_output(config, output_size, std::move(output_layer_config)))
+	const Config::FCConfig& config, const std::string& name, int input_size, Config::LinearConfig output_layer_config)
+		: config_(configure_output(config, std::move(output_layer_config)))
 {
 	make_fc(input_size, name);
 }
@@ -74,111 +86,137 @@ void FCBlockImpl::make_fc(int input_size, const std::string& name)
 {
 	spdlog::debug("Constructing {}", name);
 
-	size_t i = 0;
 	int layer_size = input_size;
-	int total_neurons = input_size;
-	for (const auto& layer : config_.layers)
+	int num_layers =
+		std::transform_reduce(config_.layers.begin(), config_.layers.end(), 0, std::plus{}, [](const auto& layer) {
+			return std::holds_alternative<Config::LayerConnectionConfig>(layer) ? 0 : 1;
+		});
+	std::multimap<int, std::pair<int, bool>> layer_connections;
+	auto add_connections = [&](int layer) {
+		if (layer < 0)
+		{
+			layer += num_layers + 1;
+		}
+		auto [lc_iter, lcend] = layer_connections.equal_range(layer);
+		for (; lc_iter != lcend; ++lc_iter)
+		{
+			auto [connection_size, use_residual] = lc_iter->second;
+			if (use_residual)
+			{
+				if (layer_size != connection_size)
+				{
+					spdlog::error("Residual connection expected size {}, but got {}", connection_size, layer_size);
+					throw std::runtime_error("Invalid residual connection");
+				}
+			}
+			else
+			{
+				layer_size += connection_size;
+			}
+		}
+		layer_connections.erase(layer);
+	};
+
+	int l = 0;
+	for (const auto& layer_config : config_.layers)
 	{
-		std::string type;
-		switch (layer.type)
-		{
-			case Config::FCLayerType::kLinear:
-			{
-				type = "linear";
-				layers_.emplace_back(layer_size, layer.size);
-				total_neurons += layer.size;
-				break;
-			}
-			case Config::FCLayerType::kInputConnected:
-			{
-				type = "input-connected";
-				layers_.emplace_back(layer_size + input_size, layer.size);
-				total_neurons += layer.size;
-				break;
-			}
-			case Config::FCLayerType::kMultiConnected:
-			{
-				type = "multi-connected";
-				layers_.emplace_back(total_neurons, layer.size);
-				total_neurons += layer.size;
-				has_multi_connected_ = true;
-				break;
-			}
-			case Config::FCLayerType::kResidual:
-			{
-				type = "residual";
-				if (layer.size != 0 && layer.size != input_size)
+		std::visit(
+			[&](const auto& layer) {
+				using T = std::decay_t<decltype(layer)>;
+				if constexpr (std::is_same_v<Config::LinearConfig, T>)
 				{
-					spdlog::warn("Residual: Using output size `{}` instead of specified input size `{}`", input_size, layer.size);
+					if (layer.size <= 0)
+					{
+						spdlog::error("Invalid layer {} size: {}", l, layer.size);
+						throw std::runtime_error("Invalid layer size");
+					}
+					add_connections(l);
+					auto linear = torch::nn::Linear(torch::nn::LinearOptions(layer_size, layer.size).bias(layer.use_bias));
+					register_module("linear" + std::to_string(l++), linear);
+					weight_init(linear->weight, layer.init_weight_type, layer.init_weight);
+					if (layer.use_bias)
+					{
+						weight_init(linear->bias, layer.init_bias_type, layer.init_bias);
+					}
+					layers_.emplace_back(std::move(linear));
+					layer_size = layer.size;
+					spdlog::debug("Layer {:<2}: {:<18}[{}]", l, "linear", layer.size);
 				}
-				layers_.emplace_back(layer_size, input_size);
-				total_neurons += layer.size;
-				break;
-			}
-			case Config::FCLayerType::kForwardInput:
-			{
-				if (i + 1 < config_.layers.size())
+				if constexpr (std::is_same_v<Config::LayerNormConfig, T>)
 				{
-					spdlog::warn("Skipping layers after ForwardInput layer. The ForwardInput layer should be the final layer.");
+					add_connections(l);
+					auto layer_norm = torch::nn::LayerNorm(torch::nn::LayerNormOptions({layer_size}).eps(layer.eps));
+					register_module("layer_norm" + std::to_string(l++), layer_norm);
+					layers_.emplace_back(std::move(layer_norm));
+					spdlog::debug("Layer {:<2}: layer-norm", l);
 				}
-				output_size_ = layer_size + input_size;
-				return;
-			}
-			case Config::FCLayerType::kForwardAll:
-			{
-				if (i + 1 < config_.layers.size())
+				if constexpr (std::is_same_v<Config::LayerConnectionConfig, T>)
 				{
-					spdlog::warn("Skipping layers after ForwardAll layer. The ForwardAll layer should be the final layer.");
+					int con = layer.connection + (layer.connection < 0 ? (num_layers + 1) : 0);
+					if (con <= l)
+					{
+						spdlog::error("Connection {} connects to current or previous layer {}.", l, layer.connection);
+						throw std::runtime_error("Invalid connection");
+					}
+					connections_.emplace(l, layer);
+					layer_connections.emplace(con, std::make_pair(layer_size, layer.residual));
+					spdlog::debug(
+						"{:<28} [{} -> {}]", layer.residual ? "connecting-residual" : "connecting-concatenaton", l, con);
 				}
-				has_multi_connected_ = true;
-				output_size_ = total_neurons;
-				return;
-			}
-		}
-		register_module(name + std::to_string(i++), layers_.back());
-		weight_init(layers_.back()->weight, layer.init_weight_type, layer.init_weight);
-		weight_init(layers_.back()->bias, layer.init_bias_type, layer.init_bias);
-
-		layer_size = layer.size;
-
-		if (config_.use_layer_norm)
-		{
-			norm_layers_.emplace_back(torch::nn::LayerNormOptions({layer_size}).eps(config_.layer_norm_eps));
-		}
-
-		spdlog::debug("Layer {}: {} ({})", i, layer.type == Config::FCLayerType::kResidual ? input_size : layer.size, type);
+				if constexpr (std::is_same_v<Config::Activation, T>)
+				{
+					add_connections(l);
+					++l;
+					layers_.emplace_back(make_activation(layer));
+					spdlog::debug("Layer {:<2}: {:<18}[{}]", l, "activation", activation_name(layer));
+				}
+			},
+			layer_config);
 	}
 
-	for (i = 0; i < norm_layers_.size(); ++i) { register_module("norm_" + std::to_string(i), norm_layers_[i]); }
+	add_connections(-1);
 
 	output_size_ = layer_size;
 }
 
 torch::Tensor FCBlockImpl::forward(const torch::Tensor& input)
 {
+	const int num_layers = static_cast<int>(layers_.size());
 	torch::Tensor x = input;
-	torch::Tensor outs = input;
-	for (size_t i = 0, ilen = config_.layers.size(); i < ilen; i++)
+	std::multimap<int, std::pair<torch::Tensor, bool>> layer_connections;
+	auto add_connections = [&](int layer) {
+		auto [lc_iter, lcend] = layer_connections.equal_range(layer);
+		for (; lc_iter != lcend; ++lc_iter)
+		{
+			auto [con, use_residual] = lc_iter->second;
+			if (use_residual)
+			{
+				x += con;
+			}
+			else
+			{
+				x = torch::cat({x, std::move(con)}, -1);
+			}
+		}
+		layer_connections.erase(layer);
+	};
+
+	auto store_connection = [&](int layer) {
+		auto [c_iter, cend] = connections_.equal_range(layer);
+		for (; c_iter != cend; ++c_iter)
+		{
+			auto [layer_connection, use_residual] = c_iter->second;
+			int con = layer_connection + (layer_connection < 0 ? (num_layers + 1) : 0);
+			layer_connections.emplace(con, std::make_pair(x, use_residual));
+		}
+	};
+	store_connection(0);
+	for (int l = 0; l < num_layers;)
 	{
-		const auto& layer = config_.layers[i];
-		switch (layer.type)
-		{
-			case Config::FCLayerType::kLinear: x = layers_[i](x); break;
-			case Config::FCLayerType::kInputConnected: x = layers_[i](i > 0 ? torch::cat({x, input}, -1) : x); break;
-			case Config::FCLayerType::kMultiConnected: x = layers_[i](outs); break;
-			case Config::FCLayerType::kResidual: x = layers_[i](x) + input; break;
-			case Config::FCLayerType::kForwardInput: return i > 0 ? torch::cat({x, input}, -1) : x;
-			case Config::FCLayerType::kForwardAll: return outs;
-		}
-		if (config_.use_layer_norm)
-		{
-			x = norm_layers_[i](x);
-		}
-		x = activation(x, layer.activation);
-		if (has_multi_connected_)
-		{
-			outs = torch::cat({outs, x}, -1);
-		}
+		std::visit([&](auto& layer) { x = layer(x); }, layers_[l]);
+		++l;
+		store_connection(l);
+		add_connections(l);
 	}
 
 	return x;

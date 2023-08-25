@@ -144,11 +144,9 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 	FCLayerType,
 	{
 		{FCLayerType::kLinear, "Linear"},
-		{FCLayerType::kInputConnected, "InputConnected"},
-		{FCLayerType::kMultiConnected, "MultiConnected"},
-		{FCLayerType::kResidual, "Residual"},
-		{FCLayerType::kForwardInput, "ForwardInput"},
-		{FCLayerType::kForwardAll, "ForwardAll"},
+		{FCLayerType::kLayerNorm, "LayerNorm"},
+		{FCLayerType::kLayerConnection, "LayerConnection"},
+		{FCLayerType::kActivation, "Activation"},
 	})
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
@@ -239,6 +237,10 @@ void to_json(nlohmann::json& json, const AgentTrainAlgorithm& train_algorithm);
 void from_json(const nlohmann::json& json, LinearConfig& linear);
 
 void to_json(nlohmann::json& json, const LinearConfig& linear);
+
+void from_json(const nlohmann::json& json, LayerConnectionConfig& layer_connection);
+
+void to_json(nlohmann::json& json, const LayerConnectionConfig& layer_connection);
 
 void from_json(const nlohmann::json& json, FCConfig& fc);
 

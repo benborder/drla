@@ -5,6 +5,7 @@
 
 #include <torch/torch.h>
 
+#include <map>
 #include <vector>
 
 namespace drla
@@ -24,14 +25,9 @@ public:
 	/// @param config The FCConfig to use for creating the FC layers.
 	/// @param name The name of the block.
 	/// @param input_size The input size of the first layer.
-	/// @param output_size The output size of the last FC layer.
 	/// @param output_layer_config The configuration for the output layer.
 	FCBlockImpl(
-		const Config::FCConfig& config,
-		const std::string& name,
-		int input_size,
-		int output_size,
-		Config::LinearConfig output_layer_config = {});
+		const Config::FCConfig& config, const std::string& name, int input_size, Config::LinearConfig output_layer_config);
 	/// @brief Constructs a FCBlockImpl as a deep copy of other on the specified device
 	/// @param other The object to clone from
 	/// @param device The device to clone to
@@ -54,10 +50,10 @@ private:
 
 	const Config::FCConfig config_;
 
-	std::vector<torch::nn::Linear> layers_;
-	std::vector<torch::nn::LayerNorm> norm_layers_;
+	using Layer = std::variant<torch::nn::Linear, torch::nn::LayerNorm, ActivationFunction>;
+	std::vector<Layer> layers_;
 	int output_size_;
-	bool has_multi_connected_ = false;
+	std::multimap<int, Config::LayerConnectionConfig> connections_;
 };
 
 TORCH_MODULE(FCBlock);

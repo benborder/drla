@@ -60,7 +60,8 @@ SoftActorCriticModel::SoftActorCriticModel(
 			critic_output = value_shape_;
 		}
 		auto name = "critic_" + postfix;
-		cm.critic_ = register_module(name, FCBlock(config_.critic, name, cm_input_size, critic_output));
+		cm.critic_ =
+			register_module(name, FCBlock(config_.critic, name, cm_input_size, Config::LinearConfig{critic_output}));
 		return cm;
 	};
 	for (size_t i = 0; i < config_.n_critics; ++i)

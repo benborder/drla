@@ -15,7 +15,7 @@ DynamicsNetworkImpl::DynamicsNetworkImpl(
 	const std::vector<std::vector<int64_t>>& input_shape,
 	const ActionSpace& action_space,
 	int reward_shape)
-		: config_(config), fc_reward_(config_.fc_reward, "reward", flatten(input_shape), reward_shape)
+		: config_(config), fc_reward_(config_.fc_reward, "reward", flatten(input_shape), Config::LinearConfig{reward_shape})
 {
 	int group = 0;
 	auto action_size = flatten(action_space.shape);
@@ -44,9 +44,9 @@ DynamicsNetworkImpl::DynamicsNetworkImpl(
 		}
 		else if (size <= 2)
 		{
-			auto encoding_shape = flatten(shape);
+			int encoding_shape = flatten(shape);
 			dynamics_encoding_.emplace_back(
-				FCBlock(config_.fc_dynamics, "fc_dyn", encoding_shape + action_size, encoding_shape));
+				FCBlock(config_.fc_dynamics, "fc_dyn", encoding_shape + action_size, Config::LinearConfig{encoding_shape}));
 			register_module("dyn_fcblock_" + postfix, std::get<FCBlock>(dynamics_encoding_.back()));
 		}
 		else
@@ -140,8 +140,12 @@ PredictionNetworkImpl::PredictionNetworkImpl(
 	const ActionSpace& action_space,
 	int value_shape)
 		: config_(config)
-		, fc_value_(config_.fc_value, "value", flatten(input_shape), value_shape)
-		, fc_policy_(config_.fc_policy, "policy", flatten(input_shape), flatten(action_space.shape))
+		, fc_value_(config_.fc_value, "value", flatten(input_shape), Config::LinearConfig{value_shape})
+		, fc_policy_(
+				config_.fc_policy,
+				"policy",
+				flatten(input_shape),
+				Config::LinearConfig{static_cast<int>(flatten(action_space.shape))})
 {
 	int group = 0;
 	for (auto& shape : input_shape)

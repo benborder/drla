@@ -229,45 +229,87 @@ void to_json(nlohmann::json& json, const AgentTrainAlgorithm& train_algorithm)
 
 void from_json(const nlohmann::json& json, LinearConfig& linear)
 {
-	linear.type << optional_input{json, "type"};
-	if (
-		linear.type == Config::FCLayerType::kResidual || linear.type == Config::FCLayerType::kForwardAll ||
-		linear.type == Config::FCLayerType::kForwardInput)
-	{
-		linear.size << optional_input{json, "size"};
-	}
-	else
-	{
-		linear.size << required_input{json, "size"};
-	}
-	linear.activation << optional_input{json, "activation"};
+	linear.size << optional_input{json, "size"};
 	load_init_weights_config(linear, json);
-	load_init_bias_config(linear, json);
+	linear.use_bias << optional_input{json, "use_bias"};
+	if (linear.use_bias)
+	{
+		load_init_bias_config(linear, json);
+	}
 }
 
 void to_json(nlohmann::json& json, const LinearConfig& linear)
 {
 	json["size"] = linear.size;
-	json["activation"] = linear.activation;
+	json["use_bias"] = linear.use_bias;
 	json["init_bias_type"] = linear.init_bias_type;
 	json["init_bias"] = linear.init_bias;
 	json["init_weight_type"] = linear.init_weight_type;
 	json["init_weight"] = linear.init_weight;
-	json["type"] = linear.type;
+}
+
+void from_json(const nlohmann::json& json, FCLayerConfig& fc_layer_config)
+{
+	auto json_activation = json.find("activation");
+	if (json_activation != json.end())
+	{
+		fc_layer_config = json_activation->get<Activation>();
+		return;
+	}
+
+	FCLayerType type;
+	type << required_input{json, "type"};
+	switch (type)
+	{
+		case FCLayerType::kLinear: fc_layer_config = json.get<LinearConfig>(); break;
+		case FCLayerType::kLayerNorm: fc_layer_config = json.get<LayerNormConfig>(); break;
+		case FCLayerType::kLayerConnection: fc_layer_config = json.get<LayerConnectionConfig>(); break;
+		default:
+		{
+			spdlog::error("[Config] The MLP layer type is not defined.");
+			throw std::invalid_argument("The MLP layer type is not defined");
+			break;
+		}
+	}
+}
+
+void to_json(nlohmann::json& json, const FCLayerConfig& fc_layer_config)
+{
+	std::visit(
+		[&json](const auto& fc_layer) {
+			using T = std::decay_t<decltype(fc_layer)>;
+			if constexpr (std::is_same_v<Config::Activation, T>)
+			{
+				json["activation"] = fc_layer;
+			}
+			else
+			{
+				to_json(json, fc_layer);
+			}
+		},
+		fc_layer_config);
+}
+
+void from_json(const nlohmann::json& json, LayerConnectionConfig& layer_connection)
+{
+	layer_connection.connection << required_input{json, "connection"};
+	layer_connection.residual << optional_input{json, "residual"};
+}
+
+void to_json(nlohmann::json& json, const LayerConnectionConfig& layer_connection)
+{
+	json["layer_connection"] = layer_connection.connection;
+	json["residual"] = layer_connection.residual;
 }
 
 void from_json(const nlohmann::json& json, FCConfig& fc)
 {
 	fc.layers << required_input{json, "layers"};
-	fc.use_layer_norm << optional_input{json, "use_layer_norm"};
-	fc.layer_norm_eps << optional_input{json, "layer_norm_eps"};
 }
 
 void to_json(nlohmann::json& json, const FCConfig& fc)
 {
 	json["layers"] = fc.layers;
-	json["use_layer_norm"] = fc.use_layer_norm;
-	json["layer_norm_eps"] = fc.layer_norm_eps;
 }
 
 void from_json(const nlohmann::json& json, MLPConfig& mlp)
@@ -499,14 +541,19 @@ void to_json(nlohmann::json& json, const FeatureExtractorConfig& feature_extract
 
 void from_json(const nlohmann::json& json, ActorConfig& actor)
 {
-	actor.mlp << optional_input{json, "mlp"};
+	from_json(json, static_cast<FCConfig&>(actor));
+	actor.use_bias << optional_input{json, "use_bias"};
 	load_init_weights_config(actor, json);
-	load_init_bias_config(actor, json);
+	if (actor.use_bias)
+	{
+		load_init_bias_config(actor, json);
+	}
 }
 
 void to_json(nlohmann::json& json, const ActorConfig& actor)
 {
-	json["mlp"] = actor.mlp;
+	to_json(json, static_cast<const FCConfig&>(actor));
+	json["use_bias"] = actor.use_bias;
 	json["init_bias_type"] = actor.init_bias_type;
 	json["init_bias"] = actor.init_bias;
 	json["init_weight_type"] = actor.init_weight_type;

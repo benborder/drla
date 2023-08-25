@@ -61,12 +61,11 @@ enum class Activation
 /// @brief The type of fully connected layer
 enum class FCLayerType
 {
-	kLinear,				 // Standard linear/fully connected topology.
-	kInputConnected, // Same as linear, but input is also connected to this layer.
-	kMultiConnected, // Same as linear, but input and all previous layers are connected to this layers input.
-	kResidual,			 // Adds the input to the output of this layer. The output size will be the same as the input.
-	kForwardInput,	 // Forwards the input and the final layer to the output
-	kForwardAll,		 // Forwards the input and all layers to the output
+	kLinear,					// Standard linear/fully connected topology.
+	kLayerNorm,				// Layer normalisation
+	kLayerConnection, // connects the current layer to another specified layer using either a residual connection type or
+										// just concatenation
+	kActivation,			// The activation type to use
 };
 
 /// @brief The initialisation type to use for
@@ -85,30 +84,42 @@ struct LinearConfig
 {
 	// The number of neural units in a layer
 	int size = 0;
-	// The activation function used for forward passes
-	Activation activation = Activation::kNone;
 	// The type of initialisation for the weights
 	InitType init_weight_type = InitType::kDefault;
 	// The weight values to initialise the network with (if relevant)
 	double init_weight = 1.0;
+	// Enable bias for linear based layers
+	bool use_bias = true;
 	// The type of initialisation for the bias
 	InitType init_bias_type = InitType::kDefault;
 	// The bias values to initialise the network with
 	double init_bias = 0.0;
-	// The type of fully connected network
-	FCLayerType type = FCLayerType::kLinear;
 };
+
+/// @brief Layer Normalisation configuration for a fully connected network and feature extractor.
+struct LayerNormConfig
+{
+	// The epsilon value added for numerical stability.
+	double eps = 1e-5;
+};
+
+/// @brief Layer connections configuration
+struct LayerConnectionConfig
+{
+	// The layer index to connect to. This connection cannot connect to a previous layer and is 0 index based.
+	int connection;
+	// Use residual connections if true, otherwise concatenate the connection. If using residual, the connecting layers
+	// must have the same size.
+	bool residual = true;
+};
+
+using FCLayerConfig = std::variant<LinearConfig, LayerNormConfig, LayerConnectionConfig, Activation>;
 
 /// @brief Fully connected block configuration
 struct FCConfig
 {
 	// Defines each layer in the block. Default to none, passing the original tensor through unmodified.
-	std::vector<LinearConfig> layers = {};
-
-	// Add a LayerNorm after each layer
-	bool use_layer_norm = false;
-	// The epsilon to use for all LayerNorms
-	float layer_norm_eps = 1e-5;
+	std::vector<FCLayerConfig> layers = {};
 };
 
 /// @brief Multi Layer Perceptron feature extractor config. Has identical config to the fully connected block config.
@@ -161,13 +172,6 @@ struct BatchNorm2dConfig
 	double momentum = 0.1;
 	// Whether to store and update batch statistics (mean and variance) in the module.
 	bool track_running_stats = true;
-};
-
-/// @brief Layer Normalisation configuration for a feature extractor.
-struct LayerNormConfig
-{
-	// The epsilon value added for numerical stability.
-	double eps = 1e-5;
 };
 
 /// @brief Max Pooling layer configuration for a feature extractor.
@@ -248,17 +252,17 @@ struct FeatureExtractorConfig
 
 /// @brief The policy action output configuration. Used to transform input neural units to match the action space of
 /// the environment.
-struct ActorConfig
+struct ActorConfig : public FCConfig
 {
-	// The fully connected network config
-	FCConfig mlp = {};
-	// The type of initialisation for the weights
+	// The type of initialisation for the output layer weights
 	InitType init_weight_type = InitType::kDefault;
-	// The weight values to initialise the network with
+	// The weight values to initialise the network output layer with
 	double init_weight = 0.01;
-	// The type of initialisation for the bias
+	// Enable bias for output layer
+	bool use_bias = true;
+	// The type of initialisation for the output layer bias
 	InitType init_bias_type = InitType::kDefault;
-	// The bias values to initialise the network with
+	// The bias values to initialise the network output layer with
 	double init_bias = 0.0;
 };
 
@@ -333,7 +337,8 @@ struct DynamicsNetwork
 	// The config for the residual blocks
 	ResBlock2dConfig resblock;
 	// The reward fully connected layers
-	FCConfig fc_reward = {{{256, Activation::kReLU}, {256}}};
+	FCConfig fc_reward =
+		FCConfig{std::vector<FCLayerConfig>{Config::LinearConfig{256}, Activation::kReLU, Config::LinearConfig{256}}};
 	// The dynamics net fully connected layers
 	FCConfig fc_dynamics;
 };
@@ -352,9 +357,11 @@ struct PredictionNetwork
 	// The config for the residual blocks
 	ResBlock2dConfig resblock;
 	// The value fully connected layers
-	FCConfig fc_value = {{{256, Activation::kReLU}, {256}}};
+	FCConfig fc_value =
+		FCConfig{std::vector<FCLayerConfig>{Config::LinearConfig{256}, Activation::kReLU, Config::LinearConfig{256}}};
 	// The policy fully connected layers
-	FCConfig fc_policy = {{{256, Activation::kReLU}, {256}}};
+	FCConfig fc_policy =
+		FCConfig{std::vector<FCLayerConfig>{Config::LinearConfig{256}, Activation::kReLU, Config::LinearConfig{256}}};
 };
 
 /// @brief Configuration for the muzero model
