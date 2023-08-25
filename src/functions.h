@@ -1,9 +1,13 @@
 #pragma once
 
+#include <torch/torch.h>
+
 #include <vector>
 
 namespace drla
 {
+
+// Vector helpers
 
 template <int start, int end = 0, typename T>
 inline std::vector<T> slice(const std::vector<T>& vec)
@@ -79,5 +83,29 @@ inline void operator<<(std::vector<T>& a, std::vector<T>&& b)
 {
 	a.insert(a.end(), std::make_move_iterator(b.begin()), std::make_move_iterator(b.end()));
 }
+
+// Tensor helpers
+
+inline torch::Tensor make_tensor(float x, c10::TensorOptions options = {})
+{
+	return torch::from_blob(&x, 1, options).clone();
+}
+
+inline torch::Tensor make_tensor(const std::vector<float>& x, at::IntArrayRef size, c10::TensorOptions options = {})
+{
+	return torch::from_blob(const_cast<float*>(x.data()), size, options).clone();
+}
+
+#define TENSOR_SIZE(tensor)                                     \
+	do {                                                          \
+		std::cout << #tensor ": " << (tensor).sizes() << std::endl; \
+	}                                                             \
+	while (0)
+
+#define PRINT_TENSOR(tensor)                            \
+	do {                                                  \
+		std::cout << #tensor ": " << (tensor) << std::endl; \
+	}                                                     \
+	while (0)
 
 } // namespace drla
