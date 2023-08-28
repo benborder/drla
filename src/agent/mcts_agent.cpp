@@ -3,9 +3,9 @@
 #include "agent_types.h"
 #include "agent_utils.h"
 #include "algorithm.h"
-#include "episodic_per_buffer.h"
 #include "mcts.h"
 #include "mcts_episode.h"
+#include "mcts_replay_buffer.h"
 #include "model.h"
 #include "muzero.h"
 #include "muzero_model.h"
@@ -78,7 +78,7 @@ void MCTSAgent::train()
 		train_config.per_alpha,
 		env_config.action_space};
 
-	EpisodicPERBuffer buffer(config_.gamma, buffer_options);
+	MCTSReplayBuffer buffer(config_.gamma, buffer_options);
 
 	// Self play
 	// TODO: add possiblity to also use a client/server via rpc
@@ -239,9 +239,6 @@ void MCTSAgent::train()
 		}
 		model_->to(device);
 	}
-	buffer.set_value_decoder([&](torch::Tensor& values) {
-		return std::dynamic_pointer_cast<MCTSModelInterface>(model_)->support_to_scalar(values);
-	});
 
 	// Setup algorithm for training
 	std::unique_ptr<Algorithm> algorithm;
@@ -287,7 +284,7 @@ void MCTSAgent::train()
 
 		while (training_)
 		{
-			buffer.reanalyse(std::dynamic_pointer_cast<Model>(model));
+			buffer.reanalyse(model);
 			// update to the latest model from training (if available)
 			if (auto new_model = model_sync_reciever->check())
 			{

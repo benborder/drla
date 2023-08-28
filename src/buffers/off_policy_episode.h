@@ -23,12 +23,14 @@ public:
 	int get_id() const override;
 	Observations get_observations(int step, torch::Device device) const override;
 	ObservationShapes get_observation_shapes() const override;
+	StateShapes get_state_shapes() const override;
 	void init_priorities(torch::Tensor gamma, float per_alpha = 1.0F) override;
 	void update_priorities(int index, torch::Tensor priorities) override;
 	float get_priority() const override;
 	std::pair<int, float> sample_position(std::mt19937& gen, bool force_uniform = false) const override;
 	EpisodeSampleTargets make_target(int index, torch::Tensor gamma) const override;
 	void update_values(torch::Tensor values) override;
+	void update_states(HiddenStates& states) override;
 	int length() const override;
 
 private:
@@ -55,5 +57,7 @@ private:
 	torch::Tensor reanalysed_values_;
 	// The hidden state for recurrent models
 	HiddenStates state_;
+	// The reanalysed hidden state for recurrent models
+	HiddenStates reanalysed_state_;
 };
 } // namespace drla

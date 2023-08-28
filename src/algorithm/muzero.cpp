@@ -13,7 +13,7 @@
 using namespace drla;
 
 MuZero::MuZero(
-	const Config::AgentTrainAlgorithm& config, std::shared_ptr<MCTSModelInterface> model, EpisodicPERBuffer& buffer)
+	const Config::AgentTrainAlgorithm& config, std::shared_ptr<MCTSModelInterface> model, MCTSReplayBuffer& buffer)
 		: config_(std::get<Config::MuZero::TrainConfig>(config)), model_(model), buffer_(buffer)
 {
 	switch (config_.optimiser)

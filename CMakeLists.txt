@@ -36,6 +36,7 @@ add_library(drla STATIC
 	src/buffers/minibatch_buffer.cpp
 	src/buffers/episodic_per_buffer.cpp
 	src/buffers/mcts_episode.cpp
+	src/buffers/mcts_replay_buffer.cpp
 	src/buffers/off_policy_episode.cpp
 
 	# Training algorithms

@@ -2,7 +2,7 @@
 
 #include "algorithm.h"
 #include "configuration/algorithm.h"
-#include "episodic_per_buffer.h"
+#include "mcts_replay_buffer.h"
 #include "model.h"
 
 #include <torch/torch.h>
@@ -17,7 +17,7 @@ class MuZero final : public Algorithm
 {
 public:
 	MuZero(
-		const Config::AgentTrainAlgorithm& config, std::shared_ptr<MCTSModelInterface> model, EpisodicPERBuffer& buffer);
+		const Config::AgentTrainAlgorithm& config, std::shared_ptr<MCTSModelInterface> model, MCTSReplayBuffer& buffer);
 
 	std::string name() const override;
 	std::vector<UpdateResult> update(int timestep) override;
@@ -31,7 +31,7 @@ private:
 private:
 	const Config::MuZero::TrainConfig config_;
 	std::shared_ptr<MCTSModelInterface> model_;
-	EpisodicPERBuffer& buffer_;
+	MCTSReplayBuffer& buffer_;
 
 	std::unique_ptr<torch::optim::Optimizer> optimiser_;
 	double lr_;

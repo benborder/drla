@@ -144,6 +144,11 @@ ObservationShapes MCTSEpisode::get_observation_shapes() const
 	return shapes;
 }
 
+StateShapes MCTSEpisode::get_state_shapes() const
+{
+	return {};
+}
+
 void MCTSEpisode::init_priorities(torch::Tensor gamma, float per_alpha)
 {
 	priorities_.resize(episode_length_);
@@ -288,6 +293,10 @@ void MCTSEpisode::update_values(torch::Tensor values)
 {
 	std::lock_guard lock(m_updates_);
 	reanalysed_values_ = values;
+}
+
+void MCTSEpisode::update_states([[maybe_unused]] HiddenStates& states)
+{
 }
 
 int MCTSEpisode::length() const

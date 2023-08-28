@@ -1,5 +1,7 @@
 #include "off_policy_episode.h"
 
+#include "utils.h"
+
 #include <algorithm>
 
 using namespace drla;
@@ -86,6 +88,13 @@ ObservationShapes OffPolicyEpisode::get_observation_shapes() const
 		dims.erase(dims.begin());
 		shapes.push_back(dims);
 	}
+	return shapes;
+}
+
+StateShapes OffPolicyEpisode::get_state_shapes() const
+{
+	StateShapes shapes;
+	for (auto& state : state_) { shapes.push_back(state.sizes().slice(1).vec()); }
 	return shapes;
 }
 
@@ -178,6 +187,12 @@ void OffPolicyEpisode::update_values(torch::Tensor values)
 {
 	std::lock_guard lock(m_updates_);
 	reanalysed_values_ = values;
+}
+
+void OffPolicyEpisode::update_states(HiddenStates& states)
+{
+	std::lock_guard lock(m_updates_);
+	reanalysed_state_ = states;
 }
 
 int OffPolicyEpisode::length() const

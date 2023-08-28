@@ -26,6 +26,7 @@ public:
 	int get_id() const override;
 	Observations get_observations(int step, torch::Device device) const override;
 	ObservationShapes get_observation_shapes() const override;
+	StateShapes get_state_shapes() const override;
 	void init_priorities(torch::Tensor gamma, float per_alpha = 1.0F) override;
 	void update_priorities(int index, torch::Tensor priorities) override;
 	float get_priority() const override;
@@ -35,6 +36,7 @@ public:
 	torch::Tensor compute_target_value(int index, torch::Tensor gamma) const;
 	EpisodeSampleTargets make_target(int index, torch::Tensor gamma) const override;
 	void update_values(torch::Tensor values) override;
+	void update_states(HiddenStates& states) override;
 	int length() const override;
 
 private:

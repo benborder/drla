@@ -117,22 +117,6 @@ struct ModelInput
 	bool deterministic = true;
 };
 
-/// @brief A batch sampled from a buffer
-struct Batch
-{
-	// episode id and episode step index
-	std::vector<std::pair<int, int>> indicies;
-	Observations observation;
-	torch::Tensor reward;
-	torch::Tensor values;
-	torch::Tensor policy;
-	torch::Tensor action;
-	torch::Tensor non_terminal;
-	torch::Tensor weight;
-	torch::Tensor gradient_scale;
-	torch::Tensor is_first;
-};
-
 /// @brief Training update result data
 struct UpdateResult
 {

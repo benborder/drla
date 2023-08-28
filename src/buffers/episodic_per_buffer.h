@@ -32,12 +32,14 @@ public:
 	virtual int get_id() const = 0;
 	virtual Observations get_observations(int step, torch::Device device) const = 0;
 	virtual ObservationShapes get_observation_shapes() const = 0;
+	virtual StateShapes get_state_shapes() const = 0;
 	virtual void init_priorities(torch::Tensor gamma, float per_alpha = 1.0F) = 0;
 	virtual void update_priorities(int index, torch::Tensor priorities) = 0;
 	virtual float get_priority() const = 0;
 	virtual std::pair<int, float> sample_position(std::mt19937& gen, bool force_uniform = false) const = 0;
 	virtual EpisodeSampleTargets make_target(int index, torch::Tensor gamma) const = 0;
 	virtual void update_values(torch::Tensor values) = 0;
+	virtual void update_states(HiddenStates& states) = 0;
 	virtual int length() const = 0;
 };
 
@@ -48,6 +50,7 @@ struct EpisodicPERBufferOptions
 	int unroll_steps;
 	float per_alpha;
 	ActionSpace action_space;
+	bool use_per = true;
 };
 
 /// @brief Episodic Prioritised Experience Replay Buffer
@@ -82,27 +85,14 @@ public:
 	std::vector<std::pair<std::shared_ptr<Episode>, float>>
 	sample_episodes(int num_samples, bool force_uniform = false) const;
 
-	/// @brief Samples from the buffer, using the priorities to form a distribution to sample from
-	/// @param batch_size The number of step index samples to retrieve
-	/// @param device The device the samples should be on
-	Batch sample(int batch_size, torch::Device device = torch::kCPU) const;
-
 	/// @brief Updates the priorities of a series of episodes and episode step indexes
 	/// @param priorities The list of new priorities to update
 	/// @param indicies The episode id and step index for each priority entry
 	void update_priorities(torch::Tensor priorities, const std::vector<std::pair<int, int>>& indicies);
 
-	/// @brief Reanalyse a random epiosde in the buffer
-	/// @param model The model to use when reanalysing
-	void reanalyse(std::shared_ptr<Model> model);
-
 	/// @brief Gets the number of times reanalyse has been run
 	/// @return The reanalyse count
 	int get_reanalysed_count() const;
-
-	/// @brief Set a function which decodes values from a model when reanalysing
-	/// @param decoder The decoder function to use
-	void set_value_decoder(std::function<torch::Tensor(torch::Tensor&)> decoder);
 
 	/// @brief Returns the discount factor gamma
 	/// @return the gamma tensor
@@ -121,8 +111,6 @@ protected:
 
 	torch::Tensor gamma_;
 	int reanalysed_count_ = 0;
-
-	std::function<torch::Tensor(torch::Tensor&)> value_decoder_;
 };
 
 } // namespace drla
