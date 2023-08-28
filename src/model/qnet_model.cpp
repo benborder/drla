@@ -121,7 +121,7 @@ ModelOutput QNetModel::predict(const ModelInput& input)
 	return output;
 }
 
-ModelOutput QNetModel::initial() const
+ModelOutput QNetModel::initial()
 {
 	ModelOutput output;
 	auto device = q_net_->parameters().front().device();

@@ -21,7 +21,7 @@ public:
 
 	ModelOutput predict(const ModelInput& input) override;
 
-	ModelOutput initial() const override;
+	ModelOutput initial() override;
 
 	StateShapes get_state_shape() const override;
 

@@ -142,7 +142,7 @@ ModelOutput ActorCriticModel::predict(const ModelInput& input)
 	}
 }
 
-ModelOutput ActorCriticModel::initial() const
+ModelOutput ActorCriticModel::initial()
 {
 	ModelOutput output;
 	auto device = parameters().front().device();

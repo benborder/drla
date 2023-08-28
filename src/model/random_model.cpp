@@ -30,7 +30,7 @@ ModelOutput RandomModel::predict(const ModelInput& input)
 	return {action, torch::zeros({envs, value_shape_})};
 }
 
-ModelOutput RandomModel::initial() const
+ModelOutput RandomModel::initial()
 {
 	ModelOutput output;
 	if (is_action_discrete(action_space_))

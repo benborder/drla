@@ -354,7 +354,7 @@ ModelOutput MuZeroModel::predict(const ModelOutput& previous_output, [[maybe_unu
 	return output;
 }
 
-ModelOutput MuZeroModel::initial() const
+ModelOutput MuZeroModel::initial()
 {
 	ModelOutput output;
 	auto device = prediction_network_->parameters().front().device();

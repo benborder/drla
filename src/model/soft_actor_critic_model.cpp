@@ -179,7 +179,7 @@ ModelOutput SoftActorCriticModel::predict(const ModelInput& input)
 	return output;
 }
 
-ModelOutput SoftActorCriticModel::initial() const
+ModelOutput SoftActorCriticModel::initial()
 {
 	ModelOutput output;
 	auto device = actor_->parameters().front().device();

@@ -24,7 +24,7 @@ public:
 
 	/// @brief This initialises the model output for the first step in an environment (i.e. when env reset is called)
 	/// @return The initial model output, typically zerod action and reward/value
-	virtual ModelOutput initial() const = 0;
+	virtual ModelOutput initial() = 0;
 
 	/// @brief Gets the shape of internal hidden state of the model for recurrent based models
 	/// @return The shape of internal hidden state.
