@@ -48,7 +48,7 @@ using ObservationDataTypes = std::vector<torch::ScalarType>;
 /// @brief The hidden states for recurrent models
 using HiddenStates = std::vector<torch::Tensor>;
 /// @brief The shape of the models internal state
-using StateShapes = std::vector<int64_t>;
+using StateShapes = std::vector<std::vector<int64_t>>;
 /// @brief The type of rewards of the environment
 using RewardTypes = std::vector<std::string>;
 /// @brief The list of discrete actions available to perform in the environment.

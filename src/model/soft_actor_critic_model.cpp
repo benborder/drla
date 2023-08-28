@@ -207,8 +207,8 @@ StateShapes SoftActorCriticModel::get_state_shape() const
 {
 	if (use_gru_)
 	{
-		StateShapes shape = {config_.gru_hidden_size};
-		for (size_t i = 0; i < critics_.size(); ++i) { shape.push_back(config_.gru_hidden_size); }
+		StateShapes shape = {{config_.gru_hidden_size}};
+		for (size_t i = 0; i < critics_.size(); ++i) { shape.push_back({config_.gru_hidden_size}); }
 		return shape;
 	}
 	else

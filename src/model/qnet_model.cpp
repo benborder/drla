@@ -144,7 +144,7 @@ ModelOutput QNetModel::initial()
 StateShapes QNetModel::get_state_shape() const
 {
 	if (use_gru_)
-		return {config_.gru_hidden_size};
+		return {{config_.gru_hidden_size}};
 	else
 		return {};
 }

@@ -1,5 +1,6 @@
 #include "rollout_buffer.h"
 
+#include "functions.h"
 #include "minibatch_buffer.h"
 
 #include <c10/util/ArrayRef.h>
@@ -49,9 +50,10 @@ RolloutBuffer::RolloutBuffer(
 
 	actions_ = torch::zeros(action_shape, torch::TensorOptions(device).dtype(action_type));
 	episode_non_terminal_ = torch::ones({buffer_size_ + 1, n_envs, reward_shape}, torch::TensorOptions(device));
-	for (auto state_size : state_shape)
+	for (auto& shape : state_shape)
 	{
-		states_.push_back(torch::zeros({buffer_size_ + 1, n_envs, state_size}, torch::TensorOptions(device)));
+		states_.push_back(
+			torch::zeros(std::vector<int64_t>{buffer_size_ + 1, n_envs} + shape, torch::TensorOptions(device)));
 	}
 	pos_.resize(n_envs, 0);
 }

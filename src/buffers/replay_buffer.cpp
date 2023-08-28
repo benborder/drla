@@ -1,5 +1,6 @@
 #include "replay_buffer.h"
 
+#include "functions.h"
 #include "off_policy_episode.h"
 #include "utils.h"
 
@@ -124,7 +125,10 @@ torch::Tensor ReplayBuffer::get_actions_head(int env) const
 std::vector<torch::Tensor> ReplayBuffer::get_state_head() const
 {
 	std::vector<torch::Tensor> states_head;
-	for (auto& shape : state_shapes_) { states_head.push_back(torch::empty({n_envs_, shape}, device_)); }
+	for (auto& shape : state_shapes_)
+	{
+		states_head.push_back(torch::empty(std::vector<int64_t>{n_envs_} + shape, device_));
+	}
 	for (int env = 0; env < n_envs_; ++env)
 	{
 		auto& step_data = current_episodes_[env].back();
@@ -153,8 +157,8 @@ ReplayBufferSamples ReplayBuffer::sample(int sample_size)
 	}
 	for (auto& state : state_shapes_)
 	{
-		data.state.push_back(torch::empty({sample_size, state}, device_));
-		data.next_state.push_back(torch::empty({sample_size, state}, device_));
+		data.state.push_back(torch::empty(std::vector<int64_t>{sample_size} + state, device_));
+		data.next_state.push_back(torch::empty(std::vector<int64_t>{sample_size} + state, device_));
 	}
 	data.actions = torch::empty(action_shape, torch::TensorOptions(device_).dtype(action_type));
 	data.rewards = torch::empty({sample_size, options_.reward_shape}, device_);
