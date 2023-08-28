@@ -167,6 +167,7 @@ Batch EpisodicPERBuffer::sample(int batch_size, torch::Device device) const
 	batch.non_terminal = torch::empty({batch_size, options_.unroll_steps}, device);
 	batch.weight = torch::empty({batch_size}, device);
 	batch.gradient_scale = torch::empty({batch_size, options_.unroll_steps}, device);
+	batch.is_first = torch::zeros({batch_size, options_.unroll_steps}, device);
 
 	int batch_index = 0;
 	auto episodes = sample_episodes(batch_size);
@@ -188,6 +189,7 @@ Batch EpisodicPERBuffer::sample(int batch_size, torch::Device device) const
 		batch.non_terminal[batch_index] = target.non_terminal.detach().to(device);
 		batch.weight[batch_index] = 1.0F / (total_steps_ * episode_prob * probs);
 		batch.gradient_scale[batch_index].fill_(std::min(options_.unroll_steps, episode->length() - index));
+		batch.is_first[batch_index][0] = index == 0 ? 1.0F : 0.0F;
 		++batch_index;
 	}
 

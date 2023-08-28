@@ -130,6 +130,7 @@ struct Batch
 	torch::Tensor non_terminal;
 	torch::Tensor weight;
 	torch::Tensor gradient_scale;
+	torch::Tensor is_first;
 };
 
 /// @brief Training update result data
