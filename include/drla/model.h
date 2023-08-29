@@ -88,11 +88,8 @@ public:
 
 	/// @brief Recurrent model prediction. Predicts the action and/or value from the hidden state and actions.
 	/// @param previous_output The the output from a previous prediction pass.
-	/// @param deterministic Use a deterministic forward pass through the model to determine the action if true. Otherwise
-	/// a stochastic policy gradient is used to determine the action. This option is only relevant for policy gradient
-	/// based models.
 	/// @return The predicted action, value and state from the forward pass through the model.
-	virtual ModelOutput predict(const ModelOutput& previous_output, bool deterministic = true) = 0;
+	virtual ModelOutput predict_recurrent(const ModelOutput& previous_output) = 0;
 
 	/// @brief Transform a categorical representation to a scalar
 	/// @param logits The transformed categorical support representation

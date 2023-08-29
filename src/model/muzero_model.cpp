@@ -322,7 +322,7 @@ ModelOutput MuZeroModel::predict(const ModelInput& input)
 	return output;
 }
 
-ModelOutput MuZeroModel::predict(const ModelOutput& previous_output, [[maybe_unused]] bool deterministic)
+ModelOutput MuZeroModel::predict_recurrent(const ModelOutput& previous_output)
 {
 	ModelOutput output;
 	std::vector<torch::Tensor> previous_state;

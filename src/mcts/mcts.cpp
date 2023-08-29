@@ -135,7 +135,7 @@ MCTSResult MCTS::search(MCTSModelInterface* model, const MCTSInput& input)
 		auto pred = parent->get_prediction();
 		pred.action[0] = node->action_;
 		pred.action.unsqueeze_(0);
-		auto node_predict_output = model->predict(pred);
+		auto node_predict_output = model->predict_recurrent(pred);
 		node_predict_output.reward = model->support_to_scalar(node_predict_output.reward);
 		node_predict_output.values = model->support_to_scalar(node_predict_output.values);
 		node->expand(action_set_, sim_turn_index, node_predict_output);

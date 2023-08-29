@@ -53,14 +53,14 @@ std::vector<UpdateResult> MuZero::update(int timestep)
 	batch.values = model_->scalar_to_support(batch.values);
 	batch.reward = model_->scalar_to_support(batch.reward);
 
-	auto prediction = static_cast<Model*>(model_.get())->predict({batch.observation});
+	auto prediction = model_->predict({batch.observation});
 
 	std::vector<ModelOutput> predictions{prediction};
 
 	for (int i = 1, ilen = batch.action.size(1); i < ilen; ++i)
 	{
 		prediction.action = batch.action.narrow(1, i, 1).squeeze(1);
-		prediction = model_->predict(prediction);
+		prediction = model_->predict_recurrent(prediction);
 		for (auto& hidden_state : prediction.state)
 		{
 			hidden_state.register_hook([](torch::Tensor grad) { return grad * 0.5F; });

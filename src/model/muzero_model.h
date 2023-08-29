@@ -90,7 +90,7 @@ public:
 	MuZeroModel(const MuZeroModel& other, const c10::optional<torch::Device>& device);
 
 	ModelOutput predict(const ModelInput& input) override;
-	ModelOutput predict(const ModelOutput& previous_output, bool deterministic = true) override;
+	ModelOutput predict_recurrent(const ModelOutput& previous_output) override;
 
 	ModelOutput initial() override;
 

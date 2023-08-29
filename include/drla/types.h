@@ -171,15 +171,6 @@ struct EnvStepData
 	int turn_index = 0;
 };
 
-/// @brief The input for model prediction
-struct PredictInput
-{
-	// The input data from the environment
-	EnvStepData env_data;
-	// The action taken in the previous step. Not required for model free agents.
-	torch::Tensor action = {};
-};
-
 /// @brief Output agent/model data from a single step in an environment
 struct StepData
 {
