@@ -27,7 +27,7 @@ std::string DQN::name() const
 	return "DQN";
 }
 
-std::vector<UpdateResult> DQN::update(int timestep)
+Metrics DQN::update(int timestep)
 {
 	update_exploration(timestep);
 
@@ -51,6 +51,7 @@ std::vector<UpdateResult> DQN::update(int timestep)
 			torch::gather(current_q_values, 2, replay_data.actions.expand_as(target_q_values).unsqueeze(1).to(torch::kLong))
 				.squeeze(1);
 
+		// TODO: add weight for importance sampling
 		auto loss = torch::nn::functional::smooth_l1_loss(current_q_values, target_q_values);
 		total_loss += loss.item<float>();
 
@@ -66,10 +67,11 @@ std::vector<UpdateResult> DQN::update(int timestep)
 		}
 	}
 
-	return {
-		{"loss", TrainResultType::kLoss, total_loss / config_.gradient_steps},
-		{"learning_rate", TrainResultType::kLearningRate, static_cast<float>(lr)},
-		{"exploration", TrainResultType::kPolicyEvaluation, static_cast<float>(exploration_param_)}};
+	Metrics metrics;
+	metrics.add({"loss", TrainResultType::kLoss, total_loss / config_.gradient_steps});
+	metrics.add({"learning_rate", TrainResultType::kLearningRate, static_cast<float>(lr)});
+	metrics.add({"exploration", TrainResultType::kPolicyEvaluation, static_cast<float>(exploration_param_)});
+	return metrics;
 }
 
 void DQN::save(const std::filesystem::path& path) const

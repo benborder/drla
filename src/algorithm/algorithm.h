@@ -1,5 +1,6 @@
 #pragma once
 
+#include "metrics.h"
 #include "types.h"
 
 #include <torch/torch.h>
@@ -14,16 +15,12 @@ namespace drla
 class Algorithm
 {
 public:
-	virtual ~Algorithm();
+	virtual ~Algorithm() = default;
 	virtual std::string name() const = 0;
-	virtual std::vector<UpdateResult> update(int timestep) = 0;
+	virtual Metrics update(int timestep) = 0;
 
 	virtual void save(const std::filesystem::path& path) const = 0;
 	virtual void load(const std::filesystem::path& path) = 0;
 };
-
-inline Algorithm::~Algorithm()
-{
-}
 
 } // namespace drla

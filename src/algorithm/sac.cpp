@@ -40,7 +40,7 @@ std::string SAC::name() const
 	return "SAC";
 }
 
-std::vector<UpdateResult> SAC::update(int timestep)
+Metrics SAC::update(int timestep)
 {
 	float ent_coefs = 0.0F;
 	float ent_coef_losses = 0.0F;
@@ -134,6 +134,7 @@ std::vector<UpdateResult> SAC::update(int timestep)
 			auto probs = torch::softmax(action_output.actions_pi, -1);
 			actor_loss *= probs;
 		}
+		// TODO: replay_data.weight;
 		actor_loss = actor_loss.mean();
 		actor_losses += actor_loss.item<float>();
 
@@ -152,15 +153,15 @@ std::vector<UpdateResult> SAC::update(int timestep)
 	critic_losses /= static_cast<float>(config_.gradient_steps);
 	actor_losses /= static_cast<float>(config_.gradient_steps);
 
-	return {
-		{"loss", TrainResultType::kLoss, critic_losses},
-		{"loss_policy", TrainResultType::kLoss, actor_losses},
-		{"loss_entropy", TrainResultType::kLoss, ent_coef_losses},
-		{"learning_rate_ent", TrainResultType::kLearningRate, static_cast<float>(lr_ent)},
-		{"learning_rate_critic", TrainResultType::kLearningRate, static_cast<float>(lr_critic)},
-		{"learning_rate_actor", TrainResultType::kLearningRate, static_cast<float>(lr_actor)},
-		{"entropy_coeficients", TrainResultType::kRegularisation, ent_coefs},
-	};
+	Metrics metrics;
+	metrics.add({"loss", TrainResultType::kLoss, critic_losses});
+	metrics.add({"loss_policy", TrainResultType::kLoss, actor_losses});
+	metrics.add({"loss_entropy", TrainResultType::kLoss, ent_coef_losses});
+	metrics.add({"learning_rate_ent", TrainResultType::kLearningRate, static_cast<float>(lr_ent)});
+	metrics.add({"learning_rate_critic", TrainResultType::kLearningRate, static_cast<float>(lr_critic)});
+	metrics.add({"learning_rate_actor", TrainResultType::kLearningRate, static_cast<float>(lr_actor)});
+	metrics.add({"entropy_coeficients", TrainResultType::kRegularisation, ent_coefs});
+	return metrics;
 }
 
 void SAC::save(const std::filesystem::path& path) const

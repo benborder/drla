@@ -29,7 +29,7 @@ std::string PPO::name() const
 	return "PPO";
 }
 
-std::vector<UpdateResult> PPO::update(int timestep)
+Metrics PPO::update(int timestep)
 {
 	auto [alpha, lr] = optimiser_.update(timestep);
 	double clip_policy = config_.clip_range_policy * alpha;
@@ -121,15 +121,16 @@ std::vector<UpdateResult> PPO::update(int timestep)
 	total_entropy_loss /= update_count;
 	clip_fraction /= update_count;
 
-	return {
-		{"loss", TrainResultType::kLoss, loss.mean().item<float>()},
-		{"loss_value", TrainResultType::kLoss, total_value_loss},
-		{"loss_policy", TrainResultType::kLoss, total_policy_loss},
-		{"loss_entropy", TrainResultType::kLoss, total_entropy_loss},
-		{"clip_fraction", TrainResultType::kPolicyEvaluation, clip_fraction},
-		{"kl_divergence", TrainResultType::kPolicyEvaluation, kl_divergence},
-		{"learning_rate", TrainResultType::kLearningRate, lr},
-		{"explained_variance", TrainResultType::kPerformanceEvaluation, explained_var}};
+	Metrics metrics;
+	metrics.add({"loss", TrainResultType::kLoss, loss.mean().item<float>()});
+	metrics.add({"loss_value", TrainResultType::kLoss, total_value_loss});
+	metrics.add({"loss_policy", TrainResultType::kLoss, total_policy_loss});
+	metrics.add({"loss_entropy", TrainResultType::kLoss, total_entropy_loss});
+	metrics.add({"clip_fraction", TrainResultType::kPolicyEvaluation, clip_fraction});
+	metrics.add({"kl_divergence", TrainResultType::kPolicyEvaluation, kl_divergence});
+	metrics.add({"learning_rate", TrainResultType::kLearningRate, lr});
+	metrics.add({"explained_variance", TrainResultType::kPerformanceEvaluation, explained_var});
+	return metrics;
 }
 
 void PPO::save(const std::filesystem::path& path) const

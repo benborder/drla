@@ -26,7 +26,7 @@ std::string A2C::name() const
 	return "A2C";
 }
 
-std::vector<UpdateResult> A2C::update(int timestep)
+Metrics A2C::update(int timestep)
 {
 	auto action_shape = buffer_.get_actions().size(-1);
 	auto rewards_shape = buffer_.get_rewards().sizes();
@@ -68,13 +68,14 @@ std::vector<UpdateResult> A2C::update(int timestep)
 
 	auto explained_var = explained_variance(buffer_.get_values(), buffer_.get_returns());
 
-	return {
-		{"loss", TrainResultType::kLoss, loss.mean().item<float>()},
-		{"loss_value", TrainResultType::kLoss, value_loss.item<float>()},
-		{"loss_policy", TrainResultType::kLoss, policy_loss.item<float>()},
-		{"loss_entropy", TrainResultType::kLoss, evaluate_result.dist_entropy.item<float>()},
-		{"learning_rate", TrainResultType::kLearningRate, lr},
-		{"explained_variance", TrainResultType::kPerformanceEvaluation, explained_var}};
+	Metrics metrics;
+	metrics.add({"loss", TrainResultType::kLoss, loss.mean().item<float>()});
+	metrics.add({"loss_value", TrainResultType::kLoss, value_loss.item<float>()});
+	metrics.add({"loss_policy", TrainResultType::kLoss, policy_loss.item<float>()});
+	metrics.add({"loss_entropy", TrainResultType::kLoss, evaluate_result.dist_entropy.item<float>()});
+	metrics.add({"learning_rate", TrainResultType::kLearningRate, lr});
+	metrics.add({"explained_variance", TrainResultType::kPerformanceEvaluation, explained_var});
+	return metrics;
 }
 
 void A2C::save(const std::filesystem::path& path) const

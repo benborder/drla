@@ -331,7 +331,7 @@ void OffPolicyAgent::train()
 			// Measure the model update step time.
 			start = std::chrono::steady_clock::now();
 
-			train_update_data.update_data = algorithm->update(timestep);
+			train_update_data.metrics = algorithm->update(timestep);
 
 			train_update_data.update_duration = std::chrono::steady_clock::now() - start;
 		}

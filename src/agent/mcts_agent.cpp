@@ -328,8 +328,8 @@ void MCTSAgent::train()
 		// Measure the model update step time.
 		auto start = std::chrono::steady_clock::now();
 
-		train_update_data.update_data = algorithm->update(timestep);
-		train_update_data.update_data.push_back(
+		train_update_data.metrics = algorithm->update(timestep);
+		train_update_data.metrics.add(
 			{"reanalyse_count", TrainResultType::kBufferStats, static_cast<double>(buffer.get_reanalysed_count())});
 		model_syncer.send(std::dynamic_pointer_cast<MCTSModelInterface>(model_->clone(torch::kCPU)));
 

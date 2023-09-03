@@ -27,7 +27,7 @@ std::string MuZero::name() const
 	return "MuZero";
 }
 
-std::vector<UpdateResult> MuZero::update(int timestep)
+Metrics MuZero::update(int timestep)
 {
 	auto device = model_->parameters().front().device();
 	auto batch = buffer_.sample(config_.batch_size, device);
@@ -106,12 +106,13 @@ std::vector<UpdateResult> MuZero::update(int timestep)
 
 	buffer_.update_priorities(priorities, batch.indicies);
 
-	return {
-		{"loss", TrainResultType::kLoss, loss.item<float>()},
-		{"loss_value", TrainResultType::kLoss, value_loss.mean().item<float>()},
-		{"loss_reward", TrainResultType::kLoss, reward_loss.mean().item<float>()},
-		{"loss_policy", TrainResultType::kLoss, policy_loss.mean().item<float>()},
-		{"learning_rate", TrainResultType::kLearningRate, lr}};
+	Metrics metrics;
+	metrics.add({"loss", TrainResultType::kLoss, loss.item<float>()});
+	metrics.add({"loss_value", TrainResultType::kLoss, value_loss.mean().item<float>()});
+	metrics.add({"loss_reward", TrainResultType::kLoss, reward_loss.mean().item<float>()});
+	metrics.add({"loss_policy", TrainResultType::kLoss, policy_loss.mean().item<float>()});
+	metrics.add({"learning_rate", TrainResultType::kLearningRate, lr});
+	return metrics;
 }
 
 void MuZero::save(const std::filesystem::path& path) const

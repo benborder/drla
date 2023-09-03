@@ -1,5 +1,6 @@
 #pragma once
 #include "drla/configuration.h"
+#include "drla/metrics.h"
 #include "drla/types.h"
 
 #include <torch/torch.h>
@@ -41,8 +42,8 @@ struct TrainUpdateData
 	// The total number of env steps taken
 	int global_steps = 0;
 
-	// Stats from a single training update step
-	std::vector<UpdateResult> update_data;
+	// Metrics from a single training update step
+	Metrics metrics;
 
 	// The time it took to perform a single training update step
 	std::chrono::duration<double> update_duration;

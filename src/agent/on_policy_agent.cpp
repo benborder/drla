@@ -353,7 +353,7 @@ void OnPolicyAgent::train()
 		}
 		buffer.compute_returns_and_advantage(last_values);
 
-		train_update_data.update_data = algorithm->update(timestep);
+		train_update_data.metrics = algorithm->update(timestep);
 
 		buffer.prepare_next_batch();
 
