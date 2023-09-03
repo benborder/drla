@@ -22,11 +22,9 @@ SAC::SAC(
 		, buffer_(buffer)
 		, model_(std::dynamic_pointer_cast<SoftActorCriticModel>(model))
 		, log_ent_coef_(torch::ones(1, buffer_.get_device()).log().requires_grad_())
-		, actor_optimiser_(
-				model_->actor_parameters(), torch::optim::AdamOptions(config_.learning_rate).eps(config_.epsilon))
-		, critic_optimiser_(
-				model_->critic_parameters(), torch::optim::AdamOptions(config_.learning_rate).eps(config_.epsilon))
-		, ent_coef_optimiser_({log_ent_coef_}, torch::optim::AdamOptions(config_.learning_rate).eps(config_.epsilon))
+		, actor_optimiser_(config_.actor_optimiser, model_->actor_parameters(), config_.total_timesteps)
+		, critic_optimiser_(config_.critic_optimiser, model_->critic_parameters(), config_.total_timesteps)
+		, ent_coef_optimiser_(config_.ent_coef_optimiser, {log_ent_coef_}, config_.total_timesteps)
 		, target_entropy_(-static_cast<double>(action_space_.shape.size()))
 {
 	if (is_action_discrete(action_space_))
@@ -44,12 +42,14 @@ std::string SAC::name() const
 
 std::vector<UpdateResult> SAC::update(int timestep)
 {
-	update_learning_rate(timestep);
-
 	float ent_coefs = 0.0F;
 	float ent_coef_losses = 0.0F;
 	float critic_losses = 0.0F;
 	float actor_losses = 0.0F;
+
+	auto [ratio_ent, lr_ent] = ent_coef_optimiser_.update(timestep);
+	auto [ratio_critic, lr_critic] = critic_optimiser_.update(timestep);
+	auto [ratio_actor, lr_actor] = actor_optimiser_.update(timestep);
 
 	for (int gradient_step = 0; gradient_step < config_.gradient_steps; gradient_step++)
 	{
@@ -72,9 +72,7 @@ std::vector<UpdateResult> SAC::update(int timestep)
 		ent_coef_losses += ent_coef_loss.item<float>();
 
 		// Optimize entropy coefficient, also called entropy temperature or alpha in the paper
-		ent_coef_optimiser_.zero_grad();
-		ent_coef_loss.backward();
-		ent_coef_optimiser_.step();
+		ent_coef_optimiser_.step(ent_coef_loss);
 
 		torch::Tensor target_q_values;
 		{
@@ -121,9 +119,7 @@ std::vector<UpdateResult> SAC::update(int timestep)
 		critic_losses += critic_loss.item<float>();
 
 		// Optimize the critic
-		critic_optimiser_.zero_grad();
-		critic_loss.backward();
-		critic_optimiser_.step();
+		critic_optimiser_.step(critic_loss);
 
 		// Compute actor loss
 		torch::Tensor min_qf_pi;
@@ -142,9 +138,7 @@ std::vector<UpdateResult> SAC::update(int timestep)
 		actor_losses += actor_loss.item<float>();
 
 		// Optimize the actor
-		actor_optimiser_.zero_grad();
-		actor_loss.backward();
-		actor_optimiser_.step();
+		actor_optimiser_.step(actor_loss);
 	}
 
 	// Update target networks
@@ -162,16 +156,18 @@ std::vector<UpdateResult> SAC::update(int timestep)
 		{"loss", TrainResultType::kLoss, critic_losses},
 		{"loss_policy", TrainResultType::kLoss, actor_losses},
 		{"loss_entropy", TrainResultType::kLoss, ent_coef_losses},
-		{"learning_rate", TrainResultType::kLearningRate, static_cast<float>(lr_param_)},
+		{"learning_rate_ent", TrainResultType::kLearningRate, static_cast<float>(lr_ent)},
+		{"learning_rate_critic", TrainResultType::kLearningRate, static_cast<float>(lr_critic)},
+		{"learning_rate_actor", TrainResultType::kLearningRate, static_cast<float>(lr_actor)},
 		{"entropy_coeficients", TrainResultType::kRegularisation, ent_coefs},
 	};
 }
 
 void SAC::save(const std::filesystem::path& path) const
 {
-	torch::save(actor_optimiser_, path / "actor_optimiser.pt");
-	torch::save(critic_optimiser_, path / "critic_optimiser.pt");
-	torch::save(ent_coef_optimiser_, path / "ent_coef_optimiser.pt");
+	torch::save(actor_optimiser_.get_optimiser(), path / "actor_optimiser.pt");
+	torch::save(critic_optimiser_.get_optimiser(), path / "critic_optimiser.pt");
+	torch::save(ent_coef_optimiser_.get_optimiser(), path / "ent_coef_optimiser.pt");
 	model_->save(path);
 }
 
@@ -182,38 +178,11 @@ void SAC::load(const std::filesystem::path& path)
 	auto opt_ent_coef_path = path / "ent_coef_optimiser.pt";
 	if (std::filesystem::exists(opt_actor_path) && std::filesystem::exists(opt_critic_path))
 	{
-		torch::load(actor_optimiser_, opt_actor_path);
-		torch::load(critic_optimiser_, opt_critic_path);
-		torch::load(ent_coef_optimiser_, opt_ent_coef_path);
+		torch::load(actor_optimiser_.get_optimiser(), opt_actor_path);
+		torch::load(critic_optimiser_.get_optimiser(), opt_critic_path);
+		torch::load(ent_coef_optimiser_.get_optimiser(), opt_ent_coef_path);
 		spdlog::info("Optimisers loaded");
 	}
 	model_->load(path);
 	model_->train();
-}
-
-void SAC::update_learning_rate(int timestep)
-{
-	double alpha = learning_rate_decay(&config_, timestep, config_.total_timesteps);
-	lr_param_ = config_.learning_rate * alpha;
-	for (auto& group : actor_optimiser_.param_groups())
-	{
-		if (group.has_options())
-		{
-			dynamic_cast<torch::optim::AdamOptions&>(group.options()).lr(lr_param_);
-		}
-	}
-	for (auto& group : critic_optimiser_.param_groups())
-	{
-		if (group.has_options())
-		{
-			dynamic_cast<torch::optim::AdamOptions&>(group.options()).lr(lr_param_);
-		}
-	}
-	for (auto& group : ent_coef_optimiser_.param_groups())
-	{
-		if (group.has_options())
-		{
-			dynamic_cast<torch::optim::AdamOptions&>(group.options()).lr(lr_param_);
-		}
-	}
 }

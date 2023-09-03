@@ -19,7 +19,7 @@ PPO::PPO(const Config::AgentTrainAlgorithm& config, RolloutBuffer& buffer, std::
 		: config_(std::get<Config::PPO>(config))
 		, buffer_(buffer)
 		, model_(std::dynamic_pointer_cast<ActorCriticModelInterface>(model))
-		, optimiser_(model_->parameters(), torch::optim::AdamOptions(config_.learning_rate).eps(config_.epsilon))
+		, optimiser_(config_.optimiser, model_->parameters(), config_.total_timesteps)
 {
 	model_->train();
 }
@@ -31,7 +31,9 @@ std::string PPO::name() const
 
 std::vector<UpdateResult> PPO::update(int timestep)
 {
-	update_learning_rate(timestep);
+	auto [alpha, lr] = optimiser_.update(timestep);
+	double clip_policy = config_.clip_range_policy * alpha;
+	double clip_vf = config_.clip_range_vf * alpha;
 
 	auto values = buffer_.get_values().narrow(0, 0, buffer_.get_values().size(0) - 1);
 	auto returns = buffer_.get_returns().narrow(0, 0, buffer_.get_returns().size(0) - 1);
@@ -67,17 +69,17 @@ std::vector<UpdateResult> PPO::update(int timestep)
 
 			// clipped surrogate loss
 			auto policy_loss_1 = advantages * ratio;
-			auto policy_loss_2 = advantages * torch::clamp(ratio, 1.0 - clip_policy_, 1.0 + clip_policy_);
+			auto policy_loss_2 = advantages * torch::clamp(ratio, 1.0 - clip_policy, 1.0 + clip_policy);
 			auto policy_loss = -torch::min(policy_loss_1, policy_loss_2).mean();
 			total_policy_loss += policy_loss.item<float>();
 
-			clip_fraction += (ratio - 1.0).abs().gt(clip_policy_).to(torch::kFloat).mean().item<float>();
+			clip_fraction += (ratio - 1.0).abs().gt(clip_policy).to(torch::kFloat).mean().item<float>();
 
 			torch::Tensor values_pred;
 			if (config_.clip_vf)
 			{
 				values_pred =
-					mini_batch.old_values + torch::clamp(eval_result.values - mini_batch.old_values, -clip_vf_, clip_vf_);
+					mini_batch.old_values + torch::clamp(eval_result.values - mini_batch.old_values, -clip_vf, clip_vf);
 			}
 			else
 			{
@@ -102,10 +104,7 @@ std::vector<UpdateResult> PPO::update(int timestep)
 			}
 
 			// Backprop and step optimiser_
-			optimiser_.zero_grad();
-			loss.backward();
-			torch::nn::utils::clip_grad_norm_(model_->parameters(), config_.max_grad_norm);
-			optimiser_.step();
+			optimiser_.step(loss);
 
 			update_count++;
 		}
@@ -129,13 +128,13 @@ std::vector<UpdateResult> PPO::update(int timestep)
 		{"loss_entropy", TrainResultType::kLoss, total_entropy_loss},
 		{"clip_fraction", TrainResultType::kPolicyEvaluation, clip_fraction},
 		{"kl_divergence", TrainResultType::kPolicyEvaluation, kl_divergence},
-		{"learning_rate", TrainResultType::kLearningRate, lr_},
+		{"learning_rate", TrainResultType::kLearningRate, lr},
 		{"explained_variance", TrainResultType::kPerformanceEvaluation, explained_var}};
 }
 
 void PPO::save(const std::filesystem::path& path) const
 {
-	torch::save(optimiser_, path / "optimiser.pt");
+	torch::save(optimiser_.get_optimiser(), path / "optimiser.pt");
 	model_->save(path);
 }
 
@@ -144,24 +143,9 @@ void PPO::load(const std::filesystem::path& path)
 	auto opt_path = path / "optimiser.pt";
 	if (std::filesystem::exists(opt_path))
 	{
-		torch::load(optimiser_, opt_path);
+		torch::load(optimiser_.get_optimiser(), opt_path);
 		spdlog::info("Optimiser loaded");
 	}
 	model_->load(path);
 	model_->train();
-}
-
-void PPO::update_learning_rate(int timestep)
-{
-	double alpha = learning_rate_decay(&config_, timestep, config_.total_timesteps);
-	lr_ = config_.learning_rate * alpha;
-	clip_policy_ = config_.clip_range_policy * alpha;
-	clip_vf_ = config_.clip_range_vf * alpha;
-	for (auto& group : optimiser_.param_groups())
-	{
-		if (group.has_options())
-		{
-			dynamic_cast<torch::optim::AdamOptions&>(group.options()).lr(lr_);
-		}
-	}
 }

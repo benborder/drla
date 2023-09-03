@@ -45,6 +45,7 @@ add_library(drla STATIC
 	src/algorithm/ppo.cpp
 	src/algorithm/sac.cpp
 	src/algorithm/muzero.cpp
+	src/algorithm/optimiser.cpp
 
 	# Monte Carlo Tree Search
 	src/mcts/mcts.cpp

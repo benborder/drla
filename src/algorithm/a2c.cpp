@@ -16,9 +16,7 @@ A2C::A2C(const Config::AgentTrainAlgorithm& config, RolloutBuffer& buffer, std::
 		: config_(std::get<Config::A2C>(config))
 		, buffer_(buffer)
 		, model_(std::dynamic_pointer_cast<ActorCriticModelInterface>(model))
-		, optimiser_(
-				model_->parameters(),
-				torch::optim::RMSpropOptions(config_.learning_rate).eps(config_.epsilon).alpha(config_.alpha))
+		, optimiser_(config_.optimiser, model_->parameters(), config_.total_timesteps)
 {
 	model_->train();
 }
@@ -30,8 +28,6 @@ std::string A2C::name() const
 
 std::vector<UpdateResult> A2C::update(int timestep)
 {
-	update_learning_rate(timestep);
-
 	auto action_shape = buffer_.get_actions().size(-1);
 	auto rewards_shape = buffer_.get_rewards().sizes();
 	int n_steps = rewards_shape[0];
@@ -66,11 +62,9 @@ std::vector<UpdateResult> A2C::update(int timestep)
 	auto loss = value_loss * config_.value_loss_coef + policy_loss * config_.policy_loss_coef -
 							evaluate_result.dist_entropy * config_.entropy_coef;
 
-	// Backprop and step optimiser_
-	optimiser_.zero_grad();
-	loss.backward();
-	torch::nn::utils::clip_grad_norm_(model_->parameters(), config_.max_grad_norm);
-	optimiser_.step();
+	// Backprop and step optimiser
+	auto [ratio, lr] = optimiser_.update(timestep);
+	optimiser_.step(loss);
 
 	auto explained_var = explained_variance(buffer_.get_values(), buffer_.get_returns());
 
@@ -79,13 +73,13 @@ std::vector<UpdateResult> A2C::update(int timestep)
 		{"loss_value", TrainResultType::kLoss, value_loss.item<float>()},
 		{"loss_policy", TrainResultType::kLoss, policy_loss.item<float>()},
 		{"loss_entropy", TrainResultType::kLoss, evaluate_result.dist_entropy.item<float>()},
-		{"learning_rate", TrainResultType::kLearningRate, lr_param_},
+		{"learning_rate", TrainResultType::kLearningRate, lr},
 		{"explained_variance", TrainResultType::kPerformanceEvaluation, explained_var}};
 }
 
 void A2C::save(const std::filesystem::path& path) const
 {
-	torch::save(optimiser_, path / "optimiser.pt");
+	torch::save(optimiser_.get_optimiser(), path / "optimiser.pt");
 	model_->save(path);
 }
 
@@ -93,22 +87,9 @@ void A2C::load(const std::filesystem::path& path)
 {
 	if (std::filesystem::exists(path / "optimiser.pt"))
 	{
-		torch::load(optimiser_, path / "optimiser.pt");
+		torch::load(optimiser_.get_optimiser(), path / "optimiser.pt");
 		spdlog::info("Optimiser loaded");
 	}
 	model_->load(path);
 	model_->train();
-}
-
-void A2C::update_learning_rate(int timestep)
-{
-	double alpha = learning_rate_decay(&config_, timestep, config_.total_timesteps);
-	lr_param_ = config_.learning_rate * alpha;
-	for (auto& group : optimiser_.param_groups())
-	{
-		if (group.has_options())
-		{
-			dynamic_cast<torch::optim::RMSpropOptions&>(group.options()).lr(lr_param_);
-		}
-	}
 }

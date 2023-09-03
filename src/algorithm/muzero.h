@@ -4,6 +4,7 @@
 #include "configuration/algorithm.h"
 #include "mcts_replay_buffer.h"
 #include "model.h"
+#include "optimiser.h"
 
 #include <torch/torch.h>
 
@@ -26,15 +27,11 @@ public:
 	void load(const std::filesystem::path& path) override;
 
 private:
-	void update_learning_rate(int timestep);
-
-private:
 	const Config::MuZero::TrainConfig config_;
 	std::shared_ptr<MCTSModelInterface> model_;
 	MCTSReplayBuffer& buffer_;
 
-	std::unique_ptr<torch::optim::Optimizer> optimiser_;
-	double lr_;
+	Optimiser optimiser_;
 };
 
 } // namespace drla

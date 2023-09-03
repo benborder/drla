@@ -17,14 +17,99 @@ void to_json(nlohmann::json& json, const Rewards& reward_config)
 	json["combine_rewards"] = reward_config.combine_rewards;
 }
 
+void from_json(const nlohmann::json& json, OptimiserBase& optimiser)
+{
+	optimiser.learning_rate << required_input{json, "learning_rate"};
+	optimiser.learning_rate_min << optional_input{json, "learning_rate_min"};
+	optimiser.lr_schedule_type << optional_input{json, "lr_schedule_type"};
+	optimiser.lr_decay_rate << optional_input{json, "lr_decay_rate"};
+	optimiser.grad_clip << optional_input{json, "grad_clip"};
+	optimiser.grad_norm_clip << optional_input{json, "grad_norm_clip"};
+}
+
+void to_json(nlohmann::json& json, const OptimiserBase& optimiser)
+{
+	json["learning_rate"] = optimiser.learning_rate;
+	json["learning_rate_min"] = optimiser.learning_rate_min;
+	json["lr_schedule_type"] = optimiser.lr_schedule_type;
+	json["lr_decay_rate"] = optimiser.lr_decay_rate;
+	json["grad_clip"] = optimiser.grad_clip;
+	json["grad_norm_clip"] = optimiser.grad_norm_clip;
+}
+
+void from_json(const nlohmann::json& json, OptimiserAdam& optimiser)
+{
+	from_json(json, *static_cast<OptimiserBase*>(&optimiser));
+	optimiser.epsilon << optional_input{json, "epsilon"};
+	optimiser.weight_decay << optional_input{json, "weight_decay"};
+}
+
+void to_json(nlohmann::json& json, const OptimiserAdam& optimiser)
+{
+	json["type"] = OptimiserType::kAdam;
+	to_json(json, *static_cast<const OptimiserBase*>(&optimiser));
+	json["epsilon"] = optimiser.epsilon;
+	json["weight_decay"] = optimiser.weight_decay;
+}
+
+void from_json(const nlohmann::json& json, OptimiserSGD& optimiser)
+{
+	from_json(json, *static_cast<OptimiserBase*>(&optimiser));
+	optimiser.momentum << optional_input{json, "momentum"};
+	optimiser.weight_decay << optional_input{json, "weight_decay"};
+	optimiser.dampening << optional_input{json, "dampening"};
+}
+
+void to_json(nlohmann::json& json, const OptimiserSGD& optimiser)
+{
+	json["type"] = OptimiserType::kSGD;
+	to_json(json, *static_cast<const OptimiserBase*>(&optimiser));
+	json["momentum"] = optimiser.momentum;
+	json["weight_decay"] = optimiser.weight_decay;
+	json["dampening"] = optimiser.dampening;
+}
+
+void from_json(const nlohmann::json& json, OptimiserRMSProp& optimiser)
+{
+	from_json(json, *static_cast<OptimiserBase*>(&optimiser));
+	optimiser.epsilon << optional_input{json, "epsilon"};
+	optimiser.momentum << optional_input{json, "momentum"};
+	optimiser.weight_decay << optional_input{json, "weight_decay"};
+	optimiser.alpha << optional_input{json, "alpha"};
+}
+
+void to_json(nlohmann::json& json, const OptimiserRMSProp& optimiser)
+{
+	json["type"] = OptimiserType::kRMSProp;
+	to_json(json, *static_cast<const OptimiserBase*>(&optimiser));
+	json["epsilon"] = optimiser.epsilon;
+	json["momentum"] = optimiser.momentum;
+	json["weight_decay"] = optimiser.weight_decay;
+	json["alpha"] = optimiser.alpha;
+}
+
+void from_json(const nlohmann::json& json, Optimiser& optimiser)
+{
+	OptimiserType type;
+	type << required_input{json, "type"};
+	switch (type)
+	{
+		case OptimiserType::kAdam: optimiser = json.get<OptimiserAdam>(); break;
+		case OptimiserType::kSGD: optimiser = json.get<OptimiserSGD>(); break;
+		case OptimiserType::kRMSProp: optimiser = json.get<OptimiserRMSProp>(); break;
+	}
+}
+
+void to_json(nlohmann::json& json, const Optimiser& optimiser)
+{
+	std::visit([&](auto& opt) { to_json(json, opt); }, optimiser);
+}
+
 void from_json(const nlohmann::json& json, TrainAlgorithm& train_algorithm)
 {
 	train_algorithm.total_timesteps << required_input{json, "total_timesteps"};
 	train_algorithm.start_timestep << required_input{json, "start_timestep"};
-	train_algorithm.learning_rate << required_input{json, "learning_rate"};
-	train_algorithm.learning_rate_min << required_input{json, "learning_rate_min"};
-	train_algorithm.lr_schedule_type << required_input{json, "lr_schedule_type"};
-	train_algorithm.lr_decay_rate << optional_input{json, "lr_decay_rate"};
+
 	train_algorithm.eval_max_steps << optional_input{json, "eval_max_steps"};
 	train_algorithm.eval_determinisic << optional_input{json, "eval_determinisic"};
 }
@@ -33,10 +118,7 @@ void to_json(nlohmann::json& json, const TrainAlgorithm& train_algorithm)
 {
 	json["total_timesteps"] = train_algorithm.total_timesteps;
 	json["start_timestep"] = train_algorithm.start_timestep;
-	json["learning_rate"] = train_algorithm.learning_rate;
-	json["learning_rate_min"] = train_algorithm.learning_rate_min;
-	json["lr_schedule_type"] = train_algorithm.lr_schedule_type;
-	json["lr_decay_rate"] = train_algorithm.lr_decay_rate;
+
 	json["eval_max_steps"] = train_algorithm.eval_max_steps;
 	json["eval_determinisic"] = train_algorithm.eval_determinisic;
 }
@@ -128,83 +210,85 @@ void to_json(nlohmann::json& json, const MCTSAlgorithm& mcts_algorithm)
 void from_json(const nlohmann::json& json, A2C& alg_a2c)
 {
 	from_json(json, static_cast<OnPolicyAlgorithm&>(alg_a2c));
-	alg_a2c.alpha << required_input{json, "alpha"};
-	alg_a2c.epsilon << required_input{json, "epsilon"};
-	alg_a2c.max_grad_norm << required_input{json, "max_grad_norm"};
+	alg_a2c.normalise_advantage << optional_input{json, "normalise_advantage"};
+	alg_a2c.optimiser << optional_input{json, "optimiser"};
 }
 
 void to_json(nlohmann::json& json, const A2C& alg_a2c)
 {
 	json["train_algorithm_type"] = TrainAlgorithmType::kA2C;
 	to_json(json, static_cast<const OnPolicyAlgorithm&>(alg_a2c));
-	json["alpha"] = alg_a2c.alpha;
-	json["epsilon"] = alg_a2c.epsilon;
-	json["max_grad_norm"] = alg_a2c.max_grad_norm;
+	json["normalise_advantage"] = alg_a2c.normalise_advantage;
+	json["optimiser"] = alg_a2c.optimiser;
 }
 
 void from_json(const nlohmann::json& json, PPO& alg_ppo)
 {
 	from_json(json, static_cast<OnPolicyAlgorithm&>(alg_ppo));
-	alg_ppo.clip_range_policy << required_input{json, "clip_range_policy"};
-	alg_ppo.clip_vf << required_input{json, "clip_vf"};
-	alg_ppo.clip_range_vf << required_input{json, "clip_range_vf"};
-	alg_ppo.num_epoch << required_input{json, "num_epoch"};
-	alg_ppo.num_mini_batch << required_input{json, "num_mini_batch"};
-	alg_ppo.max_grad_norm << required_input{json, "max_grad_norm"};
-	alg_ppo.kl_target << required_input{json, "kl_target"};
+	alg_ppo.normalise_advantage << optional_input{json, "normalise_advantage"};
+	alg_ppo.clip_range_policy << optional_input{json, "clip_range_policy"};
+	alg_ppo.clip_vf << optional_input{json, "clip_vf"};
+	alg_ppo.clip_range_vf << optional_input{json, "clip_range_vf"};
+	alg_ppo.num_epoch << optional_input{json, "num_epoch"};
+	alg_ppo.num_mini_batch << optional_input{json, "num_mini_batch"};
+	alg_ppo.kl_target << optional_input{json, "kl_target"};
+	alg_ppo.optimiser << optional_input{json, "optimiser"};
 }
 
 void to_json(nlohmann::json& json, const PPO& alg_ppo)
 {
 	json["train_algorithm_type"] = TrainAlgorithmType::kPPO;
 	to_json(json, static_cast<const OnPolicyAlgorithm&>(alg_ppo));
+	json["normalise_advantage"] = alg_ppo.normalise_advantage;
 	json["clip_range_policy"] = alg_ppo.clip_range_policy;
 	json["clip_vf"] = alg_ppo.clip_vf;
 	json["clip_range_vf"] = alg_ppo.clip_range_vf;
 	json["num_epoch"] = alg_ppo.num_epoch;
 	json["num_mini_batch"] = alg_ppo.num_mini_batch;
-	json["max_grad_norm"] = alg_ppo.max_grad_norm;
 	json["kl_target"] = alg_ppo.kl_target;
+	json["optimiser"] = alg_ppo.optimiser;
 }
 
 void from_json(const nlohmann::json& json, DQN& alg_dqn)
 {
 	from_json(json, static_cast<OffPolicyAlgorithm&>(alg_dqn));
-	alg_dqn.epsilon << optional_input{json, "epsilon"};
-	alg_dqn.max_grad_norm << optional_input{json, "max_grad_norm"};
 	alg_dqn.exploration_fraction << optional_input{json, "exploration_fraction"};
 	alg_dqn.exploration_init << optional_input{json, "exploration_init"};
 	alg_dqn.exploration_final << optional_input{json, "exploration_final"};
+	alg_dqn.optimiser << optional_input{json, "optimiser"};
 }
 
 void to_json(nlohmann::json& json, const DQN& alg_dqn)
 {
 	json["train_algorithm_type"] = TrainAlgorithmType::kDQN;
 	to_json(json, static_cast<const OffPolicyAlgorithm&>(alg_dqn));
-	json["epsilon"] = alg_dqn.epsilon;
-	json["max_grad_norm"] = alg_dqn.max_grad_norm;
 	json["exploration_fraction"] = alg_dqn.exploration_fraction;
 	json["exploration_init"] = alg_dqn.exploration_init;
 	json["exploration_final"] = alg_dqn.exploration_final;
+	json["optimiser"] = alg_dqn.optimiser;
 }
 
 void from_json(const nlohmann::json& json, SAC& alg_sac)
 {
 	from_json(json, static_cast<OffPolicyAlgorithm&>(alg_sac));
-	alg_sac.epsilon << optional_input{json, "epsilon"};
 	alg_sac.actor_loss_coef << optional_input{json, "actor_loss_coef"};
 	alg_sac.value_loss_coef << optional_input{json, "value_loss_coef"};
 	alg_sac.target_entropy_scale << optional_input{json, "target_entropy_scale"};
+	alg_sac.ent_coef_optimiser << optional_input{json, "ent_coef_optimiser"};
+	alg_sac.actor_optimiser << optional_input{json, "actor_optimiser"};
+	alg_sac.critic_optimiser << optional_input{json, "critic_optimiser"};
 }
 
 void to_json(nlohmann::json& json, const SAC& alg_sac)
 {
 	json["train_algorithm_type"] = TrainAlgorithmType::kSAC;
 	to_json(json, static_cast<const OffPolicyAlgorithm&>(alg_sac));
-	json["epsilon"] = alg_sac.epsilon;
 	json["actor_loss_coef"] = alg_sac.actor_loss_coef;
 	json["value_loss_coef"] = alg_sac.value_loss_coef;
 	json["target_entropy_scale"] = alg_sac.target_entropy_scale;
+	json["ent_coef_optimiser"] = alg_sac.ent_coef_optimiser;
+	json["actor_optimiser"] = alg_sac.actor_optimiser;
+	json["critic_optimiser"] = alg_sac.critic_optimiser;
 }
 
 void from_json(const nlohmann::json& json, AgentTrainAlgorithm& train_algorithm)
@@ -809,44 +893,38 @@ void to_json(nlohmann::json& json, const PredictionNetwork& pred_net)
 	json["fc_policy"] = pred_net.fc_policy;
 }
 
-void from_json(const nlohmann::json& json, ModelConfig& muzero_config)
+void from_json(const nlohmann::json& json, ModelConfig& model_config)
 {
-	muzero_config.representation_network << required_input{json, "representation_network"};
-	muzero_config.dynamics_network << required_input{json, "dynamics_network"};
-	muzero_config.prediction_network << required_input{json, "prediction_network"};
-	muzero_config.support_size << optional_input{json, "support_size"};
-	muzero_config.stacked_observations << optional_input{json, "stacked_observations"};
+	model_config.representation_network << required_input{json, "representation_network"};
+	model_config.dynamics_network << required_input{json, "dynamics_network"};
+	model_config.prediction_network << required_input{json, "prediction_network"};
+	model_config.support_size << optional_input{json, "support_size"};
+	model_config.stacked_observations << optional_input{json, "stacked_observations"};
 }
 
-void to_json(nlohmann::json& json, const ModelConfig& muzero_config)
+void to_json(nlohmann::json& json, const ModelConfig& model_config)
 {
 	json["model_type"] = AgentPolicyModelType::kMuZero;
-	json["representation_network"] = muzero_config.representation_network;
-	json["dynamics_network"] = muzero_config.dynamics_network;
-	json["prediction_network"] = muzero_config.prediction_network;
-	json["support_size"] = muzero_config.support_size;
-	json["stacked_observations"] = muzero_config.stacked_observations;
+	json["representation_network"] = model_config.representation_network;
+	json["dynamics_network"] = model_config.dynamics_network;
+	json["prediction_network"] = model_config.prediction_network;
+	json["support_size"] = model_config.support_size;
+	json["stacked_observations"] = model_config.stacked_observations;
 }
 
-void from_json(const nlohmann::json& json, TrainConfig& alg_muzero)
+void from_json(const nlohmann::json& json, TrainConfig& train_config)
 {
-	from_json(json, static_cast<MCTSAlgorithm&>(alg_muzero));
-	alg_muzero.value_loss_weight << optional_input{json, "value_loss_weight"};
-	alg_muzero.weight_decay << optional_input{json, "weight_decay"};
-	alg_muzero.epsilon << optional_input{json, "epsilon"};
-	alg_muzero.momentum << optional_input{json, "momentum"};
-	alg_muzero.optimiser << optional_input{json, "optimiser"};
+	from_json(json, static_cast<MCTSAlgorithm&>(train_config));
+	train_config.value_loss_weight << optional_input{json, "value_loss_weight"};
+	train_config.optimiser << optional_input{json, "optimiser"};
 }
 
-void to_json(nlohmann::json& json, const TrainConfig& alg_muzero)
+void to_json(nlohmann::json& json, const TrainConfig& train_config)
 {
 	json["train_algorithm_type"] = TrainAlgorithmType::kMuZero;
-	to_json(json, static_cast<const MCTSAlgorithm&>(alg_muzero));
-	json["value_loss_weight"] = alg_muzero.value_loss_weight;
-	json["weight_decay"] = alg_muzero.weight_decay;
-	json["epsilon"] = alg_muzero.epsilon;
-	json["momentum"] = alg_muzero.momentum;
-	json["optimiser"] = alg_muzero.optimiser;
+	to_json(json, static_cast<const MCTSAlgorithm&>(train_config));
+	json["value_loss_weight"] = train_config.value_loss_weight;
+	json["optimiser"] = train_config.optimiser;
 }
 
 } // namespace MuZero

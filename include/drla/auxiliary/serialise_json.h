@@ -113,6 +113,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 	{
 		{OptimiserType::kAdam, "Adam"},
 		{OptimiserType::kSGD, "SGD"},
+		{OptimiserType::kRMSProp, "RMSProp"},
 	})
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
@@ -197,6 +198,26 @@ void load_init_bias_config(T& layer, const nlohmann::json& json)
 void from_json(const nlohmann::json& json, Rewards& reward_config);
 
 void to_json(nlohmann::json& json, const Rewards& reward_config);
+
+void from_json(const nlohmann::json& json, OptimiserBase& optimiser);
+
+void to_json(nlohmann::json& json, const OptimiserBase& optimiser);
+
+void from_json(const nlohmann::json& json, OptimiserAdam& optimiser);
+
+void to_json(nlohmann::json& json, const OptimiserAdam& optimiser);
+
+void from_json(const nlohmann::json& json, OptimiserSGD& optimiser);
+
+void to_json(nlohmann::json& json, const OptimiserSGD& optimiser);
+
+void from_json(const nlohmann::json& json, OptimiserRMSProp& optimiser);
+
+void to_json(nlohmann::json& json, const OptimiserRMSProp& optimiser);
+
+void from_json(const nlohmann::json& json, Optimiser& optimiser);
+
+void to_json(nlohmann::json& json, const Optimiser& optimiser);
 
 void from_json(const nlohmann::json& json, TrainAlgorithm& train_algorithm);
 

@@ -14,26 +14,11 @@ using namespace drla;
 
 MuZero::MuZero(
 	const Config::AgentTrainAlgorithm& config, std::shared_ptr<MCTSModelInterface> model, MCTSReplayBuffer& buffer)
-		: config_(std::get<Config::MuZero::TrainConfig>(config)), model_(model), buffer_(buffer)
+		: config_(std::get<Config::MuZero::TrainConfig>(config))
+		, model_(model)
+		, buffer_(buffer)
+		, optimiser_(config_.optimiser, model_->parameters(), config_.total_timesteps)
 {
-	switch (config_.optimiser)
-	{
-		case OptimiserType::kAdam:
-		{
-			optimiser_ = std::make_unique<torch::optim::Adam>(
-				model_->parameters(),
-				torch::optim::AdamOptions(config_.learning_rate).eps(config_.epsilon).weight_decay(config_.weight_decay));
-			break;
-		}
-		case OptimiserType::kSGD:
-		{
-			optimiser_ = std::make_unique<torch::optim::SGD>(
-				model_->parameters(),
-				torch::optim::SGDOptions(config_.learning_rate).momentum(config_.momentum).weight_decay(config_.weight_decay));
-			break;
-		}
-	}
-
 	model_->train();
 }
 
@@ -44,8 +29,6 @@ std::string MuZero::name() const
 
 std::vector<UpdateResult> MuZero::update(int timestep)
 {
-	update_learning_rate(timestep);
-
 	auto device = model_->parameters().front().device();
 	auto batch = buffer_.sample(config_.batch_size, device);
 
@@ -116,12 +99,10 @@ std::vector<UpdateResult> MuZero::update(int timestep)
 	// Correct for PER bias by using importance sampling of weights
 	loss *= batch.weight;
 	loss = loss.mean();
-	assert(!at::isnan(loss).item<bool>());
 
 	// Optimise
-	optimiser_->zero_grad();
-	loss.backward();
-	optimiser_->step();
+	auto [ratio, lr] = optimiser_.update(timestep);
+	optimiser_.step(loss);
 
 	buffer_.update_priorities(priorities, batch.indicies);
 
@@ -130,12 +111,12 @@ std::vector<UpdateResult> MuZero::update(int timestep)
 		{"loss_value", TrainResultType::kLoss, value_loss.mean().item<float>()},
 		{"loss_reward", TrainResultType::kLoss, reward_loss.mean().item<float>()},
 		{"loss_policy", TrainResultType::kLoss, policy_loss.mean().item<float>()},
-		{"learning_rate", TrainResultType::kLearningRate, lr_}};
+		{"learning_rate", TrainResultType::kLearningRate, lr}};
 }
 
 void MuZero::save(const std::filesystem::path& path) const
 {
-	torch::save(*optimiser_, path / "optimiser.pt");
+	torch::save(optimiser_.get_optimiser(), path / "optimiser.pt");
 	model_->save(path);
 }
 
@@ -144,26 +125,9 @@ void MuZero::load(const std::filesystem::path& path)
 	auto opt_path = path / "optimiser.pt";
 	if (std::filesystem::exists(opt_path))
 	{
-		torch::load(*optimiser_, opt_path);
+		torch::load(optimiser_.get_optimiser(), opt_path);
 		spdlog::info("Optimiser loaded");
 	}
 	model_->load(path);
 	model_->train();
-}
-
-void MuZero::update_learning_rate(int timestep)
-{
-	double alpha = learning_rate_decay(&config_, timestep, config_.total_timesteps);
-	lr_ = config_.learning_rate * alpha;
-	for (auto& group : optimiser_->param_groups())
-	{
-		if (group.has_options())
-		{
-			switch (config_.optimiser)
-			{
-				case OptimiserType::kAdam: dynamic_cast<torch::optim::AdamOptions&>(group.options()).lr(lr_); break;
-				case OptimiserType::kSGD: dynamic_cast<torch::optim::SGDOptions&>(group.options()).lr(lr_); break;
-			}
-		}
-	}
 }

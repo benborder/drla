@@ -3,6 +3,7 @@
 #include "algorithm.h"
 #include "configuration/algorithm.h"
 #include "model.h"
+#include "optimiser.h"
 #include "rollout_buffer.h"
 
 #include <torch/torch.h>
@@ -27,16 +28,10 @@ public:
 	void load(const std::filesystem::path& path) override;
 
 private:
-	void update_learning_rate(int timestep);
-
-private:
 	const Config::PPO config_;
 	RolloutBuffer& buffer_;
 	std::shared_ptr<ActorCriticModelInterface> model_;
-	torch::optim::Adam optimiser_;
-	double lr_;
-	double clip_policy_;
-	double clip_vf_;
+	Optimiser optimiser_;
 };
 
 } // namespace drla

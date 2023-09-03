@@ -3,6 +3,7 @@
 #include "algorithm.h"
 #include "configuration/algorithm.h"
 #include "model.h"
+#include "optimiser.h"
 #include "replay_buffer.h"
 
 #include <torch/torch.h>
@@ -31,19 +32,15 @@ public:
 	void load(const std::filesystem::path& path) override;
 
 private:
-	void update_learning_rate(int timestep);
-
-private:
 	const Config::SAC config_;
 	const ActionSpace action_space_;
 	ReplayBuffer& buffer_;
 	std::shared_ptr<SoftActorCriticModel> model_;
 	torch::Tensor log_ent_coef_;
-	torch::optim::Adam actor_optimiser_;
-	torch::optim::Adam critic_optimiser_;
-	torch::optim::Adam ent_coef_optimiser_;
+	Optimiser actor_optimiser_;
+	Optimiser critic_optimiser_;
+	Optimiser ent_coef_optimiser_;
 	double target_entropy_;
-	double lr_param_;
 };
 
 } // namespace drla

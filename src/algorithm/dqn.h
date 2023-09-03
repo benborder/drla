@@ -3,6 +3,7 @@
 #include "algorithm.h"
 #include "configuration/algorithm.h"
 #include "model.h"
+#include "optimiser.h"
 #include "replay_buffer.h"
 
 #include <torch/torch.h>
@@ -27,15 +28,13 @@ public:
 	void load(const std::filesystem::path& path) override;
 
 private:
-	void update_learning_rate(int timestep);
 	void update_exploration(int timestep);
 
 private:
 	const Config::DQN config_;
 	ReplayBuffer& buffer_;
 	std::shared_ptr<QNetModelInterface> model_;
-	torch::optim::Adam optimiser_;
-	double lr_param_;
+	Optimiser optimiser_;
 	double exploration_param_;
 	int n_updates_ = 0;
 };

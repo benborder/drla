@@ -16,7 +16,7 @@ DQN::DQN(const Config::AgentTrainAlgorithm& config, ReplayBuffer& buffer, std::s
 		: config_(std::get<Config::DQN>(config))
 		, buffer_(buffer)
 		, model_(std::dynamic_pointer_cast<QNetModelInterface>(model))
-		, optimiser_(model_->parameters(), torch::optim::AdamOptions(config_.learning_rate).eps(config_.epsilon))
+		, optimiser_(config_.optimiser, model_->parameters(), config_.total_timesteps)
 {
 	model_->train();
 	update_exploration(0);
@@ -29,8 +29,9 @@ std::string DQN::name() const
 
 std::vector<UpdateResult> DQN::update(int timestep)
 {
-	update_learning_rate(timestep);
 	update_exploration(timestep);
+
+	auto [ratio, lr] = optimiser_.update(timestep);
 
 	float total_loss = 0;
 
@@ -57,10 +58,7 @@ std::vector<UpdateResult> DQN::update(int timestep)
 			torch::pow((current_q_values.detach() - replay_data.values).abs(), config_.per_alpha).sum(-1).clamp_min(1e-8);
 		buffer_.update_priorities(priorities, replay_data.indicies);
 
-		optimiser_.zero_grad();
-		loss.backward();
-		torch::nn::utils::clip_grad_norm_(model_->parameters(), config_.max_grad_norm);
-		optimiser_.step();
+		optimiser_.step(loss);
 
 		if (n_updates_ % config_.target_update_interval == 0)
 		{
@@ -68,17 +66,15 @@ std::vector<UpdateResult> DQN::update(int timestep)
 		}
 	}
 
-	update_exploration(timestep);
-
 	return {
 		{"loss", TrainResultType::kLoss, total_loss / config_.gradient_steps},
-		{"learning_rate", TrainResultType::kLearningRate, static_cast<float>(lr_param_)},
+		{"learning_rate", TrainResultType::kLearningRate, static_cast<float>(lr)},
 		{"exploration", TrainResultType::kPolicyEvaluation, static_cast<float>(exploration_param_)}};
 }
 
 void DQN::save(const std::filesystem::path& path) const
 {
-	torch::save(optimiser_, path / "optimiser.pt");
+	torch::save(optimiser_.get_optimiser(), path / "optimiser.pt");
 	model_->save(path);
 }
 
@@ -86,24 +82,11 @@ void DQN::load(const std::filesystem::path& path)
 {
 	if (std::filesystem::exists(path / "optimiser.pt"))
 	{
-		torch::load(optimiser_, path / "optimiser.pt");
+		torch::load(optimiser_.get_optimiser(), path / "optimiser.pt");
 		spdlog::info("Optimiser loaded");
 	}
 	model_->load(path);
 	model_->train();
-}
-
-void DQN::update_learning_rate(int timestep)
-{
-	double alpha = learning_rate_decay(&config_, timestep, config_.total_timesteps);
-	lr_param_ = std::max(config_.learning_rate * alpha, config_.learning_rate_min);
-	for (auto& group : optimiser_.param_groups())
-	{
-		if (group.has_options())
-		{
-			dynamic_cast<torch::optim::AdamOptions&>(group.options()).lr(lr_param_);
-		}
-	}
 }
 
 void DQN::update_exploration(int timestep)

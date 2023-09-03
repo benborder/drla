@@ -32,10 +32,71 @@ enum class OptimiserType
 {
 	kAdam,
 	kSGD,
+	kRMSProp,
 };
 
 namespace Config
 {
+
+/// @brief Common optimiser config
+struct OptimiserBase
+{
+	// The learning rate to use for training
+	double learning_rate = 1e-4;
+	// The minimum learning rate to use for training. Only applicable for non constant
+	double learning_rate_min = 0;
+	// Decay the learning rate based on a specific schedule type
+	LearningRateScheduleType lr_schedule_type = LearningRateScheduleType::kConstant;
+	// The rate at which the lr is decayed.
+	// For linear lr_scale = 1 - lr_decay_rate * progress
+	// For expenenatial lr_scale = exp(-0.5 * PI * lr_decay_rate * progress)
+	double lr_decay_rate = 1.0;
+	// Gradient value clipping. Clips gradients to a maximum specified value. 0 disables clipping.
+	double grad_clip = 0.0;
+	// Gradient normalised clipping. Clips gradients to the specified maximum normalised value. 0 disables clipping.
+	double grad_norm_clip = 0.0;
+};
+
+/// @brief Adam optimiser specific config
+struct OptimiserAdam : public OptimiserBase
+{
+	// Controls the smoothness of gradient updates. Can help escape local minima and better converge towards global
+	// optima.
+	double epsilon = 1e-8;
+	// L2 weights regularization. Can help prevent overfitting by adding a penalty term to the loss function that
+	// encourages smaller weight values.
+	double weight_decay = 0;
+};
+
+/// @brief SGD optimiser specific config
+struct OptimiserSGD : public OptimiserBase
+{
+	// Improve convergence speed and accuracy by incorporating past gradients into the update step
+	double momentum = 0;
+	// L2 weights regularization. Can help prevent overfitting by adding a penalty term to the loss function that
+	// encourages smaller weight values.
+	double weight_decay = 0;
+	// Reduces overshooting and oscillations in the learning process by adding a small resistance term to the update rule
+	double dampening = 0;
+};
+
+/// @brief RMSProp optimiser specific config
+struct OptimiserRMSProp : public OptimiserBase
+{
+	// Controls how much each parameter update relies on past gradients relative to current ones
+	double alpha = 0.99;
+	// Controls the smoothness of gradient updates. Can help escape local minima and better converge towards global
+	// optima.
+	double epsilon = 1e-8;
+	// L2 weights regularization. Can help prevent overfitting by adding a penalty term to the loss function that
+	// encourages smaller weight values.
+	double weight_decay = 0;
+	// Improve convergence speed and accuracy by incorporating past gradients into the update step
+	double momentum = 0;
+};
+
+/// @brief The optimiser to use for training
+using Optimiser = std::variant<OptimiserAdam, OptimiserSGD, OptimiserRMSProp>;
 
 /// @brief Config common to all algorithm types
 struct TrainAlgorithm
@@ -44,19 +105,6 @@ struct TrainAlgorithm
 	int total_timesteps = 100'000;
 	// The step number to start training at. This is used to resume training
 	int start_timestep = 0;
-
-	// The learning rate to use for training
-	double learning_rate = 0.001;
-	// The minimum learning rate to use for training. Only applicable for non constant
-	double learning_rate_min = 0.0001;
-
-	// Decay the learning rate based on a specific schedule type
-	LearningRateScheduleType lr_schedule_type = LearningRateScheduleType::kConstant;
-	// The rate at which the lr is decayed.
-	// For linear lr_scale = 1 - lr_decay_rate * progress
-	// For expenenatial lr_scale = exp(-0.5 * PI * lr_decay_rate * progress)
-	double lr_decay_rate = 1.0;
-
 	// The max steps to run the agent when performing evaluation
 	int eval_max_steps = 0;
 	// Options to run evaluation model deterministically
@@ -74,8 +122,6 @@ struct OnPolicyAlgorithm : public TrainAlgorithm
 	double value_loss_coef = 0.5;
 	// The ratio the entropy loss contributes to the total loss
 	double entropy_coef = 0.01;
-	// Epsilon coef for optimiser
-	double epsilon = 1e-8;
 
 	// The discount factor
 	std::vector<float> gamma = {0.99F};
@@ -110,16 +156,14 @@ struct OffPolicyAlgorithm : public TrainAlgorithm
 /// @brief DQN training algorithm specific configuration
 struct DQN : public OffPolicyAlgorithm
 {
-	// Epsilon coef for optimiser
-	double epsilon = 1e-8;
-	// The max value to clip gradients to
-	double max_grad_norm = 0.5;
 	// The fraction of entire training period over which the exploration rate is reduced
 	double exploration_fraction = 0.1;
 	// The initial exploration rate to start training with
 	double exploration_init = 1.0;
 	// The minimum exploration rate to decay to during training
 	double exploration_final = 0.05;
+	// The training optimiser. Defaults to Adam
+	Optimiser optimiser = OptimiserAdam{{2e-4, 0, LearningRateScheduleType::kConstant, 1.0, 0, 0.5}};
 };
 
 /// @brief SAC training algorithm specific configuration
@@ -129,10 +173,14 @@ struct SAC : public OffPolicyAlgorithm
 	double actor_loss_coef = 1.0;
 	// The ratio the value loss contributes to the total loss
 	double value_loss_coef = 0.5;
-	// Epsilon coef for optimiser
-	double epsilon = 1e-8;
 	// The coefficient for scaling the entropy target
 	double target_entropy_scale = 0.89;
+	// The training actor optimiser. Defaults to Adam
+	Optimiser actor_optimiser = OptimiserAdam{{3e-4, 1e-6, LearningRateScheduleType::kLinear, 1.0, 0, 0.5}};
+	// The training critic optimiser. Defaults to Adam
+	Optimiser critic_optimiser = OptimiserAdam{{3e-4, 1e-6, LearningRateScheduleType::kLinear, 1.0, 0, 0.5}};
+	// The training entropy coefitient optimiser. Defaults to Adam
+	Optimiser ent_coef_optimiser = OptimiserAdam{{3e-4, 1e-6, LearningRateScheduleType::kLinear, 1.0, 0, 0.5}};
 };
 
 /// @brief A2C training algorithm specific configuration
@@ -140,10 +188,8 @@ struct A2C : public OnPolicyAlgorithm
 {
 	// Normalise the advantages. Use this if the reward amounts vary significantly over an episode.
 	bool normalise_advantage = true;
-	// RMSProp smoothing constant
-	double alpha = 0.99;
-	// Clip the gradients to a max
-	double max_grad_norm = 0.5;
+	// The training optimiser. Defaults to RMSProp
+	Optimiser optimiser = OptimiserRMSProp{{2.5e-4, 1e-6, LearningRateScheduleType::kLinear, 1.0, 0, 0.5}};
 };
 
 /// @brief PPO training algorithm specific configuration
@@ -161,10 +207,10 @@ struct PPO : public OnPolicyAlgorithm
 	int num_epoch = 4;
 	// Divide the samples from the rollout buffer into mini batches
 	int num_mini_batch = 4;
-	// Clip the gradients to a max
-	double max_grad_norm = 0.5;
 	// Limit the Kulback Liebler divergence to a target range to avoid large updates
 	double kl_target = 0.01;
+	// The training optimiser. Defaults to Adam
+	Optimiser optimiser = OptimiserAdam{{2.5e-4, 1e-6, LearningRateScheduleType::kLinear, 1.0, 0, 0.5}};
 };
 
 /// @brief MCTS based training algorithms. This assumes episodic prioritised replay buffer and MCTS algorithm is used
@@ -210,14 +256,8 @@ struct TrainConfig : public MCTSAlgorithm
 	// Scale the value loss to avoid overfitting of the value function, paper recommends 0.25 (See paper appendix
 	// Reanalyze)
 	float value_loss_weight = 0.25F;
-	// L2 weights regularization
-	double weight_decay = 1e-4;
-	// Epsilon coef for adam optimiser
-	double epsilon = 1e-8;
-	// momentum for SGD optimiser
-	double momentum = 0.9;
-	// The optimiser type to use
-	OptimiserType optimiser = OptimiserType::kSGD;
+	// The training optimiser. Defaults to SGD
+	Optimiser optimiser = OptimiserSGD{{3e-3, 1e-4, LearningRateScheduleType::kExponential, 1.0}, 0.9, 1e-4};
 };
 } // namespace MuZero
 
