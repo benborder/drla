@@ -40,14 +40,15 @@ public:
 
 	~Reciever() { stop(); }
 
-	/// @brief Waits indefinately for data to be sent.
+	/// @brief Request data to be sent, waits indefinately for data to be sent.
 	/// @return The data that was sent.
-	[[nodiscard]] T wait()
+	[[nodiscard]] T request()
 	{
 		T data;
 		while (run_)
 		{
 			std::unique_lock lock(m_cv_);
+			request_data_ = true;
 			cv_.wait(lock, [this]() { return !queue_.empty(); });
 			if (queue_.empty())
 			{
@@ -55,18 +56,20 @@ public:
 			}
 			data = std::move(queue_.front());
 			queue_.pop_front();
+			request_data_ = false;
 			break;
 		}
 		return data;
 	}
 
-	/// @brief Waits for data to be sent, will stop waiting based on the criteri function
+	/// @brief Requests and waits for data to be sent, will stop waiting based on the criteria function
 	/// @param criteria A function which returns a boolean. True if waiting should stop, false if it should continue.
 	/// @return The data that was sent.
 	template <typename Func>
 	[[nodiscard]] std::optional<T> wait(Func criteria)
 	{
 		std::unique_lock lock(m_cv_);
+		request_data_ = true;
 		cv_.wait(lock, [&]() { return !queue_.empty() && criteria(); });
 		if (queue_.empty())
 		{
@@ -74,6 +77,7 @@ public:
 		}
 		auto data = std::move(queue_.front());
 		queue_.pop_front();
+		request_data_ = false;
 
 		return data;
 	}
@@ -105,6 +109,7 @@ private:
 	void enqueue(const T& data)
 	{
 		std::lock_guard lock(m_cv_);
+		request_data_ = false;
 		if (overflow_behaviour_ == OverflowBehaviour::kDropHead)
 		{
 			queue_.push_back(data);
@@ -125,11 +130,16 @@ private:
 		cv_.notify_all();
 	}
 
+	/// @brief Indicates if the reciever has an unanswered request for new data
+	/// @return True if there is an unanswered request, false otherwise
+	bool is_data_requested() const { return request_data_; }
+
 private:
 	const OverflowBehaviour overflow_behaviour_;
 	const size_t max_queue_size_ = 1;
 
 	bool run_ = true;
+	bool request_data_ = false;
 	std::deque<T> queue_;
 	std::mutex m_cv_;
 	std::condition_variable cv_;
@@ -157,7 +167,8 @@ public:
 
 	/// @brief Sends the data to registered recievers, creating coppies of the data for each reciever.
 	/// @param data The data to send to recievers.
-	void send(const T& data)
+	/// @param send_all Sends to all recievers regardless if they requested an update or not
+	void send(const T& data, bool send_all = true)
 	{
 		std::lock_guard lock(m_recievers_);
 		for (auto reciever_iter = recievers_.begin(); reciever_iter != recievers_.end();)
@@ -168,10 +179,32 @@ public:
 			}
 			else
 			{
-				reciever_iter->lock()->enqueue(data);
+				auto recv = reciever_iter->lock();
+				if (send_all || recv->is_data_requested())
+				{
+					recv->enqueue(data);
+				}
 				++reciever_iter;
 			}
 		}
+	}
+
+	/// @brief Returns true if there are any pending requests.
+	/// @return True if there are pending requests false otherwise.
+	bool has_requests() const
+	{
+		for (const auto& reciever : recievers_)
+		{
+			if (!reciever.expired())
+			{
+				auto recv = reciever.lock();
+				if (recv->is_data_requested())
+				{
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 public:

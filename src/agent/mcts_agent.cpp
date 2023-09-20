@@ -90,7 +90,7 @@ void MCTSAgent::train()
 			auto model_sync_reciever = model_syncer.create_reciever();
 
 			// Wait for the initial model to be sent
-			model = model_sync_reciever->wait();
+			model = model_sync_reciever->request();
 			c10::Device device{torch::kCPU};
 			{
 				const auto& gpus = train_config.self_play_gpus;
@@ -168,7 +168,7 @@ void MCTSAgent::train()
 			auto model_sync_reciever = model_syncer.create_reciever();
 
 			// Wait for the initial model to be sent
-			model = model_sync_reciever->wait();
+			model = model_sync_reciever->request();
 			model->eval();
 
 			// This also serves to block the thread until the env has loaded (in case its really slow to load).
@@ -279,7 +279,7 @@ void MCTSAgent::train()
 			std::this_thread::sleep_for(1s);
 		}
 
-		auto model = model_sync_reciever->wait();
+		auto model = model_sync_reciever->request();
 		model->eval();
 
 		while (training_)
