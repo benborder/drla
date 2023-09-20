@@ -109,7 +109,7 @@ void from_json(const nlohmann::json& json, TrainAlgorithm& train_algorithm)
 {
 	train_algorithm.total_timesteps << required_input{json, "total_timesteps"};
 	train_algorithm.start_timestep << required_input{json, "start_timestep"};
-
+	train_algorithm.max_steps << optional_input{json, "max_steps"};
 	train_algorithm.eval_max_steps << optional_input{json, "eval_max_steps"};
 	train_algorithm.eval_determinisic << optional_input{json, "eval_determinisic"};
 }
@@ -118,7 +118,7 @@ void to_json(nlohmann::json& json, const TrainAlgorithm& train_algorithm)
 {
 	json["total_timesteps"] = train_algorithm.total_timesteps;
 	json["start_timestep"] = train_algorithm.start_timestep;
-
+	json["max_steps"] = train_algorithm.max_steps;
 	json["eval_max_steps"] = train_algorithm.eval_max_steps;
 	json["eval_determinisic"] = train_algorithm.eval_determinisic;
 }

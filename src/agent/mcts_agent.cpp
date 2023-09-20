@@ -113,6 +113,7 @@ void MCTSAgent::train()
 
 			RunOptions options;
 			options.deterministic = false;
+			options.max_steps = train_config.max_steps;
 			options.capture_observations = false;
 			options.force_model_reload = false;
 			options.temperature = 1;

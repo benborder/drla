@@ -105,6 +105,8 @@ struct TrainAlgorithm
 	int total_timesteps = 100'000;
 	// The step number to start training at. This is used to resume training
 	int start_timestep = 0;
+	// The max steps to run an episode when training
+	int max_steps = 0;
 	// The max steps to run the agent when performing evaluation
 	int eval_max_steps = 0;
 	// Options to run evaluation model deterministically
