@@ -48,6 +48,8 @@ public:
 	std::vector<torch::Tensor> get_state_head() const;
 	std::vector<torch::Tensor> get_state_head(int env) const;
 
+	int get_num_samples() const override;
+
 	ReplayBufferSamples sample(int sample_size);
 
 	torch::Device get_device() const;

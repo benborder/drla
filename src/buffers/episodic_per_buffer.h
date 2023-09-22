@@ -69,7 +69,7 @@ public:
 
 	/// @brief Gets the total number of samples stored in the buffer
 	/// @return The number of samples stored in the buffer
-	int get_num_samples() const;
+	virtual int get_num_samples() const;
 
 	/// @brief Randomly sample an episode from the buffer using the distribution formed from the saved priorities.
 	/// @return The sampled episode
@@ -82,7 +82,7 @@ public:
 	/// @param num_samples The number of episodes to sample from the buffer.
 	/// @param force_uniform Forces the sample distribution to be uniform rather than prioritised
 	/// @return The sampled episodes and their policy probability
-	std::vector<std::pair<std::shared_ptr<Episode>, float>>
+	virtual std::vector<std::pair<std::shared_ptr<Episode>, float>>
 	sample_episodes(int num_samples, bool force_uniform = false) const;
 
 	/// @brief Updates the priorities of a series of episodes and episode step indexes

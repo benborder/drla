@@ -34,8 +34,12 @@ void EpisodicPERBuffer::add_episode(std::shared_ptr<Episode> episode)
 
 	std::lock_guard lock(m_episodes_);
 
-	episode->set_id(total_episodes_++);
-	episode->init_priorities(gamma_, options_.per_alpha);
+	// Initialise episode if it hasn't already been initialised
+	if (episode->get_id() < 0)
+	{
+		episode->set_id(total_episodes_++);
+		episode->init_priorities(gamma_, options_.per_alpha);
+	}
 
 	total_steps_ += episode->length();
 	if (episodes_.size() < static_cast<size_t>(options_.buffer_size))
@@ -64,34 +68,7 @@ int EpisodicPERBuffer::get_num_samples() const
 
 std::pair<std::shared_ptr<Episode>, float> EpisodicPERBuffer::sample_episode(bool force_uniform) const
 {
-	std::lock_guard lock(m_episodes_);
-	assert(!episodes_.empty() && "Cannot sample as the episode buffer is empty");
-
-	size_t episode_index = 0;
-	float episode_prob = 0;
-	if (force_uniform)
-	{
-		std::uniform_int_distribution<size_t> episode_dist(0, episodes_.size() - 1);
-		episode_index = episode_dist(gen_);
-		episode_prob = 1.0 / episodes_.size();
-	}
-	else
-	{
-		float probs_sum = 0;
-		std::vector<float> ep_probs;
-		ep_probs.reserve(episodes_.size());
-		for (auto& episode : episodes_)
-		{
-			probs_sum += episode->get_priority();
-			ep_probs.push_back(episode->get_priority());
-		}
-		for (auto& probs : ep_probs) { probs /= probs_sum; }
-
-		std::discrete_distribution<size_t> episode_dist(ep_probs.begin(), ep_probs.end());
-		episode_index = episode_dist(gen_);
-		episode_prob = ep_probs[episode_index];
-	}
-	return {episodes_[episode_index], episode_prob};
+	return sample_episodes(1, force_uniform).front();
 }
 
 std::vector<std::pair<std::shared_ptr<Episode>, float>>

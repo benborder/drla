@@ -142,6 +142,13 @@ std::vector<torch::Tensor> ReplayBuffer::get_state_head(int env) const
 	return current_episodes_.at(env).back().predict_result.state;
 }
 
+int ReplayBuffer::get_num_samples() const
+{
+	int in_progress_steps = 0;
+	for (auto& ep : current_episodes_) { in_progress_steps += ep.size(); }
+	return total_steps_ + in_progress_steps;
+}
+
 ReplayBufferSamples ReplayBuffer::sample(int sample_size)
 {
 	std::vector<int64_t> action_shape(action_shape_);
