@@ -10,12 +10,13 @@ project(drla
 	LANGUAGES CXX
 )
 
+option(BUILD_AUXILIARY "Build the auxiliary library" ON)
+
 # ----------------------------------------------------------------------------
 # Building the DRLA library
 # ----------------------------------------------------------------------------
 
 include(cmake/spdlog.cmake)
-include(cmake/nlohmann_json.cmake)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)  # Set -pthreads
 find_package(Threads REQUIRED)
@@ -100,42 +101,17 @@ PRIVATE
 	$<BUILD_INTERFACE:spdlog::spdlog>
 )
 
-# aux drla library
-add_library(drla_aux STATIC
-	src/auxiliary/env_manager.cpp
-	src/auxiliary/serialise_json.cpp
-)
-add_library(drla::aux ALIAS drla_aux)
-
-target_compile_options(drla_aux PRIVATE -Wall -Wextra -Werror -Wpedantic $<$<CONFIG:RELEASE>:-O2 -flto>)
-target_compile_features(drla_aux PRIVATE cxx_std_17)
-
-target_include_directories(drla_aux
-	PUBLIC
-		$<INSTALL_INTERFACE:include>
-		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-	PRIVATE
-		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/drla>
-		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/drla/auxiliary>
-)
-
-target_link_libraries(drla_aux
-PUBLIC
-	drla::drla
-	${TORCH_LIBRARIES}
-	Threads::Threads
-PRIVATE
-	$<BUILD_INTERFACE:nlohmann_json::nlohmann_json>
-	$<BUILD_INTERFACE:spdlog::spdlog>
-)
+if(BUILD_AUXILIARY)
+	add_subdirectory(auxiliary)
+endif()
 
 # ----------------------------------------------------------------------------
 # Installing the DRLA library
 # ----------------------------------------------------------------------------
 
 install(
-	TARGETS drla drla_aux
-	EXPORT drla_Targets
+	TARGETS drla
+	EXPORT drlaTargets
 	ARCHIVE DESTINATION lib
 	LIBRARY DESTINATION lib
 	INCLUDES DESTINATION include
@@ -145,7 +121,7 @@ include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
 	"drlaConfigVersion.cmake"
 	VERSION ${PROJECT_VERSION}
-	COMPATIBILITY SameMajorVersion
+	COMPATIBILITY AnyNewerVersion
 )
 
 configure_package_config_file(
@@ -155,7 +131,7 @@ configure_package_config_file(
 )
 
 install(
-	EXPORT drla_Targets
+	EXPORT drlaTargets
 	FILE drlaTargets.cmake
 	NAMESPACE drla::
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake

@@ -1,4 +1,4 @@
-#include "auxiliary/env_manager.h"
+#include "env_manager.h"
 
 using namespace drla;
 
