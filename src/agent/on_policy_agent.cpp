@@ -155,8 +155,8 @@ void OnPolicyAgent::train()
 		algorithm->load(data_path_);
 	}
 
-	std::vector<bool> raw_capture;
-	raw_capture.resize(config_.env_count, false);
+	std::vector<bool> enable_visualisations;
+	enable_visualisations.resize(config_.env_count, false);
 
 	// Get first observation and state for all envs
 	for (int env = 0; env < config_.env_count; env++)
@@ -168,7 +168,7 @@ void OnPolicyAgent::train()
 		reset_data.predict_result = model->initial();
 		reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
 		auto agent_reset_config = agent_callback_->env_reset(reset_data);
-		raw_capture[env] = agent_reset_config.raw_capture;
+		enable_visualisations[env] = agent_reset_config.enable_visualisations;
 		buffer.initialise(reset_data);
 	}
 
@@ -199,9 +199,9 @@ void OnPolicyAgent::train()
 						step_data.env_data = environment->step(step_data.predict_result.action);
 
 						step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
-						if (raw_capture[env])
+						if (enable_visualisations[env])
 						{
-							step_data.raw_observation = environment->get_raw_observations();
+							step_data.visualisation = environment->get_visualisations();
 						}
 
 						bool stop = agent_callback_->env_step(step_data);
@@ -218,14 +218,14 @@ void OnPolicyAgent::train()
 							reset_data.env_data = environment->reset(environment_manager_->get_initial_state());
 							reset_data.predict_result = model->initial();
 							reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
-							if (raw_capture[env])
+							if (enable_visualisations[env])
 							{
-								reset_data.raw_observation = environment->get_raw_observations();
+								reset_data.visualisation = environment->get_visualisations();
 							}
 							auto agent_reset_config = agent_callback_->env_reset(reset_data);
 							step_data.env_data.observation = reset_data.env_data.observation;
 							step_data.predict_result.state = reset_data.predict_result.state;
-							raw_capture[env] = agent_reset_config.raw_capture;
+							enable_visualisations[env] = agent_reset_config.enable_visualisations;
 							if (agent_reset_config.stop)
 							{
 								break;
@@ -285,9 +285,9 @@ void OnPolicyAgent::train()
 						{
 							step_data.reward.clamp_min_(-config_.rewards.reward_clamp_max);
 						}
-						if (raw_capture[env])
+						if (enable_visualisations[env])
 						{
-							step_data.raw_observation = environment->get_raw_observations();
+							step_data.visualisation = environment->get_visualisations();
 						}
 
 						stop |= agent_callback_->env_step(step_data);
@@ -300,9 +300,9 @@ void OnPolicyAgent::train()
 							reset_data.env_data = environment->reset(environment_manager_->get_initial_state());
 							reset_data.predict_result = model->initial();
 							reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
-							if (raw_capture[env])
+							if (enable_visualisations[env])
 							{
-								reset_data.raw_observation = environment->get_raw_observations();
+								reset_data.visualisation = environment->get_visualisations();
 							}
 							auto agent_reset_config = agent_callback_->env_reset(reset_data);
 							step_data.env_data.observation = reset_data.env_data.observation;
@@ -310,7 +310,7 @@ void OnPolicyAgent::train()
 							{
 								timestep_data.predict_results.state[i][env] = reset_data.predict_result.state[i][0];
 							}
-							raw_capture[env] = agent_reset_config.raw_capture;
+							enable_visualisations[env] = agent_reset_config.enable_visualisations;
 							stop |= agent_reset_config.stop;
 						}
 
@@ -365,7 +365,7 @@ void OnPolicyAgent::train()
 			RunOptions options;
 			options.deterministic = train_config.eval_determinisic;
 			options.max_steps = train_config.eval_max_steps;
-			options.capture_observations = true;
+			options.enable_visualisations = true;
 			run_episode(
 				model.get(), environment_manager_->get_initial_state(), environment_manager_->num_envs() - 1, options);
 		}

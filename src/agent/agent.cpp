@@ -174,10 +174,10 @@ void Agent::run_episode(Model* model, const State& initial_state, int env, RunOp
 	{
 		return;
 	}
-	options.capture_observations |= agent_reset_config.raw_capture;
-	if (options.capture_observations)
+	options.enable_visualisations |= agent_reset_config.enable_visualisations;
+	if (options.enable_visualisations)
 	{
-		step_data.raw_observation = environment->get_raw_observations();
+		step_data.visualisation = environment->get_visualisations();
 	}
 
 	bool stop = agent_callback_->env_step(step_data);
@@ -201,9 +201,9 @@ void Agent::run_episode(Model* model, const State& initial_state, int env, RunOp
 		step_data.predict_result = model->predict(input);
 		step_data.env_data = environment->step(step_data.predict_result.action);
 		step_data.reward = clamp_reward(step_data.env_data.reward, base_config_.rewards);
-		if (options.capture_observations)
+		if (options.enable_visualisations)
 		{
-			step_data.raw_observation = environment->get_raw_observations();
+			step_data.visualisation = environment->get_visualisations();
 		}
 
 		stop = agent_callback_->env_step(step_data);

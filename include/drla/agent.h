@@ -24,8 +24,8 @@ struct RunOptions
 	int max_steps = 0;
 	// Use deterministic actions when true, otherwise a stochastic policy gradient to determine actions
 	bool deterministic = true;
-	// Capture observation data and pass to callbacks which use StepData
-	bool capture_observations = true;
+	// Capture visualisation data and pass to callbacks which use StepData
+	bool enable_visualisations = true;
 	// If a model is already loaded, force reload the model again from the data_path
 	bool force_model_reload = false;
 	// Determines how greedy the action selection is for MCTS based agents. 0 is maximally greedy and the larger the value

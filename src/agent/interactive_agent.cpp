@@ -86,10 +86,10 @@ void InteractiveAgent::run(const std::vector<State>& initial_state, RunOptions o
 			{
 				return;
 			}
-			options.capture_observations |= agent_reset_config.raw_capture;
-			if (options.capture_observations)
+			options.enable_visualisations |= agent_reset_config.enable_visualisations;
+			if (options.enable_visualisations)
 			{
-				step_data.raw_observation = environment->get_raw_observations();
+				step_data.visualisation = environment->get_visualisations();
 			}
 
 			bool stop = agent_callback_->env_step(step_data);
@@ -119,9 +119,9 @@ void InteractiveAgent::run(const std::vector<State>& initial_state, RunOptions o
 				{
 					step_data.reward.clamp_min_(-config_.rewards.reward_clamp_max);
 				}
-				if (options.capture_observations)
+				if (options.enable_visualisations)
 				{
-					step_data.raw_observation = environment->get_raw_observations();
+					step_data.visualisation = environment->get_visualisations();
 				}
 
 				bool stop = agent_callback_->env_step(step_data);

@@ -114,7 +114,7 @@ void MCTSAgent::train()
 			RunOptions options;
 			options.deterministic = false;
 			options.max_steps = train_config.max_steps;
-			options.capture_observations = false;
+			options.enable_visualisations = false;
 			options.force_model_reload = false;
 			options.temperature = 1;
 
@@ -180,7 +180,7 @@ void MCTSAgent::train()
 			RunOptions options;
 			options.max_steps = train_config.eval_max_steps;
 			options.deterministic = train_config.eval_determinisic;
-			options.capture_observations = true;
+			options.enable_visualisations = true;
 			options.temperature = config_.temperature;
 
 			while (timestep < train_config.total_timesteps)
@@ -444,7 +444,7 @@ std::unique_ptr<MCTSEpisode> MCTSAgent::run_episode(
 
 	torch::NoGradGuard no_grad;
 
-	bool raw_capture = agent_reset_config.raw_capture || options.capture_observations;
+	bool enable_visualisations = agent_reset_config.enable_visualisations || options.enable_visualisations;
 
 	for (int step = 1; step <= options.max_steps; step++)
 	{
@@ -466,9 +466,9 @@ std::unique_ptr<MCTSEpisode> MCTSAgent::run_episode(
 		step_data.env_data = environment->step(step_data.predict_result.action);
 
 		step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
-		if (raw_capture)
+		if (enable_visualisations)
 		{
-			step_data.raw_observation = environment->get_raw_observations();
+			step_data.visualisation = environment->get_visualisations();
 		}
 
 		bool stop = agent_callback_->env_step(step_data) || step_data.env_data.state.episode_end;

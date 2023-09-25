@@ -173,8 +173,8 @@ struct StepData
 
 	// The clamped/scaled reward gained when executing this step
 	torch::Tensor reward;
-	// The raw output observation from the step. Typically used for display/debug purposes
-	Observations raw_observation;
+	// The visualisations from the step. Typically used for display/debug purposes
+	Observations visualisation;
 };
 
 } // namespace drla

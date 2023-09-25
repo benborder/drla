@@ -57,8 +57,8 @@ struct AgentResetConfig
 {
 	// When true the agent should stop.
 	bool stop = false;
-	// When true the agent captures raw observations for the episode.
-	bool raw_capture = false;
+	// When true the agent captures visualisations for the episode.
+	bool enable_visualisations = false;
 };
 
 /// @brief An interface defining callbacks the agent provides
