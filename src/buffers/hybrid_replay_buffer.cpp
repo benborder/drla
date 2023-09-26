@@ -167,7 +167,7 @@ HybridBatch HybridReplayBuffer::sample(int batch_size, torch::Device device) con
 		batch.indicies.emplace_back(episode->get_id(), index);
 		for (size_t i = 0; i < batch.observation.size(); ++i)
 		{
-			batch.observation[i][batch_index] = sample_obs[i].detach();
+			batch.observation[i][batch_index] = convert_observation(sample_obs[i].detach(), device, false);
 		}
 		for (size_t i = 0; i < batch.states.size(); ++i) { batch.states[i][batch_index] = target.states[i].detach(); }
 		batch.action[batch_index] = target.actions.detach().to(device);

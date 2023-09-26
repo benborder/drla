@@ -166,9 +166,8 @@ void HybridAgent::train()
 					ModelInput input;
 					input.deterministic = false;
 					input.prev_output = step_data.predict_result;
-					input.observations = step_data.env_data.observation;
-					// Add batch dim to observations and make sure its on the correct device
-					for (auto& obs : input.observations) { obs = obs.unsqueeze(0).to(device); }
+					// Add batch dim to observations, make sure its on the correct device and scale if using 8bit/int/char
+					input.observations = convert_observations(step_data.env_data.observation, device);
 
 					step_data.step = step;
 

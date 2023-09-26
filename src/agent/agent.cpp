@@ -13,6 +13,7 @@
 #include "random_model.h"
 #include "soft_actor_critic_model.h"
 #include "threadpool.h"
+#include "utils.h"
 
 #include <spdlog/spdlog.h>
 
@@ -196,8 +197,7 @@ void Agent::run_episode(Model* model, const State& initial_state, int env, RunOp
 		ModelInput input;
 		input.deterministic = options.deterministic;
 		input.prev_output = step_data.predict_result;
-		input.observations = step_data.env_data.observation;
-		for (auto& obs : input.observations) { obs = obs.unsqueeze(0).to(device); }
+		input.observations = convert_observations(step_data.env_data.observation, device);
 
 		step_data.step = step;
 
@@ -245,12 +245,9 @@ ModelOutput Agent::predict_action(const std::vector<StepData>& step_history, boo
 
 	torch::NoGradGuard no_grad;
 
-	Observations observations;
-	for (auto& obs : last_step.env_data.observation) { observations.push_back(obs.unsqueeze(0).to(devices_.front())); }
-
 	ModelInput input;
 	input.deterministic = deterministic;
-	input.observations = last_step.env_data.observation;
+	input.observations = convert_observations(last_step.env_data.observation, devices_.front());
 	input.prev_output = last_step.predict_result;
 	return model_->predict(input);
 }

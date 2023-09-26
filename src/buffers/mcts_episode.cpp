@@ -16,7 +16,7 @@ MCTSEpisode::MCTSEpisode(std::vector<StepData> episode_data, MCTSEpisodeOptions 
 	{
 		auto dims = obs.sizes().vec();
 		dims.insert(dims.begin(), episode_length_ + 1);
-		observations_.push_back(torch::empty(dims));
+		observations_.push_back(torch::empty(dims, obs.scalar_type()));
 	}
 	{
 		auto dims = initial_step_data.predict_result.action.sizes().vec();

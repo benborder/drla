@@ -17,7 +17,7 @@ OffPolicyEpisode::OffPolicyEpisode(std::vector<StepData> episode_data, OffPolicy
 	{
 		auto dims = obs.sizes().vec();
 		dims.insert(dims.begin(), episode_length_ + 1);
-		observations_.push_back(torch::empty(dims));
+		observations_.push_back(torch::empty(dims, obs.scalar_type()));
 	}
 	for (auto& state : initial_step_data.predict_result.state)
 	{

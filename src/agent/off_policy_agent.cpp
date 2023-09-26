@@ -192,8 +192,8 @@ void OffPolicyAgent::train()
 						step_data.step = step;
 						{
 							torch::NoGradGuard no_grad;
-							step_data.predict_result =
-								model->predict({step_data.env_data.observation, step_data.predict_result, false});
+							auto observations = convert_observations(step_data.env_data.observation, devices_.front());
+							step_data.predict_result = model->predict({std::move(observations), step_data.predict_result, false});
 						}
 						step_data.env_data = environment->step(step_data.predict_result.action);
 
@@ -252,8 +252,9 @@ void OffPolicyAgent::train()
 				timestep_data.step = step;
 				{
 					torch::NoGradGuard no_grad;
+					auto observations = convert_observations(timestep_data.observations, devices_.front(), false);
 					timestep_data.predict_results =
-						model->predict({timestep_data.observations, timestep_data.predict_results, false});
+						model->predict({std::move(observations), timestep_data.predict_results, false});
 				}
 
 				// Dispatch each environment on a seperate thread and step it

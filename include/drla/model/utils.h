@@ -196,4 +196,47 @@ inline std::vector<int64_t> auto_resize(const std::vector<int64_t>& shape, int m
 	return auto_resize(flatten(shape), max_channels);
 }
 
+/// @brief Moves an observation to the specified device and converts it to float, scaling to the range [0,1] for 8bit
+/// data. All other types are cast to float.
+/// @param observations The observation to convert
+/// @param device The device to copy to
+/// @param unsqueeze Unsqueeze the first dim. Use if a single batch
+/// @return The converted observation
+inline torch::Tensor
+convert_observation(const torch::Tensor& observation, torch::Device device = torch::kCPU, bool unsqueeze = true)
+{
+	auto x = observation.to(device);
+	if (x.scalar_type() == torch::kUInt8 || x.scalar_type() == torch::kByte)
+	{
+		x = x.to(torch::kFloat) / 255.0F;
+	}
+	else if (x.scalar_type() == torch::kInt8 || x.scalar_type() == torch::kChar)
+	{
+		x = (x + 128).to(torch::kFloat) / 255.0F;
+	}
+	else
+	{
+		x = x.to(torch::kFloat);
+	}
+	if (unsqueeze)
+	{
+		x = x.unsqueeze(0);
+	}
+	return x;
+}
+
+/// @brief Moves observations to the specified device and converts them to float, scaling to the range [0,1] for 8bit
+/// data. All other types are cast to float.
+/// @param observations The observations to convert
+/// @param device The device to copy to
+/// @param unsqueeze Unsqueeze the first dim. Use if a single batch
+/// @return The converted observations
+inline Observations
+convert_observations(const Observations& observations, torch::Device device = torch::kCPU, bool unsqueeze = true)
+{
+	Observations obs;
+	for (auto& o : observations) { obs.push_back(convert_observation(o, device, unsqueeze)); }
+	return obs;
+}
+
 } // namespace drla

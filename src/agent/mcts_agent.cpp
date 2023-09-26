@@ -584,7 +584,7 @@ MCTSAgent::get_stacked_observations(const std::vector<StepData>& step_history, i
 		if (index >= 0)
 		{
 			auto next_index = index + 1;
-			const auto& observation = step_history.at(index).env_data.observation;
+			const auto& observation = convert_observations(step_history.at(index).env_data.observation, torch::kCPU, false);
 			for (size_t i = 0; i < obs_dims; ++i)
 			{
 				observation_history[i].push_back(observation[i]);

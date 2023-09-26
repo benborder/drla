@@ -1,5 +1,7 @@
 #include "minibatch_buffer.h"
 
+#include "utils.h"
+
 #include <torch/torch.h>
 
 #include <algorithm>
@@ -39,8 +41,8 @@ void MiniBatchBuffer::Iterator::get_minibatch()
 		auto observations_shape = observations[i].sizes().vec();
 		observations_shape.erase(observations_shape.begin());
 		observations_shape[0] = -1;
-		minibatch_.observations.push_back(
-			observations[i].narrow(0, 0, steps).view(observations_shape).index({index}).to(buffer_.get_device()));
+		minibatch_.observations.push_back(convert_observation(
+			observations[i].narrow(0, 0, steps).view(observations_shape).index({index}), buffer_.get_device(), false));
 	}
 
 	auto action_shape = buffer_.get_actions().sizes().vec();

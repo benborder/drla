@@ -1,6 +1,7 @@
 #include "mcts_replay_buffer.h"
 
 #include "functions.h"
+#include "utils.h"
 
 using namespace drla;
 
@@ -55,7 +56,7 @@ MCTSBatch MCTSReplayBuffer::sample(int batch_size, torch::Device device) const
 		batch.indicies.emplace_back(episode->get_id(), index);
 		for (size_t i = 0; i < batch.observation.size(); ++i)
 		{
-			batch.observation[i][batch_index] = sample_obs[i].detach();
+			batch.observation[i][batch_index] = convert_observation(sample_obs[i].detach(), device, false);
 		}
 		batch.action[batch_index] = target.actions.detach().to(device);
 		batch.reward[batch_index] = target.rewards.detach().to(device);

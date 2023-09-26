@@ -19,7 +19,7 @@ HybridEpisode::HybridEpisode(std::vector<StepData> episode_data, HybridEpisodeOp
 	values_ = torch::empty(std::vector<int64_t>{episode_length_} + initial_step_data.predict_result.values.sizes().vec());
 	for (auto& obs : initial_step_data.env_data.observation)
 	{
-		observations_.push_back(torch::empty(epsz + obs.sizes().vec()));
+		observations_.push_back(torch::empty(epsz + obs.sizes().vec(), obs.scalar_type()));
 	}
 	for (auto& state : initial_step_data.predict_result.state)
 	{

@@ -186,8 +186,8 @@ ReplayBufferSamples ReplayBuffer::sample(int sample_size)
 
 		for (size_t i = 0; i < data.observations.size(); ++i)
 		{
-			data.observations[i][sample_index] = sample_obs[i].detach().to(device_);
-			data.next_observations[i][sample_index] = sample_next_obs[i].detach().to(device_);
+			data.observations[i][sample_index] = convert_observation(sample_obs[i].detach(), device_, false);
+			data.next_observations[i][sample_index] = convert_observation(sample_next_obs[i].detach(), device_, false);
 		}
 		data.actions[sample_index] = target.actions.detach().to(device_);
 		data.rewards[sample_index] = target.rewards.detach().to(device_);
