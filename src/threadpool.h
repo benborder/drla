@@ -21,7 +21,9 @@ public:
 	/// waiting to run tasks.
 	/// @param threads The number of threads use. If 0 the number threads will be set to the number of cores available.
 	/// @param clamp_threads If set to true, the number of threads will be clamped to the number of cores available.
-	ThreadPool(size_t threads = 0, bool clamp_threads = true) : pending_(0), running_(false)
+	/// @param max_queue_length The maximum allowed queue length. Adding further tasks to the queue will block
+	ThreadPool(size_t threads = 0, bool clamp_threads = true, size_t max_queue_length = 0)
+			: pending_(0), running_(false), max_queue_length_(max_queue_length)
 	{
 		if (threads == 0)
 		{
@@ -86,18 +88,24 @@ public:
 	ThreadPool& operator=(const ThreadPool&) = delete;
 	ThreadPool& operator=(ThreadPool&) = delete;
 
-	/// @brief Dispatch a task to the queue and notify the pool a task is available.
+	/// @brief Dispatch a task to the queue and notify the pool a task is available. If enabled, this will block if the
+	/// max queue length is exceeded.
 	/// @param func The function to execute on a thread in the pool.
 	template <typename Func, typename = std::enable_if_t<std::is_void_v<std::invoke_result_t<std::decay_t<Func>>>>>
 	void queue_task(Func&& func)
 	{
-		std::lock_guard lock(m_tasks_);
+		std::unique_lock lock(m_tasks_);
+		if (max_queue_length_ > 0 && tasks_.size() >= max_queue_length_)
+		{
+			cv_signal_.wait(lock, [&]() { return tasks_.size() < max_queue_length_; });
+		}
 		tasks_.push_back(std::move(func));
 		++pending_;
 		cv_tasks_.notify_one();
 	}
 
-	/// @brief Dispatch a task with a future return value to the queue and notify the pool a task is available.
+	/// @brief Dispatch a task with a future return value to the queue and notify the pool a task is available. If
+	/// enabled, this will block if the max queue length is exceeded.
 	/// @param func The function to execute on a thread in the pool.
 	/// @return A future of the of the return type of the task
 	template <
@@ -150,6 +158,8 @@ private:
 
 	std::atomic_bool running_;
 	std::vector<std::thread> threads_;
+
+	const size_t max_queue_length_;
 };
 
 } // namespace drla
