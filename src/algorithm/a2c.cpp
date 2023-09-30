@@ -63,7 +63,7 @@ Metrics A2C::update(int timestep)
 							evaluate_result.dist_entropy * config_.entropy_coef;
 
 	// Backprop and step optimiser
-	auto [ratio, lr] = optimiser_.update(timestep);
+	optimiser_.update(timestep);
 	optimiser_.step(loss);
 
 	auto explained_var = explained_variance(buffer_.get_values(), buffer_.get_returns());
@@ -73,7 +73,7 @@ Metrics A2C::update(int timestep)
 	metrics.add({"loss_value", TrainResultType::kLoss, value_loss.item<float>()});
 	metrics.add({"loss_policy", TrainResultType::kLoss, policy_loss.item<float>()});
 	metrics.add({"loss_entropy", TrainResultType::kLoss, evaluate_result.dist_entropy.item<float>()});
-	metrics.add({"learning_rate", TrainResultType::kLearningRate, lr});
+	metrics.add({"learning_rate", TrainResultType::kLearningRate, optimiser_.get_lr()});
 	metrics.add({"explained_variance", TrainResultType::kPerformanceEvaluation, explained_var});
 	return metrics;
 }

@@ -39,31 +39,31 @@ Optimiser::Optimiser(
 {
 }
 
-std::tuple<double, double> Optimiser::update(int timestep)
+void Optimiser::update(int timestep)
 {
 	const double progress = static_cast<double>(timestep) / static_cast<double>(max_timesteps_);
-	double ratio = 1.0;
-	double lr = 0.0;
+	lr_ = 0.0;
+	alpha_ = 1.0;
 	std::visit(
 		[&](const auto& config) {
 			switch (config.lr_schedule_type)
 			{
 				case LearningRateScheduleType::kLinear:
 				{
-					ratio = std::max<double>(0.0, 1.0 - config.lr_decay_rate * progress);
+					alpha_ = std::max<double>(0.0, 1.0 - config.lr_decay_rate * progress);
 					break;
 				}
 				case LearningRateScheduleType::kExponential:
 				{
-					ratio = std::max<double>(0.0, std::exp(-0.5 * M_PI * config.lr_decay_rate * progress));
+					alpha_ = std::max<double>(0.0, std::exp(-0.5 * M_PI * config.lr_decay_rate * progress));
 					break;
 				}
 				case LearningRateScheduleType::kConstant: break;
 			}
-			lr = ratio * config.learning_rate;
+			lr_ = alpha_ * config.learning_rate;
 			if (config.learning_rate_min > 0)
 			{
-				lr = std::max(lr, config.learning_rate_min);
+				lr_ = std::max(lr_, config.learning_rate_min);
 			}
 		},
 		config_);
@@ -71,10 +71,9 @@ std::tuple<double, double> Optimiser::update(int timestep)
 	{
 		if (group.has_options())
 		{
-			group.options().set_lr(lr);
+			group.options().set_lr(lr_);
 		}
 	}
-	return {ratio, lr};
 }
 
 void Optimiser::step(torch::Tensor& loss)
@@ -102,4 +101,14 @@ void Optimiser::step(torch::Tensor& loss)
 torch::optim::Optimizer& Optimiser::get_optimiser() const
 {
 	return *optimiser_.get();
+}
+
+double Optimiser::get_lr() const
+{
+	return lr_;
+}
+
+double Optimiser::get_alpha() const
+{
+	return alpha_;
 }

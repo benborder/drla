@@ -31,7 +31,7 @@ Metrics DQN::update(int timestep)
 {
 	update_exploration(timestep);
 
-	auto [ratio, lr] = optimiser_.update(timestep);
+	optimiser_.update(timestep);
 
 	float total_loss = 0;
 
@@ -69,7 +69,7 @@ Metrics DQN::update(int timestep)
 
 	Metrics metrics;
 	metrics.add({"loss", TrainResultType::kLoss, total_loss / config_.gradient_steps});
-	metrics.add({"learning_rate", TrainResultType::kLearningRate, static_cast<float>(lr)});
+	metrics.add({"learning_rate", TrainResultType::kLearningRate, static_cast<float>(optimiser_.get_lr())});
 	metrics.add({"exploration", TrainResultType::kPolicyEvaluation, static_cast<float>(exploration_param_)});
 	return metrics;
 }

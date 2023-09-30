@@ -47,9 +47,9 @@ Metrics SAC::update(int timestep)
 	float critic_losses = 0.0F;
 	float actor_losses = 0.0F;
 
-	auto [ratio_ent, lr_ent] = ent_coef_optimiser_.update(timestep);
-	auto [ratio_critic, lr_critic] = critic_optimiser_.update(timestep);
-	auto [ratio_actor, lr_actor] = actor_optimiser_.update(timestep);
+	ent_coef_optimiser_.update(timestep);
+	critic_optimiser_.update(timestep);
+	actor_optimiser_.update(timestep);
 
 	for (int gradient_step = 0; gradient_step < config_.gradient_steps; gradient_step++)
 	{
@@ -157,9 +157,9 @@ Metrics SAC::update(int timestep)
 	metrics.add({"loss", TrainResultType::kLoss, critic_losses});
 	metrics.add({"loss_policy", TrainResultType::kLoss, actor_losses});
 	metrics.add({"loss_entropy", TrainResultType::kLoss, ent_coef_losses});
-	metrics.add({"learning_rate_ent", TrainResultType::kLearningRate, static_cast<float>(lr_ent)});
-	metrics.add({"learning_rate_critic", TrainResultType::kLearningRate, static_cast<float>(lr_critic)});
-	metrics.add({"learning_rate_actor", TrainResultType::kLearningRate, static_cast<float>(lr_actor)});
+	metrics.add({"learning_rate_ent", TrainResultType::kLearningRate, static_cast<float>(ent_coef_optimiser_.get_lr())});
+	metrics.add({"learning_rate_critic", TrainResultType::kLearningRate, static_cast<float>(critic_optimiser_.get_lr())});
+	metrics.add({"learning_rate_actor", TrainResultType::kLearningRate, static_cast<float>(actor_optimiser_.get_lr())});
 	metrics.add({"entropy_coeficients", TrainResultType::kRegularisation, ent_coefs});
 	return metrics;
 }

@@ -31,9 +31,9 @@ std::string PPO::name() const
 
 Metrics PPO::update(int timestep)
 {
-	auto [alpha, lr] = optimiser_.update(timestep);
-	double clip_policy = config_.clip_range_policy * alpha;
-	double clip_vf = config_.clip_range_vf * alpha;
+	optimiser_.update(timestep);
+	double clip_policy = config_.clip_range_policy * optimiser_.get_alpha();
+	double clip_vf = config_.clip_range_vf * optimiser_.get_alpha();
 
 	auto values = buffer_.get_values().narrow(0, 0, buffer_.get_values().size(0) - 1);
 	auto returns = buffer_.get_returns().narrow(0, 0, buffer_.get_returns().size(0) - 1);
@@ -65,7 +65,8 @@ Metrics PPO::update(int timestep)
 			}
 
 			// ratio between old and new policy, should be one at the first iteration
-			auto ratio = torch::exp(eval_result.action_log_probs - mini_batch.old_log_probs);
+			auto log_ratio = eval_result.action_log_probs - mini_batch.old_log_probs;
+			auto ratio = torch::exp(log_ratio);
 
 			// clipped surrogate loss
 			auto policy_loss_1 = advantages * ratio;
@@ -99,7 +100,6 @@ Metrics PPO::update(int timestep)
 			// see Schulman blog: http://joschu.net/blog/kl-approx.html
 			{
 				torch::NoGradGuard no_grad;
-				auto log_ratio = eval_result.action_log_probs - mini_batch.old_log_probs;
 				kl_divergence += ((torch::exp(log_ratio) - 1) - log_ratio).mean().item<float>();
 			}
 
@@ -128,7 +128,7 @@ Metrics PPO::update(int timestep)
 	metrics.add({"loss_entropy", TrainResultType::kLoss, total_entropy_loss});
 	metrics.add({"clip_fraction", TrainResultType::kPolicyEvaluation, clip_fraction});
 	metrics.add({"kl_divergence", TrainResultType::kPolicyEvaluation, kl_divergence});
-	metrics.add({"learning_rate", TrainResultType::kLearningRate, lr});
+	metrics.add({"learning_rate", TrainResultType::kLearningRate, optimiser_.get_lr()});
 	metrics.add({"explained_variance", TrainResultType::kPerformanceEvaluation, explained_var});
 	return metrics;
 }

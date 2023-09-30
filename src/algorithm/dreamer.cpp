@@ -53,14 +53,14 @@ Metrics Dreamer::update(int timestep)
 		model_->update(1.0);
 	}
 
-	auto [wm_ratio, wm_lr] = world_optimiser_.update(timestep);
-	auto [act_ratio, act_lr] = actor_optimiser_.update(timestep);
-	auto [crit_ratio, crit_lr] = critic_optimiser_.update(timestep);
+	world_optimiser_.update(timestep);
+	actor_optimiser_.update(timestep);
+	critic_optimiser_.update(timestep);
 
 	Metrics metrics;
-	metrics.add({"wm_learning_rate", TrainResultType::kLearningRate, wm_lr});
-	metrics.add({"actor_learning_rate", TrainResultType::kLearningRate, act_lr});
-	metrics.add({"critic_learning_rate", TrainResultType::kLearningRate, crit_lr});
+	metrics.add({"wm_learning_rate", TrainResultType::kLearningRate, world_optimiser_.get_lr()});
+	metrics.add({"actor_learning_rate", TrainResultType::kLearningRate, actor_optimiser_.get_lr()});
+	metrics.add({"critic_learning_rate", TrainResultType::kLearningRate, critic_optimiser_.get_lr()});
 
 	ImaginedTrajectory imagined_trajectory;
 	{

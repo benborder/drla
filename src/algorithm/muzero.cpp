@@ -101,7 +101,7 @@ Metrics MuZero::update(int timestep)
 	loss = loss.mean();
 
 	// Optimise
-	auto [ratio, lr] = optimiser_.update(timestep);
+	optimiser_.update(timestep);
 	optimiser_.step(loss);
 
 	buffer_.update_priorities(priorities, batch.indicies);
@@ -111,7 +111,7 @@ Metrics MuZero::update(int timestep)
 	metrics.add({"loss_value", TrainResultType::kLoss, value_loss.mean().item<float>()});
 	metrics.add({"loss_reward", TrainResultType::kLoss, reward_loss.mean().item<float>()});
 	metrics.add({"loss_policy", TrainResultType::kLoss, policy_loss.mean().item<float>()});
-	metrics.add({"learning_rate", TrainResultType::kLearningRate, lr});
+	metrics.add({"learning_rate", TrainResultType::kLearningRate, optimiser_.get_lr()});
 	return metrics;
 }
 
