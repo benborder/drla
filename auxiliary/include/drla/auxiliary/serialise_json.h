@@ -321,6 +321,22 @@ void from_json(const nlohmann::json& json, FeatureExtractorConfig& feature_extra
 
 void to_json(nlohmann::json& json, const FeatureExtractorConfig& feature_extractor);
 
+void from_json(const nlohmann::json& json, MultiEncoderNetworkConfig& encoder);
+
+void to_json(nlohmann::json& json, const MultiEncoderNetworkConfig& encoder);
+
+void from_json(const nlohmann::json& json, MultiEncoderNetworkConfig& decoder);
+
+void to_json(nlohmann::json& json, const MultiDecoderNetworkConfig& decoder);
+
+void from_json(const nlohmann::json& json, MultiEncoderConfig& enc);
+
+void to_json(nlohmann::json& json, const MultiEncoderConfig& enc);
+
+void from_json(const nlohmann::json& json, MultiDecoderConfig& dec);
+
+void to_json(nlohmann::json& json, const MultiDecoderConfig& dec);
+
 void from_json(const nlohmann::json& json, ActorConfig& paoc);
 
 void to_json(nlohmann::json& json, const ActorConfig& paoc);

@@ -74,4 +74,22 @@ private:
 
 TORCH_MODULE(FeatureExtractor);
 
+/// @brief Configures the FeatureExtractor to creates a multi encoder architecture
+/// @param config The multi encoder configuration. Can use the simpler MultiEncoderNetworkConfig or create a custom
+/// config using FeatureExtractorConfig
+/// @param input_shape The input observation shape to the encoder
+/// @return The FeatureExtractor configured into an encoder
+FeatureExtractor make_multi_encoder(const Config::MultiEncoderConfig& config, const ObservationShapes& input_shape);
+
+/// @brief Configures the FeatureExtractor to creates a multi decoder architecture
+/// @param config The multi decoder configuration. Can use the simpler MultidecoderNetworkConfig or create a custom
+/// config using FeatureExtractorConfig
+/// @param input_shape The input latent shapes to the decoder
+/// @param output_shape The output observation shapes of the decoder
+/// @return The FeatureExtractor configured into a decoder
+FeatureExtractor make_multi_decoder(
+	const Config::MultiDecoderConfig& config,
+	const ObservationShapes& input_shape,
+	const ObservationShapes& output_shape);
+
 } // namespace drla

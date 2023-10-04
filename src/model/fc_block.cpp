@@ -11,7 +11,7 @@
 using namespace drla;
 using namespace torch;
 
-inline Config::FCConfig configure_output(Config::FCConfig config, Config::LinearConfig output_layer_config)
+Config::FCConfig drla::make_output_fc(Config::FCConfig config, Config::LinearConfig output_layer_config)
 {
 	// Find all occurences of a 0 size and replace with the output size. If there are none, then just add it onto the back
 	bool found = false;
@@ -77,7 +77,7 @@ FCBlockImpl::FCBlockImpl(const Config::FCConfig& config, const std::string& name
 
 FCBlockImpl::FCBlockImpl(
 	const Config::FCConfig& config, const std::string& name, int input_size, Config::LinearConfig output_layer_config)
-		: config_(configure_output(config, std::move(output_layer_config)))
+		: config_(make_output_fc(config, std::move(output_layer_config)))
 {
 	make_fc(input_size, name);
 }

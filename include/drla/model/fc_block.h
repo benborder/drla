@@ -58,4 +58,6 @@ private:
 
 TORCH_MODULE(FCBlock);
 
+Config::FCConfig make_output_fc(Config::FCConfig config, Config::LinearConfig output_layer_config);
+
 } // namespace drla

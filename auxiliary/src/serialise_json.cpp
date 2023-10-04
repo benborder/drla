@@ -654,6 +654,96 @@ void to_json(nlohmann::json& json, const FeatureExtractorConfig& feature_extract
 	json = feature_extractor.feature_groups;
 }
 
+void from_json(const nlohmann::json& json, MultiEncoderNetworkConfig& encoder)
+{
+	encoder.mlp_layers << optional_input{json, "mlp_layers"};
+	encoder.mlp_units << optional_input{json, "mlp_units"};
+	encoder.cnn_depth << optional_input{json, "cnn_depth"};
+	encoder.kernel_size << optional_input{json, "kernel_size"};
+	encoder.stride << optional_input{json, "stride"};
+	encoder.padding << optional_input{json, "padding"};
+	encoder.minres << optional_input{json, "minres"};
+	encoder.activations << optional_input{json, "activations"};
+	encoder.use_layer_norm << optional_input{json, "use_layer_norm"};
+	encoder.eps << optional_input{json, "eps"};
+	encoder.init_weight_type << optional_input{json, "init_weight_type"};
+	encoder.init_weight << optional_input{json, "init_weight"};
+}
+
+void to_json(nlohmann::json& json, const MultiEncoderNetworkConfig& encoder)
+{
+	json["mlp_layers"] = encoder.mlp_layers;
+	json["mlp_units"] = encoder.mlp_units;
+	json["cnn_depth"] = encoder.cnn_depth;
+	json["kernel_size"] = encoder.kernel_size;
+	json["stride"] = encoder.stride;
+	json["padding"] = encoder.padding;
+	json["minres"] = encoder.minres;
+	json["activations"] = encoder.activations;
+	json["use_layer_norm"] = encoder.use_layer_norm;
+	json["eps"] = encoder.eps;
+	json["init_weight_type"] = encoder.init_weight_type;
+	json["init_weight"] = encoder.init_weight;
+}
+
+void from_json(const nlohmann::json& json, MultiDecoderNetworkConfig& decoder)
+{
+	from_json(json, static_cast<MultiEncoderNetworkConfig&>(decoder));
+	decoder.output_padding << optional_input{json, "output_padding"};
+	decoder.init_out_weight_type << optional_input{json, "init_out_weight_type"};
+	decoder.init_out_weight << optional_input{json, "init_out_weight"};
+}
+
+void to_json(nlohmann::json& json, const MultiDecoderNetworkConfig& decoder)
+{
+	to_json(json, static_cast<const MultiEncoderNetworkConfig&>(decoder));
+	json["output_padding"] = decoder.output_padding;
+	json["init_out_weight_type"] = decoder.init_out_weight_type;
+	json["init_out_weight"] = decoder.init_out_weight;
+}
+
+void from_json(const nlohmann::json& json, MultiEncoderConfig& encoder)
+{
+	if (json.find("layers") != json.end())
+	{
+		FeatureExtractorConfig fex;
+		from_json(json, fex);
+		encoder = std::move(fex);
+	}
+	else
+	{
+		MultiEncoderNetworkConfig men;
+		from_json(json, men);
+		encoder = std::move(men);
+	}
+}
+
+void to_json(nlohmann::json& json, const MultiEncoderConfig& encoder)
+{
+	std::visit([&](auto& enc) { to_json(json, enc); }, encoder);
+}
+
+void from_json(const nlohmann::json& json, MultiDecoderConfig& decoder)
+{
+	if (json.find("layers") != json.end())
+	{
+		FeatureExtractorConfig fex;
+		from_json(json, fex);
+		decoder = std::move(fex);
+	}
+	else
+	{
+		MultiDecoderNetworkConfig mdn;
+		from_json(json, mdn);
+		decoder = std::move(mdn);
+	}
+}
+
+void to_json(nlohmann::json& json, const MultiDecoderConfig& decoder)
+{
+	std::visit([&](auto& dec) { to_json(json, dec); }, decoder);
+}
+
 void from_json(const nlohmann::json& json, ActorConfig& actor)
 {
 	from_json(json, static_cast<FCConfig&>(actor));

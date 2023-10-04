@@ -2,6 +2,7 @@
 
 #include "cnn_extractor.h"
 #include "mlp_extractor.h"
+#include "utils.h"
 
 #include <spdlog/spdlog.h>
 
@@ -93,4 +94,192 @@ std::shared_ptr<torch::nn::Module> FeatureExtractorImpl::clone(const c10::option
 {
 	torch::NoGradGuard no_grad;
 	return std::make_shared<FeatureExtractorImpl>(static_cast<const FeatureExtractorImpl&>(*this), device);
+}
+
+Config::FeatureExtractorConfig
+make_encoder_config(const Config::MultiEncoderConfig& config, const ObservationShapes& input_shape)
+{
+	Config::FeatureExtractorConfig fex_config;
+	if (std::holds_alternative<Config::FeatureExtractorConfig>(config))
+	{
+		fex_config = std::get<Config::FeatureExtractorConfig>(config);
+	}
+	else if (std::holds_alternative<Config::MultiEncoderNetworkConfig>(config))
+	{
+		const auto& enc_config = std::get<Config::MultiEncoderNetworkConfig>(config);
+		for (size_t i = 0; i < input_shape.size(); ++i)
+		{
+			// assume images take the shape of [channel, height, width] anything else is an mlp
+			const auto& shape = input_shape[i];
+			if (shape.size() == 3)
+			{
+				Config::CNNConfig cnn;
+				int h = std::max<int>(shape[1], 1);
+				int channels = std::max<int>(enc_config.cnn_depth, 1);
+
+				for (int l = 0; h > enc_config.minres; ++l)
+				{
+					Config::Conv2dConfig conv;
+					conv.out_channels = channels;
+					conv.kernel_size = enc_config.kernel_size;
+					conv.stride = enc_config.stride;
+					conv.padding = enc_config.padding;
+					conv.init_weight_type = enc_config.init_weight_type;
+					conv.init_weight = enc_config.init_weight;
+					cnn.layers.push_back(std::move(conv));
+					if (enc_config.use_layer_norm)
+					{
+						cnn.layers.push_back(Config::LayerNormConfig{enc_config.eps});
+					}
+					cnn.layers.push_back(enc_config.activations);
+					h = (h - enc_config.kernel_size + 2 * enc_config.padding) / enc_config.stride + 1;
+					channels *= 2;
+				}
+
+				fex_config.feature_groups.push_back(std::move(cnn));
+			}
+			else
+			{
+				Config::MLPConfig mlp;
+				for (int l = 0; l < enc_config.mlp_layers; ++l)
+				{
+					mlp.layers.push_back(Config::LinearConfig{
+						enc_config.mlp_units, enc_config.init_weight_type, enc_config.init_weight, !enc_config.use_layer_norm});
+					if (enc_config.use_layer_norm)
+					{
+						mlp.layers.push_back(Config::LayerNormConfig{enc_config.eps});
+					}
+					mlp.layers.push_back(enc_config.activations);
+				}
+
+				fex_config.feature_groups.push_back(std::move(mlp));
+			}
+		}
+	}
+	return fex_config;
+}
+
+Config::FeatureExtractorConfig make_decoder_config(
+	const Config::MultiDecoderConfig& config, const ObservationShapes& input_shape, const ObservationShapes& output_shape)
+{
+	Config::FeatureExtractorConfig fex_config;
+
+	if (std::holds_alternative<Config::FeatureExtractorConfig>(config))
+	{
+		const auto& fex = std::get<Config::FeatureExtractorConfig>(config);
+		for (size_t i = 0; i < input_shape.size(); ++i)
+		{
+			const auto& fexg = fex.feature_groups.at(i);
+			if (std::holds_alternative<Config::MLPConfig>(fexg))
+			{
+				auto mlp = std::get<Config::MLPConfig>(fexg);
+				int size = flatten(output_shape[i]);
+				mlp.layers = make_output_fc(mlp, Config::LinearConfig{size, Config::InitType::kConstant, 0}).layers;
+				fex_config.feature_groups.push_back(std::move(mlp));
+			}
+			else if (std::holds_alternative<Config::CNNConfig>(fexg))
+			{
+				auto cnn = std::get<Config::CNNConfig>(fexg);
+				int channels = output_shape[i].front();
+				for (auto& layer : cnn.layers)
+				{
+					std::visit(
+						[&](auto& l) {
+							using layer_type = std::decay_t<decltype(l)>;
+							if constexpr (std::is_same_v<Config::ConvTranspose2dConfig, layer_type>)
+							{
+								if (l.out_channels == 0)
+								{
+									l.out_channels = channels;
+								}
+							}
+						},
+						layer);
+				}
+
+				fex_config.feature_groups.push_back(std::move(cnn));
+			}
+		}
+	}
+	else if (std::holds_alternative<Config::MultiDecoderNetworkConfig>(config))
+	{
+		const auto& dec_config = std::get<Config::MultiDecoderNetworkConfig>(config);
+		for (size_t i = 0; i < input_shape.size(); ++i)
+		{
+			// assume images take the shape of [channel, height, width] anything else is an mlp
+			const auto& inshape = input_shape[i];
+			const auto& outshape = output_shape[i];
+			if (inshape.size() == 3)
+			{
+				Config::CNNConfig cnn;
+				int h = std::max<int>(inshape[1], 1);
+				int channels = std::max<int>(inshape[0], 1);
+
+				h = (h - 1) * dec_config.stride - 2 * dec_config.padding + dec_config.kernel_size + dec_config.output_padding;
+				do {
+					Config::ConvTranspose2dConfig conv;
+					channels /= 2;
+					conv.out_channels = channels;
+					conv.kernel_size = dec_config.kernel_size;
+					conv.stride = dec_config.stride;
+					conv.padding = dec_config.padding;
+					conv.init_weight_type = dec_config.init_weight_type;
+					conv.init_weight = dec_config.init_weight;
+					conv.output_padding = dec_config.output_padding;
+					cnn.layers.push_back(std::move(conv));
+					if (dec_config.use_layer_norm)
+					{
+						cnn.layers.push_back(Config::LayerNormConfig{dec_config.eps});
+					}
+					cnn.layers.push_back(dec_config.activations);
+					h = (h - 1) * dec_config.stride - 2 * dec_config.padding + dec_config.kernel_size + dec_config.output_padding;
+				}
+				while (h < outshape[1]);
+
+				Config::ConvTranspose2dConfig conv;
+				conv.out_channels = outshape[0];
+				conv.kernel_size = dec_config.kernel_size;
+				conv.stride = dec_config.stride;
+				conv.padding = dec_config.padding;
+				conv.init_weight_type = dec_config.init_out_weight_type;
+				conv.init_weight = dec_config.init_out_weight;
+				conv.output_padding = dec_config.output_padding;
+				cnn.layers.push_back(std::move(conv));
+
+				fex_config.feature_groups.push_back(std::move(cnn));
+			}
+			else
+			{
+				Config::MLPConfig mlp;
+				for (int l = 0; l < (dec_config.mlp_layers - 1); ++l)
+				{
+					mlp.layers.push_back(Config::LinearConfig{
+						dec_config.mlp_units, dec_config.init_weight_type, dec_config.init_weight, !dec_config.use_layer_norm});
+					if (dec_config.use_layer_norm)
+					{
+						mlp.layers.push_back(Config::LayerNormConfig{dec_config.eps});
+					}
+					mlp.layers.push_back(dec_config.activations);
+				}
+				int size = flatten(outshape);
+				mlp.layers.push_back(Config::LinearConfig{
+					size, dec_config.init_out_weight_type, dec_config.init_out_weight, !dec_config.use_layer_norm});
+				fex_config.feature_groups.push_back(std::move(mlp));
+			}
+		}
+	}
+
+	return fex_config;
+}
+
+FeatureExtractor
+drla::make_multi_encoder(const Config::MultiEncoderConfig& config, const ObservationShapes& input_shape)
+{
+	return FeatureExtractor(make_encoder_config(config, input_shape), input_shape);
+}
+
+FeatureExtractor drla::make_multi_decoder(
+	const Config::MultiDecoderConfig& config, const ObservationShapes& input_shape, const ObservationShapes& output_shape)
+{
+	return FeatureExtractor(make_decoder_config(config, input_shape, output_shape), input_shape);
 }

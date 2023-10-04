@@ -237,8 +237,7 @@ using CNNLayerConfig = std::variant<
 struct CNNConfig
 {
 	// Defines groups of CNN layers. Each group can have different numbers of input and output channels.
-	std::vector<CNNLayerConfig> layers = {
-		Conv2dConfig{0, 32, 8, 4}, Conv2dConfig{0, 64, 4, 2}, Conv2dConfig{0, 64, 3, 1}};
+	std::vector<CNNLayerConfig> layers = {};
 };
 
 /// @brief A feature extractor group config.
@@ -250,6 +249,52 @@ struct FeatureExtractorConfig
 	// The feature extractors for each observation group.
 	std::vector<FeatureExtractorGroup> feature_groups;
 };
+
+/// @brief A CNN and MLP latent feature encoder configuration
+struct MultiEncoderNetworkConfig
+{
+	// The number of mlp layers to use
+	int mlp_layers = 2;
+	// The size of each layer
+	int mlp_units = 512;
+
+	// The number of cnn features
+	int cnn_depth = 32;
+	// The size of the kernel window
+	int kernel_size = 4;
+	// The stride of the kernel window
+	int stride = 2;
+	// The kernel window padding
+	int padding = 1;
+	// The size of the encoder output (i.e. a n*n output)
+	int minres = 4;
+
+	// The activation type
+	Activation activations = Activation::kSiLU;
+	// Enables layer norm when true
+	bool use_layer_norm = true;
+	// The epsilon argument for layer norm
+	double eps = 1e-5;
+	// The type of initialisation for the weights
+	InitType init_weight_type = InitType::kXavierNormal;
+	// The weight values to initialise the network layers with
+	double init_weight = 1.0;
+};
+
+struct MultiDecoderNetworkConfig : public MultiEncoderNetworkConfig
+{
+	// The output padding for ConvTranspose2dConfig
+	int output_padding = 0;
+	// The final layer output initialisation type for the weights
+	InitType init_out_weight_type = InitType::kXavierUniform;
+	// The weight values to initialise the final layer with
+	double init_out_weight = 1.0;
+};
+
+/// @brief The multi encoder config
+using MultiEncoderConfig = std::variant<FeatureExtractorConfig, MultiEncoderNetworkConfig>;
+/// @brief The multi decoder config
+using MultiDecoderConfig = std::variant<FeatureExtractorConfig, MultiDecoderNetworkConfig>;
 
 /// @brief The policy action output configuration. Used to transform input neural units to match the action space of
 /// the environment.
@@ -393,10 +438,10 @@ namespace Dreamer
 struct WorldModel
 {
 	// The encoder network configuration. Inputs observations x_t, oututs stochastic representation z_t.
-	FeatureExtractorConfig encoder_network;
+	MultiEncoderConfig encoder_network;
 	// The decoder network configuration. Inputs recurrent state h_t and stochastic representation z_t/zhat_t, outputs
 	// predicted observations xhat_t.
-	FeatureExtractorConfig decoder_network;
+	MultiDecoderConfig decoder_network;
 
 	// How much to mix a uniform probability with the stochastic probability.
 	float unimix = 0.01F;

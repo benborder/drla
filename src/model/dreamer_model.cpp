@@ -50,8 +50,9 @@ WorldModelImpl::WorldModelImpl(
 		: config_(config)
 		, z_size_(config_.class_size * config_.stoch_size)
 		, reward_size_(reward_size)
-		, encoder_network_(config_.encoder_network, env_config.observation_shapes)
-		, decoder_network_(config_.decoder_network, encoder_network_->get_output_shape())
+		, encoder_network_(make_multi_encoder(config_.encoder_network, env_config.observation_shapes))
+		, decoder_network_(make_multi_decoder(
+				config_.decoder_network, encoder_network_->get_output_shape(), env_config.observation_shapes))
 		, dec_in_(make_linear("dec_in", z_size_ + config_.deter_state_size, encoder_network_->get_output_size()))
 		, seq_in_(make_linear("seq_in", z_size_ + flatten(env_config.action_space.shape), config_.hidden_size))
 		, seq_gru_linear_(
