@@ -67,6 +67,7 @@ enum class FCLayerType
 	kLayerConnection, // connects the current layer to another specified layer using either a residual connection type or
 										// just concatenation
 	kActivation,			// The activation type to use
+	kLayerRepeat,			// Repeats previous layers
 };
 
 /// @brief The initialisation type to use for
@@ -114,7 +115,21 @@ struct LayerConnectionConfig
 	bool residual = true;
 };
 
-using FCLayerConfig = std::variant<LinearConfig, LayerNormConfig, LayerConnectionConfig, Activation>;
+/// @brief Repeats preceding layers
+struct LayerRepeatConfig
+{
+	// The number of times to repeat previous layers
+	int repeats;
+	// The number of layers preceeding this one to repeat. 0 implies all previous layers.
+	int layers = 0;
+	// The factor to multiply each repeated linear layer by (the result is rounded to the nearest integer based on the
+	// resolution)
+	double factor = 1;
+	// The resolution to use for rounding (i.e. a resolution of 8 will round 44 to 48)
+	int resolution = 1;
+};
+
+using FCLayerConfig = std::variant<LinearConfig, LayerNormConfig, LayerConnectionConfig, Activation, LayerRepeatConfig>;
 
 /// @brief Fully connected block configuration
 struct FCConfig

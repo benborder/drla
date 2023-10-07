@@ -150,6 +150,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 		{FCLayerType::kLayerNorm, "LayerNorm"},
 		{FCLayerType::kLayerConnection, "LayerConnection"},
 		{FCLayerType::kActivation, "Activation"},
+		{FCLayerType::kLayerRepeat, "LayerRepeat"},
 	})
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
@@ -268,6 +269,10 @@ void to_json(nlohmann::json& json, const LinearConfig& linear);
 void from_json(const nlohmann::json& json, LayerConnectionConfig& layer_connection);
 
 void to_json(nlohmann::json& json, const LayerConnectionConfig& layer_connection);
+
+void from_json(const nlohmann::json& json, LayerRepeatConfig& layer_repeat);
+
+void to_json(nlohmann::json& json, const LayerRepeatConfig& layer_repeat);
 
 void from_json(const nlohmann::json& json, FCConfig& fc);
 

@@ -379,6 +379,7 @@ void from_json(const nlohmann::json& json, FCLayerConfig& fc_layer_config)
 		case FCLayerType::kLinear: fc_layer_config = json.get<LinearConfig>(); break;
 		case FCLayerType::kLayerNorm: fc_layer_config = json.get<LayerNormConfig>(); break;
 		case FCLayerType::kLayerConnection: fc_layer_config = json.get<LayerConnectionConfig>(); break;
+		case FCLayerType::kLayerRepeat: fc_layer_config = json.get<LayerRepeatConfig>(); break;
 		default:
 		{
 			spdlog::error("[Config] The MLP layer type is not defined.");
@@ -415,6 +416,22 @@ void to_json(nlohmann::json& json, const LayerConnectionConfig& layer_connection
 {
 	json["layer_connection"] = layer_connection.connection;
 	json["residual"] = layer_connection.residual;
+}
+
+void from_json(const nlohmann::json& json, LayerRepeatConfig& layer_repeat)
+{
+	layer_repeat.repeats << required_input{json, "repeats"};
+	layer_repeat.layers << optional_input{json, "layers"};
+	layer_repeat.factor << optional_input{json, "factor"};
+	layer_repeat.resolution << optional_input{json, "resolution"};
+}
+
+void to_json(nlohmann::json& json, const LayerRepeatConfig& layer_repeat)
+{
+	json["repeats"] = layer_repeat.repeats;
+	json["layers"] = layer_repeat.layers;
+	json["factor"] = layer_repeat.factor;
+	json["resolution"] = layer_repeat.resolution;
 }
 
 void from_json(const nlohmann::json& json, FCConfig& fc)

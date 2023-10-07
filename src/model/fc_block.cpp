@@ -40,6 +40,53 @@ Config::FCConfig drla::make_output_fc(Config::FCConfig config, Config::LinearCon
 	return config;
 }
 
+Config::FCConfig make_fc_config(Config::FCConfig config)
+{
+	Config::FCConfig output_config;
+	int repeats = 0;
+	int resolution = 1;
+	double factor = 1;
+	for (auto it = config.layers.begin(); it != config.layers.end(); ++it)
+	{
+		std::visit(
+			[&](auto& layer) {
+				using layer_type = std::decay_t<decltype(layer)>;
+				if constexpr (std::is_same_v<Config::LayerRepeatConfig, layer_type>)
+				{
+					if (repeats < std::abs(layer.repeats))
+					{
+						factor = layer.factor;
+						resolution = layer.resolution;
+						++repeats;
+						const int num_layers = config.layers.size();
+						if ((layer.layers < 1 || layer.layers > num_layers) && num_layers > 0)
+						{
+							layer.layers = num_layers;
+						}
+						it = std::prev(it, layer.layers);
+					}
+					else
+					{
+						it = std::prev(config.layers.erase(it));
+						repeats = 0;
+						resolution = 1;
+						factor = 1;
+					}
+				}
+				else
+				{
+					if constexpr (std::is_same_v<Config::LinearConfig, layer_type>)
+					{
+						layer.size = std::lround(layer.size * std::abs(factor) / resolution) * resolution;
+					}
+					output_config.layers.push_back(layer);
+				}
+			},
+			*it);
+	}
+	return output_config;
+}
+
 FCBlockImpl::FCBlockImpl(const FCBlockImpl& other, const c10::optional<torch::Device>& device)
 		: config_(other.config_), output_size_(other.output_size_), connections_(other.connections_)
 {
@@ -64,7 +111,8 @@ FCBlockImpl::FCBlockImpl(const FCBlockImpl& other, const c10::optional<torch::De
 	}
 }
 
-FCBlockImpl::FCBlockImpl(const Config::FCConfig& config, const std::string& name, int input_size) : config_(config)
+FCBlockImpl::FCBlockImpl(const Config::FCConfig& config, const std::string& name, int input_size)
+		: config_(make_fc_config(config))
 {
 	output_size_ = input_size;
 	if (config_.layers.empty())
@@ -77,7 +125,7 @@ FCBlockImpl::FCBlockImpl(const Config::FCConfig& config, const std::string& name
 
 FCBlockImpl::FCBlockImpl(
 	const Config::FCConfig& config, const std::string& name, int input_size, Config::LinearConfig output_layer_config)
-		: config_(make_output_fc(config, std::move(output_layer_config)))
+		: config_(make_output_fc(make_fc_config(config), std::move(output_layer_config)))
 {
 	make_fc(input_size, name);
 }
