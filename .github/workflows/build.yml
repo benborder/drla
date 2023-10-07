@@ -1,0 +1,21 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - 'master'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/benborder/libtorch-docker:cpu-dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Check format
+        run: find . -regextype egrep -regex ".*\.(h|hpp|cpp)$" | xargs -I {} sh -c 'clang-format --dry-run --Werror {} && echo {}'
+      - name: Build and install library
+        run: |
+          cmake --preset ci
+          cmake --build --preset ci --target install --parallel $(grep -c ^processor /proc/cpuinfo)
