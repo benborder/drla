@@ -209,6 +209,11 @@ void Agent::run_episode(Model* model, const State& initial_state, int env, RunOp
 			step_data.visualisation = environment->get_visualisations();
 		}
 
+		if ((step + 1) >= options.max_steps)
+		{
+			step_data.env_data.state.episode_end = true;
+		}
+
 		stop = agent_callback_->env_step(step_data);
 		if (stop)
 		{

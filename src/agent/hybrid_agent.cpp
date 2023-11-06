@@ -182,6 +182,10 @@ void HybridAgent::train()
 
 					std::chrono::duration<double> duration =
 						std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start);
+					if (max_steps > 0 && step >= max_steps)
+					{
+						step_data.env_data.state.episode_end = true;
+					}
 
 					bool stop = agent_callback_->env_step(step_data) || step_data.env_data.state.episode_end;
 
