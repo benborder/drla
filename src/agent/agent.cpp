@@ -130,7 +130,7 @@ void Agent::run(const std::vector<State>& initial_state, RunOptions options)
 	}
 
 	// Create environments and allocate threads
-	ThreadPool threadpool(base_config_.env_count);
+	ThreadPool threadpool(std::min(env_count, base_config_.env_count));
 	make_environments(threadpool, env_count);
 
 	std::vector<EnvStepData> envs_data;
