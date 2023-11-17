@@ -111,7 +111,7 @@ void Agent::make_environments(ThreadPool& threadpool, int env_count)
 	int num_envs = environment_manager_->num_envs();
 	for (int i = 0, num_make = env_count - num_envs; i < num_make; i++)
 	{
-		threadpool.queue_task([this]() { environment_manager_->add_environment(); });
+		threadpool.queue_task([this]() { environment_manager_->add_environment(); }, num_envs + i);
 	}
 }
 
@@ -145,7 +145,7 @@ void Agent::run(const std::vector<State>& initial_state, RunOptions options)
 
 	for (int env = 0; env < env_count; env++)
 	{
-		threadpool.queue_task([&, env]() { run_episode(model_.get(), initial_state[env], env, options); });
+		threadpool.queue_task([&, env]() { run_episode(model_.get(), initial_state[env], env, options); }, env);
 	}
 
 	// Wait for all environments to finish running

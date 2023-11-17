@@ -19,8 +19,10 @@ class ThreadPool
 public:
 	/// @brief Initialises the threadpool with the number of threads specified, blocking until all threads are created and
 	/// waiting to run tasks.
-	/// @param threads The number of threads use. If 0 the number threads will be set to the number of cores available.
-	/// @param clamp_threads If set to true, the number of threads will be clamped to the number of cores available.
+	/// @param threads The number of threads use. If 0 the number threads will be set to the number of hardware threads
+	/// available.
+	/// @param clamp_threads If set to true, the number of threads will be clamped to the number of hardware threads
+	/// available.
 	/// @param max_queue_length The maximum allowed queue length. Adding further tasks to the queue will block
 	ThreadPool(size_t threads = 0, bool clamp_threads = true, size_t max_queue_length = 0)
 			: pending_(0), running_(false), max_queue_length_(max_queue_length)
@@ -37,9 +39,9 @@ public:
 		std::atomic_uint running_threads = 0;
 
 		running_ = true;
-		for (size_t i = 0; i < threads; ++i)
+		for (size_t id = 0; id < threads; ++id)
 		{
-			threads_.emplace_back([this, &running_threads]() {
+			threads_.emplace_back([this, &running_threads, id]() {
 				++running_threads;
 				while (running_)
 				{
@@ -52,8 +54,22 @@ public:
 						{
 							continue;
 						}
-						task = std::move(tasks_.front());
-						tasks_.pop_front();
+						bool aquired = false;
+						// get the first task in the queue that can be run on this thread
+						for (auto it = tasks_.begin(); it != tasks_.end(); ++it)
+						{
+							if (it->first < 0 || it->first == static_cast<int>(id))
+							{
+								task = std::move(it->second);
+								tasks_.erase(it);
+								aquired = true;
+								break;
+							}
+						}
+						if (!aquired)
+						{
+							continue;
+						}
 					}
 
 					// Execute the task
@@ -92,14 +108,14 @@ public:
 	/// max queue length is exceeded.
 	/// @param func The function to execute on a thread in the pool.
 	template <typename Func, typename = std::enable_if_t<std::is_void_v<std::invoke_result_t<std::decay_t<Func>>>>>
-	void queue_task(Func&& func)
+	void queue_task(Func&& func, int id = -1)
 	{
 		std::unique_lock lock(m_tasks_);
 		if (max_queue_length_ > 0 && tasks_.size() >= max_queue_length_)
 		{
 			cv_signal_.wait(lock, [&]() { return tasks_.size() < max_queue_length_; });
 		}
-		tasks_.push_back(std::move(func));
+		tasks_.push_back({id, std::move(func)});
 		++pending_;
 		cv_tasks_.notify_one();
 	}
@@ -112,19 +128,21 @@ public:
 		typename Func,
 		typename Res = std::invoke_result_t<std::decay_t<Func>>,
 		typename = std::enable_if_t<!std::is_void_v<Res>>>
-	[[nodiscard]] std::future<Res> queue_task(Func&& func)
+	[[nodiscard]] std::future<Res> queue_task(Func&& func, int id = -1)
 	{
 		auto task_promise = std::make_shared<std::promise<Res>>();
-		queue_task([func = std::move(func), task_promise] {
-			try
-			{
-				task_promise->set_value(func());
-			}
-			catch (...)
-			{
-				task_promise->set_exception(std::current_exception());
-			}
-		});
+		queue_task(
+			[func = std::move(func), task_promise] {
+				try
+				{
+					task_promise->set_value(func());
+				}
+				catch (...)
+				{
+					task_promise->set_exception(std::current_exception());
+				}
+			},
+			id);
 		return task_promise->get_future();
 	}
 
@@ -150,7 +168,7 @@ public:
 private:
 	std::mutex m_tasks_;
 	std::condition_variable cv_tasks_;
-	std::deque<std::function<void()>> tasks_;
+	std::deque<std::pair<int, std::function<void()>>> tasks_;
 
 	std::mutex m_signal_;
 	std::condition_variable cv_signal_;

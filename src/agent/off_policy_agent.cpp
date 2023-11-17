@@ -48,8 +48,13 @@ void OffPolicyAgent::train()
 		spdlog::error("The number of environments must be greater than 0!");
 		return;
 	}
-	ThreadPool threadpool(config_.env_count);
-	make_environments(threadpool, config_.env_count + (config_.eval_period > 0 ? 1 : 0));
+	ThreadPool threadpool(config_.env_count, config_.clamp_concurrent_envs);
+	make_environments(threadpool, config_.env_count);
+	if (config_.eval_period > 0)
+	{
+		// Make an evaluation environment
+		environment_manager_->add_environment();
+	}
 
 	std::vector<EnvStepData> envs_data;
 	envs_data.resize(config_.env_count);
@@ -60,13 +65,11 @@ void OffPolicyAgent::train()
 	// The environments are reset and initialised before creating the algorithm as the observation shape must be known
 	for (int env = 0; env < config_.env_count; env++)
 	{
-		threadpool.queue_task([&, env]() {
-			envs_data[env] = environment_manager_->get_environment(env)->reset(environment_manager_->get_initial_state());
-		});
-	}
-	if (config_.eval_period > 0)
-	{
-		envs_data.push_back({}); // Add an extra one for the eval env
+		threadpool.queue_task(
+			[&, env]() {
+				envs_data[env] = environment_manager_->get_environment(env)->reset(environment_manager_->get_initial_state());
+			},
+			env);
 	}
 
 	const Config::OffPolicyAlgorithm train_config = std::visit(
@@ -160,15 +163,19 @@ void OffPolicyAgent::train()
 	// Get first observation and state for all envs
 	for (int env = 0; env < config_.env_count; env++)
 	{
-		StepData reset_data;
-		reset_data.env = env;
-		reset_data.step = 0;
-		reset_data.env_data = std::move(envs_data[env]);
-		reset_data.predict_result = model->initial();
-		reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
-		auto agent_reset_config = agent_callback_->env_reset(reset_data);
-		enable_visualisations[env] = agent_reset_config.enable_visualisations;
-		buffer.add(reset_data);
+		threadpool.queue_task(
+			[&, env]() {
+				StepData reset_data;
+				reset_data.env = env;
+				reset_data.step = 0;
+				reset_data.env_data = std::move(envs_data[env]);
+				reset_data.predict_result = model->initial();
+				reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
+				auto agent_reset_config = agent_callback_->env_reset(reset_data);
+				enable_visualisations[env] = agent_reset_config.enable_visualisations;
+				buffer.add(reset_data);
+			},
+			env);
 	}
 
 	for (; timestep < train_config.total_timesteps; timestep++)
@@ -179,60 +186,62 @@ void OffPolicyAgent::train()
 			// Dispatch each environment on a seperate thread and run for horizon_steps environment steps
 			for (int env = 0; env < config_.env_count; env++)
 			{
-				threadpool.queue_task([&, env]() {
-					auto environment = environment_manager_->get_environment(env);
+				threadpool.queue_task(
+					[&, env]() {
+						auto environment = environment_manager_->get_environment(env);
 
-					StepData step_data;
-					step_data.env = env;
-					step_data.env_data.observation = buffer.get_observations_head(env);
-					step_data.predict_result.action = buffer.get_actions_head(env);
-					step_data.predict_result.state = buffer.get_state_head(env);
-					for (int step = 0; step < train_config.horizon_steps; step++)
-					{
-						step_data.step = step;
+						thread_local StepData step_data;
+						step_data.env = env;
+						step_data.env_data.observation = buffer.get_observations_head(env);
+						step_data.predict_result.action = buffer.get_actions_head(env);
+						step_data.predict_result.state = buffer.get_state_head(env);
+						for (int step = 0; step < train_config.horizon_steps; step++)
 						{
-							torch::NoGradGuard no_grad;
-							auto observations = convert_observations(step_data.env_data.observation, devices_.front());
-							step_data.predict_result = model->predict({std::move(observations), step_data.predict_result, false});
-						}
-						step_data.env_data = environment->step(step_data.predict_result.action);
+							step_data.step = step;
+							{
+								torch::NoGradGuard no_grad;
+								auto observations = convert_observations(step_data.env_data.observation, devices_.front());
+								step_data.predict_result = model->predict({std::move(observations), step_data.predict_result, false});
+							}
+							step_data.env_data = environment->step(step_data.predict_result.action);
 
-						step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
-						if (enable_visualisations[env])
-						{
-							step_data.visualisation = environment->get_visualisations();
-						}
-
-						bool stop = agent_callback_->env_step(step_data);
-						bool episode_end = step_data.env_data.state.episode_end;
-						buffer.add(step_data);
-						if (stop)
-						{
-							break;
-						}
-
-						if (episode_end)
-						{
-							// If the episode has ended reset the environment and call env_reset
-							StepData reset_data;
-							reset_data.env = env;
-							reset_data.env_data = environment->reset(environment_manager_->get_initial_state());
-							reset_data.predict_result = model->initial();
-							reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
+							step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
 							if (enable_visualisations[env])
 							{
-								reset_data.visualisation = environment->get_visualisations();
+								step_data.visualisation = environment->get_visualisations();
 							}
-							auto agent_reset_config = agent_callback_->env_reset(reset_data);
-							enable_visualisations[env] = agent_reset_config.enable_visualisations;
-							buffer.add(std::move(reset_data));
-							if (agent_reset_config.stop)
+
+							bool stop = agent_callback_->env_step(step_data);
+							bool episode_end = step_data.env_data.state.episode_end;
+							buffer.add(step_data);
+							if (stop)
 							{
 								break;
 							}
+
+							if (episode_end)
+							{
+								// If the episode has ended reset the environment and call env_reset
+								StepData reset_data;
+								reset_data.env = env;
+								reset_data.env_data = environment->reset(environment_manager_->get_initial_state());
+								reset_data.predict_result = model->initial();
+								reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
+								if (enable_visualisations[env])
+								{
+									reset_data.visualisation = environment->get_visualisations();
+								}
+								auto agent_reset_config = agent_callback_->env_reset(reset_data);
+								enable_visualisations[env] = agent_reset_config.enable_visualisations;
+								buffer.add(std::move(reset_data));
+								if (agent_reset_config.stop)
+								{
+									break;
+								}
+							}
 						}
-					}
-				});
+					},
+					env);
 			}
 
 			// Wait for all environments to finish their batch
@@ -260,56 +269,58 @@ void OffPolicyAgent::train()
 				// Dispatch each environment on a seperate thread and step it
 				for (int env = 0; env < config_.env_count; env++)
 				{
-					threadpool.queue_task([&, env]() {
-						auto environment = environment_manager_->get_environment(env);
+					threadpool.queue_task(
+						[&, env]() {
+							auto environment = environment_manager_->get_environment(env);
 
-						StepData step_data;
-						step_data.env = env;
-						step_data.step = step;
-						step_data.predict_result.action = timestep_data.predict_results.action[env];
-						step_data.predict_result.values = timestep_data.predict_results.values[env];
+							thread_local StepData step_data;
+							step_data.env = env;
+							step_data.step = step;
+							step_data.predict_result.action = timestep_data.predict_results.action[env];
+							step_data.predict_result.values = timestep_data.predict_results.values[env];
 
-						step_data.env_data = environment->step(step_data.predict_result.action);
+							step_data.env_data = environment->step(step_data.predict_result.action);
 
-						step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
-						if (enable_visualisations[env])
-						{
-							step_data.visualisation = environment->get_visualisations();
-						}
-
-						stop |= agent_callback_->env_step(step_data);
-						bool episode_end = step_data.env_data.state.episode_end;
-						timestep_data.rewards[env] = step_data.reward;
-						timestep_data.states[env] = step_data.env_data.state;
-						for (size_t i = 0; i < step_data.env_data.observation.size(); i++)
-						{
-							timestep_data.observations[i][env] = step_data.env_data.observation[i];
-						}
-						buffer.add(std::move(step_data));
-
-						if (episode_end)
-						{
-							// If the episode has ended reset the environment and call env_reset
-							StepData reset_data;
-							reset_data.env = env;
-							reset_data.env_data = environment->reset(environment_manager_->get_initial_state());
-							reset_data.predict_result = model->initial();
-							reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
+							step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
 							if (enable_visualisations[env])
 							{
-								reset_data.visualisation = environment->get_visualisations();
+								step_data.visualisation = environment->get_visualisations();
 							}
-							auto agent_reset_config = agent_callback_->env_reset(reset_data);
-							timestep_data.states[env] = reset_data.env_data.state;
-							for (size_t i = 0; i < reset_data.env_data.observation.size(); i++)
+
+							stop |= agent_callback_->env_step(step_data);
+							bool episode_end = step_data.env_data.state.episode_end;
+							timestep_data.rewards[env] = step_data.reward;
+							timestep_data.states[env] = step_data.env_data.state;
+							for (size_t i = 0; i < step_data.env_data.observation.size(); i++)
 							{
-								timestep_data.observations[i][env] = reset_data.env_data.observation[i];
+								timestep_data.observations[i][env] = step_data.env_data.observation[i];
 							}
-							buffer.add(std::move(reset_data));
-							enable_visualisations[env] = agent_reset_config.enable_visualisations;
-							stop |= agent_reset_config.stop;
-						}
-					});
+							buffer.add(std::move(step_data));
+
+							if (episode_end)
+							{
+								// If the episode has ended reset the environment and call env_reset
+								StepData reset_data;
+								reset_data.env = env;
+								reset_data.env_data = environment->reset(environment_manager_->get_initial_state());
+								reset_data.predict_result = model->initial();
+								reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
+								if (enable_visualisations[env])
+								{
+									reset_data.visualisation = environment->get_visualisations();
+								}
+								auto agent_reset_config = agent_callback_->env_reset(reset_data);
+								timestep_data.states[env] = reset_data.env_data.state;
+								for (size_t i = 0; i < reset_data.env_data.observation.size(); i++)
+								{
+									timestep_data.observations[i][env] = reset_data.env_data.observation[i];
+								}
+								buffer.add(std::move(reset_data));
+								enable_visualisations[env] = agent_reset_config.enable_visualisations;
+								stop |= agent_reset_config.stop;
+							}
+						},
+						env);
 				}
 				threadpool.wait_queue_empty();
 			}
@@ -349,8 +360,8 @@ void OffPolicyAgent::train()
 			options.deterministic = train_config.eval_determinisic;
 			options.max_steps = train_config.eval_max_steps;
 			options.enable_visualisations = true;
-			run_episode(
-				model.get(), environment_manager_->get_initial_state(), environment_manager_->num_envs() - 1, options);
+			int env_id = environment_manager_->num_envs() - 1;
+			run_episode(model.get(), environment_manager_->get_initial_state(), env_id, options);
 		}
 
 		agent_callback_->train_update(train_update_data);

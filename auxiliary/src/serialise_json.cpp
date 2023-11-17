@@ -920,22 +920,28 @@ void from_json(const nlohmann::json& json, Config::OnPolicyAgent& agent)
 {
 	from_json(json, static_cast<Config::AgentBase&>(agent));
 	agent.asynchronous_env << optional_input{json, "asynchronous_env"};
+	agent.clamp_concurrent_envs << optional_input{json, "clamp_concurrent_envs"};
 }
 
 void to_json(nlohmann::json& json, const Config::OnPolicyAgent& agent)
 {
 	to_json(json, static_cast<const Config::AgentBase&>(agent));
 	json["asynchronous_env"] = agent.asynchronous_env;
+	json["clamp_concurrent_envs"] = agent.clamp_concurrent_envs;
 }
 
 void from_json(const nlohmann::json& json, Config::OffPolicyAgent& agent)
 {
 	from_json(json, static_cast<Config::AgentBase&>(agent));
+	agent.asynchronous_env << optional_input{json, "asynchronous_env"};
+	agent.clamp_concurrent_envs << optional_input{json, "clamp_concurrent_envs"};
 }
 
 void to_json(nlohmann::json& json, const Config::OffPolicyAgent& agent)
 {
 	to_json(json, static_cast<const Config::AgentBase&>(agent));
+	json["asynchronous_env"] = agent.asynchronous_env;
+	json["clamp_concurrent_envs"] = agent.clamp_concurrent_envs;
 }
 
 void from_json(const nlohmann::json& json, Config::MCTSAgent& agent)

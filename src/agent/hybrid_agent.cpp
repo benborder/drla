@@ -77,175 +77,179 @@ void HybridAgent::train()
 	// Self play
 	for (int env = 0; env < config_.env_count; ++env)
 	{
-		threadpool.queue_task([&, env]() {
-			auto model_sync_reciever = model_syncer.create_reciever();
+		threadpool.queue_task(
+			[&, env]() {
+				auto model_sync_reciever = model_syncer.create_reciever();
 
-			torch::Device device{torch::kCPU};
-			{
-				const auto& gpus = train_config.self_play_gpus;
-				const bool use_all_gpus = !gpus.empty() && gpus.back() == -1;
-				const bool is_valid_gpu =
-					use_all_gpus || std::find(gpus.begin(), gpus.end(), env % config_.env_count) != gpus.end();
-				auto dev = std::find_if(devices_.begin(), devices_.end(), [&](const torch::Device& dev) {
-					return is_valid_gpu && dev.index() == env;
-				});
-				if (dev != devices_.end())
+				torch::Device device{torch::kCPU};
 				{
-					device = *dev;
-				}
-			}
-
-			// Wait for the initial model to be sent
-			auto model = model_sync_reciever->request();
-			if (device != torch::kCPU)
-			{
-				model = std::dynamic_pointer_cast<HybridModelInterface>(model->clone(device));
-			}
-			model->eval();
-
-			int total_timesteps = train_config.total_timesteps;
-			int max_steps = train_config.max_steps;
-			auto environment = environment_manager_->get_environment(env);
-			while (timestep < total_timesteps && training_)
-			{
-				const auto initial_state = environment_manager_->get_initial_state();
-				if (max_steps <= 0)
-				{
-					// Run the environment until it terminates (setting to max int should be sufficient)
-					max_steps = std::numeric_limits<int>::max();
-				}
-
-				// Get initial observation and state, running a env_step callback to update externally
-				StepData step_data;
-				step_data.eval_mode = false;
-				step_data.env = env;
-				step_data.step = 0;
-				step_data.env_data = environment->reset(initial_state);
-				step_data.predict_result = model->initial();
-				step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
-
-				auto agent_reset_config = agent_callback_->env_reset(step_data);
-				auto enable_visualisations = agent_reset_config.enable_visualisations;
-				if (enable_visualisations)
-				{
-					step_data.visualisation = environment->get_visualisations();
-				}
-				agent_callback_->env_step(step_data);
-				buffer.add(step_data);
-				m_env_stats_.lock();
-				++total_samples_;
-				m_env_stats_.unlock();
-
-				torch::NoGradGuard no_grad;
-
-				for (int step = 1; step <= max_steps && training_; step++)
-				{
-					if (timestep > 0 || (timestep == 0 && buffer.get_num_samples() > train_config.start_buffer_size))
+					const auto& gpus = train_config.self_play_gpus;
+					const bool use_all_gpus = !gpus.empty() && gpus.back() == -1;
+					const bool is_valid_gpu =
+						use_all_gpus || std::find(gpus.begin(), gpus.end(), env % config_.env_count) != gpus.end();
+					auto dev = std::find_if(devices_.begin(), devices_.end(), [&](const torch::Device& dev) {
+						return is_valid_gpu && dev.index() == env;
+					});
+					if (dev != devices_.end())
 					{
-						// update to the latest model from training (wait for it to be sent)
-						auto new_model = model_sync_reciever->request();
-						if (device != torch::kCPU)
-						{
-							model.reset(); // delete the old model before allocating the new one
-							// TODO: Ideally copy the weight from the CPU to the existing GPU model to avoid allocating a new model
-							// and destroying the old.
-							model = std::dynamic_pointer_cast<HybridModelInterface>(new_model->clone(device));
-						}
-						else
-						{
-							model = new_model;
-						}
-						model->eval();
-						if (!training_)
-						{
-							return;
-						}
+						device = *dev;
+					}
+				}
+
+				// Wait for the initial model to be sent
+				auto model = model_sync_reciever->request();
+				if (device != torch::kCPU)
+				{
+					model = std::dynamic_pointer_cast<HybridModelInterface>(model->clone(device));
+				}
+				model->eval();
+
+				int total_timesteps = train_config.total_timesteps;
+				int max_steps = train_config.max_steps;
+				auto environment = environment_manager_->get_environment(env);
+				while (timestep < total_timesteps && training_)
+				{
+					const auto initial_state = environment_manager_->get_initial_state();
+					if (max_steps <= 0)
+					{
+						// Run the environment until it terminates (setting to max int should be sufficient)
+						max_steps = std::numeric_limits<int>::max();
 					}
 
-					auto start = std::chrono::high_resolution_clock::now();
-
-					ModelInput input;
-					input.deterministic = false;
-					input.prev_output = step_data.predict_result;
-					// Add batch dim to observations, make sure its on the correct device and scale if using 8bit/int/char
-					input.observations = convert_observations(step_data.env_data.observation, device);
-
-					step_data.step = step;
-
-					step_data.predict_result = model->predict(input);
-					step_data.env_data = environment->step(step_data.predict_result.action);
+					// Get initial observation and state, running a env_step callback to update externally
+					StepData step_data;
+					step_data.eval_mode = false;
+					step_data.env = env;
+					step_data.step = 0;
+					step_data.env_data = environment->reset(initial_state);
+					step_data.predict_result = model->initial();
 					step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
+
+					auto agent_reset_config = agent_callback_->env_reset(step_data);
+					auto enable_visualisations = agent_reset_config.enable_visualisations;
 					if (enable_visualisations)
 					{
 						step_data.visualisation = environment->get_visualisations();
 					}
-
-					std::chrono::duration<double> duration =
-						std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start);
-					if (max_steps > 0 && step >= max_steps)
-					{
-						step_data.env_data.state.episode_end = true;
-					}
-
-					bool stop = agent_callback_->env_step(step_data) || step_data.env_data.state.episode_end;
-
-					buffer.add(step_data, timestep == 0);
-
-					std::lock_guard lock(m_env_stats_);
-					env_duration_stats_.update(duration.count());
+					agent_callback_->env_step(step_data);
+					buffer.add(step_data);
+					m_env_stats_.lock();
 					++total_samples_;
+					m_env_stats_.unlock();
 
-					if (stop)
+					torch::NoGradGuard no_grad;
+
+					for (int step = 1; step <= max_steps && training_; step++)
 					{
-						if (step_data.env_data.state.episode_end)
+						if (timestep > 0 || (timestep == 0 && buffer.get_num_samples() > train_config.start_buffer_size))
 						{
-							env_samples_stats_.update(step);
+							// update to the latest model from training (wait for it to be sent)
+							auto new_model = model_sync_reciever->request();
+							if (device != torch::kCPU)
+							{
+								model.reset(); // delete the old model before allocating the new one
+								// TODO: Ideally copy the weight from the CPU to the existing GPU model to avoid allocating a new model
+								// and destroying the old.
+								model = std::dynamic_pointer_cast<HybridModelInterface>(new_model->clone(device));
+							}
+							else
+							{
+								model = new_model;
+							}
+							model->eval();
+							if (!training_)
+							{
+								return;
+							}
 						}
-						break;
+
+						auto start = std::chrono::high_resolution_clock::now();
+
+						ModelInput input;
+						input.deterministic = false;
+						input.prev_output = step_data.predict_result;
+						// Add batch dim to observations, make sure its on the correct device and scale if using 8bit/int/char
+						input.observations = convert_observations(step_data.env_data.observation, device);
+
+						step_data.step = step;
+
+						step_data.predict_result = model->predict(input);
+						step_data.env_data = environment->step(step_data.predict_result.action);
+						step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
+						if (enable_visualisations)
+						{
+							step_data.visualisation = environment->get_visualisations();
+						}
+
+						std::chrono::duration<double> duration =
+							std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start);
+						if (max_steps > 0 && step >= max_steps)
+						{
+							step_data.env_data.state.episode_end = true;
+						}
+
+						bool stop = agent_callback_->env_step(step_data) || step_data.env_data.state.episode_end;
+
+						buffer.add(step_data, timestep == 0);
+
+						std::lock_guard lock(m_env_stats_);
+						env_duration_stats_.update(duration.count());
+						++total_samples_;
+
+						if (stop)
+						{
+							if (step_data.env_data.state.episode_end)
+							{
+								env_samples_stats_.update(step);
+							}
+							break;
+						}
 					}
 				}
-			}
-		});
+			},
+			env);
 	}
 
 	std::future<Environment*> eval_env_future;
 
 	if (config_.eval_period > 0)
 	{
-		eval_env_future = threadpool.queue_task([this]() { return environment_manager_->add_environment(); });
+		const int eval_env = environment_manager_->num_envs(); // the eval env is the last one
+		eval_env_future = threadpool.queue_task([this]() { return environment_manager_->add_environment(); }, eval_env);
 
 		// Evaluation. Run the agent every n train steps to evaluate its true performance
-		threadpool.queue_task([&]() {
-			std::shared_ptr<HybridModelInterface> model;
+		threadpool.queue_task(
+			[&, eval_env]() {
+				std::shared_ptr<HybridModelInterface> model;
 
-			auto model_sync_reciever = model_syncer.create_reciever();
+				auto model_sync_reciever = model_syncer.create_reciever();
 
-			// Wait for the initial model to be sent
-			model = model_sync_reciever->request();
-			model->eval();
+				// Wait for the initial model to be sent
+				model = model_sync_reciever->request();
+				model->eval();
 
-			// This also serves to block the thread until the env has loaded (in case its really slow to load).
-			eval_env_future.get();
-			int eval_env = environment_manager_->num_envs() - 1; // the eval env is the last one
+				// This also serves to block the thread until the env has loaded (in case its really slow to load).
+				eval_env_future.get();
 
-			RunOptions options;
-			options.max_steps = train_config.eval_max_steps;
-			options.deterministic = train_config.eval_determinisic;
-			options.enable_visualisations = true;
+				RunOptions options;
+				options.max_steps = train_config.eval_max_steps;
+				options.deterministic = train_config.eval_determinisic;
+				options.enable_visualisations = true;
 
-			int next_eval_run = config_.eval_period;
-			while (timestep < train_config.total_timesteps && training_)
-			{
-				// update to the latest model from training (if available)
-				if (auto new_model = model_sync_reciever->wait([&] { return !training_ || (timestep > next_eval_run); }))
+				int next_eval_run = config_.eval_period;
+				while (timestep < train_config.total_timesteps && training_)
 				{
-					model = *new_model;
-					model->eval();
-					next_eval_run += config_.eval_period;
-					Agent::run_episode(model.get(), environment_manager_->get_initial_state(), eval_env, options);
+					// update to the latest model from training (if available)
+					if (auto new_model = model_sync_reciever->wait([&] { return !training_ || (timestep > next_eval_run); }))
+					{
+						model = *new_model;
+						model->eval();
+						next_eval_run += config_.eval_period;
+						Agent::run_episode(model.get(), environment_manager_->get_initial_state(), eval_env, options);
+					}
 				}
-			}
-		});
+			},
+			eval_env);
 	}
 
 	// Setup model for training

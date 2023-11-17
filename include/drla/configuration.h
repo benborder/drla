@@ -75,6 +75,9 @@ struct OnPolicyAgent : public AgentBase
 	// When true each environment thread steps independently and individual model inference is performed. Use this when
 	// environments step time is highly inconsistent (high variance).
 	bool asynchronous_env = false;
+	// When enabled, the maximum number of envs that can run concurrently is clamped to the number of available hardware
+	// threads
+	bool clamp_concurrent_envs = true;
 };
 
 /// @brief Off Policy agent specific configuration
@@ -85,6 +88,9 @@ struct OffPolicyAgent : public AgentBase
 	// When true each environment thread steps independently and individual model inference is performed. Use this when
 	// environments step time is highly inconsistent (high variance).
 	bool asynchronous_env = false;
+	// When enabled, the maximum number of envs that can run concurrently is clamped to the number of available hardware
+	// threads
+	bool clamp_concurrent_envs = true;
 };
 
 /// @brief MCTS agent specific configuration
