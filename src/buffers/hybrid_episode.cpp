@@ -116,7 +116,8 @@ Observations HybridEpisode::get_observations(int step, torch::Device device) con
 			auto real_obs = obs.narrow(0, step, unroll_steps).to(device);
 			auto zeros_shape = real_obs.sizes().vec();
 			zeros_shape[0] = options_.unroll_steps - unroll_steps;
-			stacked_obs.push_back(torch::cat({real_obs, torch::zeros(zeros_shape, device)}, 0));
+			stacked_obs.push_back(torch::cat(
+				{real_obs, torch::zeros(zeros_shape, torch::TensorOptions(real_obs.scalar_type()).device(device))}, 0));
 		}
 	}
 	else

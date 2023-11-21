@@ -1,5 +1,7 @@
 #include "mcts_episode.h"
 
+#include "utils.h"
+
 #include <algorithm>
 
 using namespace drla;
@@ -76,22 +78,22 @@ Observations MCTSEpisode::get_observations(int step, torch::Device device) const
 	for (auto& obs : observations_)
 	{
 		auto dims = obs.dim();
-		auto obs_slice = obs.narrow(0, past_step, stack_size + 1);
-		auto action_slice = actions_.narrow(0, past_step + 1, stack_size);
+		auto obs_slice = convert_observation(obs.narrow(0, past_step, stack_size + 1), device, false);
+		auto action_slice = actions_.narrow(0, past_step + 1, stack_size).to(device);
 		auto shape = obs_slice.sizes().vec();
 		// Extend with zeros to make the full stack size if necessary
 		if (zero_size > 0)
 		{
 			shape[0] = zero_size;
-			obs_slice = torch::cat({obs_slice, torch::zeros(shape)});
-			action_slice = torch::cat({action_slice, torch::zeros({zero_size, action_slice.size(1)})});
+			obs_slice = torch::cat({obs_slice, torch::zeros(shape, device)});
+			action_slice = torch::cat({action_slice, torch::zeros({zero_size, action_slice.size(1)}, device)});
 		}
 		if (dims < 3)
 		{
 			// assume shape is [step, data]
 			if (options_.stack_size > 0)
 			{
-				stacked_obs.push_back(torch::cat({obs_slice.view({-1}), action_slice.view({-1})}, -1).to(device));
+				stacked_obs.push_back(torch::cat({obs_slice.view({-1}), action_slice.view({-1})}, -1));
 			}
 		}
 		else
@@ -105,8 +107,8 @@ Observations MCTSEpisode::get_observations(int step, torch::Device device) const
 			{
 				shape[0] = options_.stack_size;
 				// Assuming we can broadcast here [stack, height, width, ...] * [stack, 1]
-				auto actions = torch::ones(shape).mul(action_slice.div(options_.num_actions).unsqueeze(-1));
-				stacked_obs.push_back(torch::cat({obs_slice, actions}).to(device));
+				auto actions = torch::ones(shape, device).mul(action_slice.div(options_.num_actions).unsqueeze(-1));
+				stacked_obs.push_back(torch::cat({obs_slice, actions}));
 			}
 		}
 		if (options_.stack_size == 0)
@@ -115,7 +117,7 @@ Observations MCTSEpisode::get_observations(int step, torch::Device device) const
 			{
 				obs_slice.squeeze_(0);
 			}
-			stacked_obs.push_back(obs_slice.to(device));
+			stacked_obs.push_back(obs_slice);
 		}
 	}
 	return stacked_obs;
