@@ -8,7 +8,9 @@
 using namespace drla;
 
 HybridEpisode::HybridEpisode(std::vector<StepData> episode_data, HybridEpisodeOptions options)
-		: options_(options), episode_length_(static_cast<int>(episode_data.size() - 1))
+		: options_(options)
+		, episode_length_(static_cast<int>(episode_data.size() - 1))
+		, sequence_length_(options_.unroll_steps)
 {
 	assert(episode_length_ > 0);
 
@@ -102,27 +104,27 @@ int HybridEpisode::get_id() const
 
 Observations HybridEpisode::get_observations(int step, torch::Device device) const
 {
-	int unroll_steps = std::min(step + options_.unroll_steps, episode_length_ + 1) - step;
-	if (episode_length_ < options_.unroll_steps)
+	int sequence_len = std::min(step + sequence_length_, episode_length_ + 1) - step;
+	if (episode_length_ < sequence_length_)
 	{
-		unroll_steps = episode_length_;
+		sequence_len = episode_length_;
 	}
 
 	Observations stacked_obs;
-	if (unroll_steps < options_.unroll_steps)
+	if (sequence_len < sequence_length_)
 	{
 		for (auto& obs : observations_)
 		{
-			auto real_obs = obs.narrow(0, step, unroll_steps).to(device);
+			auto real_obs = obs.narrow(0, step, sequence_len).to(device);
 			auto zeros_shape = real_obs.sizes().vec();
-			zeros_shape[0] = options_.unroll_steps - unroll_steps;
+			zeros_shape[0] = sequence_length_ - sequence_len;
 			stacked_obs.push_back(torch::cat(
 				{real_obs, torch::zeros(zeros_shape, torch::TensorOptions(real_obs.scalar_type()).device(device))}, 0));
 		}
 	}
 	else
 	{
-		for (auto& obs : observations_) { stacked_obs.push_back(obs.narrow(0, step, options_.unroll_steps).to(device)); }
+		for (auto& obs : observations_) { stacked_obs.push_back(obs.narrow(0, step, sequence_length_).to(device)); }
 	}
 	return stacked_obs;
 }
@@ -134,7 +136,7 @@ ObservationShapes HybridEpisode::get_observation_shapes() const
 	{
 		// assume shape is [step, channels, ...]
 		auto dims = obs.sizes().vec();
-		dims[0] = options_.unroll_steps;
+		dims[0] = sequence_length_;
 		shapes.push_back(dims);
 	}
 	return shapes;
@@ -147,7 +149,7 @@ StateShapes HybridEpisode::get_state_shapes() const
 	{
 		// assume shape is [step, ..., ...]
 		auto dims = state.sizes().vec();
-		dims[0] = options_.unroll_steps;
+		dims[0] = sequence_length_;
 		shapes.push_back(dims);
 	}
 	return shapes;
@@ -168,11 +170,11 @@ torch::Tensor HybridEpisode::get_action(int step) const
 torch::Tensor HybridEpisode::compute_target_value(int index, torch::Tensor gamma) const
 {
 	torch::Tensor value;
-	auto bootstrap_index = index + options_.unroll_steps;
+	auto bootstrap_index = index + sequence_length_;
 	if (bootstrap_index < episode_length_)
 	{
 		auto prev_value = values_[bootstrap_index];
-		value = prev_value * gamma.pow(options_.unroll_steps);
+		value = prev_value * gamma.pow(sequence_length_);
 	}
 	else
 	{
@@ -222,7 +224,7 @@ float HybridEpisode::get_priority() const
 std::pair<int, float> HybridEpisode::sample_position(std::mt19937& gen, bool force_uniform) const
 {
 	std::lock_guard lock(m_updates_);
-	if (episode_length_ < options_.unroll_steps)
+	if (episode_length_ < sequence_length_)
 	{
 		return {0, priorities_[0]};
 	}
@@ -231,13 +233,13 @@ std::pair<int, float> HybridEpisode::sample_position(std::mt19937& gen, bool for
 	int ep_len = episode_length_ + (is_terminal_ ? 1 : 0);
 	if (force_uniform)
 	{
-		std::uniform_int_distribution<int> step_dist(0, ep_len - options_.unroll_steps);
+		std::uniform_int_distribution<int> step_dist(0, ep_len - sequence_length_);
 		step_index = step_dist(gen);
 	}
 	else
 	{
 		std::discrete_distribution<int> step_dist(priorities_.begin(), priorities_.end());
-		step_index = std::min(step_dist(gen) + options_.unroll_steps, ep_len) - options_.unroll_steps;
+		step_index = std::min(step_dist(gen) + sequence_length_, ep_len) - sequence_length_;
 	}
 	return {step_index, priorities_[step_index]};
 }
@@ -247,29 +249,29 @@ EpisodeSampleTargets HybridEpisode::make_target(int index, [[maybe_unused]] torc
 	EpisodeSampleTargets target;
 	{
 		auto dims = actions_.sizes().vec();
-		dims[0] = options_.unroll_steps;
+		dims[0] = sequence_length_;
 		target.actions = torch::empty(dims);
 	}
 	{
 		auto dims = rewards_.sizes().vec();
-		dims[0] = options_.unroll_steps;
+		dims[0] = sequence_length_;
 		target.rewards = torch::empty(dims);
 		target.values = torch::empty(dims);
 	}
 	for (auto& state : states_)
 	{
 		auto dims = state.sizes().vec();
-		dims[0] = options_.unroll_steps;
+		dims[0] = sequence_length_;
 		target.states.push_back(torch::empty(dims));
 	}
-	target.non_terminal = torch::ones({options_.unroll_steps});
+	target.non_terminal = torch::ones({sequence_length_});
 
 	// TODO: potential optimisation: if j < episode_length_ then use a direct narrow for rewards/states/actions. Not sure
 	// if will actually make a difference though
 
 	std::lock_guard lock(m_updates_);
 
-	for (int i = 0; i < options_.unroll_steps; ++i)
+	for (int i = 0; i < sequence_length_; ++i)
 	{
 		int j = index + i;
 		if (j < episode_length_)
@@ -329,4 +331,9 @@ void HybridEpisode::update_states(HiddenStates& states)
 int HybridEpisode::length() const
 {
 	return episode_length_;
+}
+
+void HybridEpisode::set_sequence_length(int length)
+{
+	sequence_length_ = length;
 }

@@ -199,3 +199,7 @@ int OffPolicyEpisode::length() const
 {
 	return episode_length_;
 }
+
+void OffPolicyEpisode::set_sequence_length([[maybe_unused]] int length)
+{
+}

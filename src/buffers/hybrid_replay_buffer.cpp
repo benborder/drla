@@ -122,8 +122,20 @@ HybridBatch HybridReplayBuffer::sample(int batch_size, torch::Device device) con
 {
 	HybridBatch batch;
 
+	auto episodes = sample_episodes(batch_size, !options_.use_per);
+	int max_length = 0;
+	for (auto& ep : episodes)
+	{
+		int len = ep.first->length();
+		if (len > max_length)
+		{
+			max_length = len;
+		}
+	}
+	int sequence_len = std::min(max_length, options_.unroll_steps);
+
 	const auto& action_space_shape = options_.action_space.shape;
-	std::vector<int64_t> action_shape{batch_size, options_.unroll_steps};
+	std::vector<int64_t> action_shape{batch_size, sequence_len};
 	c10::ScalarType action_type;
 	if (is_action_discrete(options_.action_space))
 	{
@@ -136,8 +148,9 @@ HybridBatch HybridReplayBuffer::sample(int batch_size, torch::Device device) con
 		action_shape.push_back(std::accumulate(action_space_shape.begin(), action_space_shape.end(), 0));
 	}
 	batch.indicies.reserve(batch_size);
-	auto episodes = sample_episodes(batch_size, !options_.use_per);
+
 	const auto& ep = episodes.front().first;
+	ep->set_sequence_length(sequence_len);
 	auto observation_shapes = ep->get_observation_shapes();
 	for (auto& obs_shape : observation_shapes)
 	{
@@ -151,15 +164,16 @@ HybridBatch HybridReplayBuffer::sample(int batch_size, torch::Device device) con
 		batch.states.push_back(torch::empty(sshape, device));
 	}
 	batch.action = torch::empty(action_shape, torch::TensorOptions(device).dtype(action_type));
-	batch.reward = torch::empty({batch_size, options_.unroll_steps, options_.reward_shape}, device);
-	batch.values = torch::empty({batch_size, options_.unroll_steps, options_.reward_shape}, device);
-	batch.non_terminal = torch::empty({batch_size, options_.unroll_steps}, device);
+	batch.reward = torch::empty({batch_size, sequence_len, options_.reward_shape}, device);
+	batch.values = torch::empty({batch_size, sequence_len, options_.reward_shape}, device);
+	batch.non_terminal = torch::empty({batch_size, sequence_len}, device);
 	batch.weight = torch::empty({batch_size}, device);
-	batch.is_first = torch::zeros({batch_size, options_.unroll_steps}, device);
+	batch.is_first = torch::zeros({batch_size, sequence_len}, device);
 
 	int batch_index = 0;
 	for (const auto& [episode, episode_prob] : episodes)
 	{
+		episode->set_sequence_length(sequence_len);
 		auto [index, probs] = episode->sample_position(gen_, !options_.use_per);
 		auto target = episode->make_target(index, gamma_);
 		auto sample_obs = episode->get_observations(index, device);

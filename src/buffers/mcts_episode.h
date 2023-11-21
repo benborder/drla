@@ -38,6 +38,7 @@ public:
 	void update_values(torch::Tensor values) override;
 	void update_states(HiddenStates& states) override;
 	int length() const override;
+	void set_sequence_length(int length) override;
 
 private:
 	const MCTSEpisodeOptions options_;

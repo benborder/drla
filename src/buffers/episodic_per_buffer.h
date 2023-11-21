@@ -41,6 +41,7 @@ public:
 	virtual void update_values(torch::Tensor values) = 0;
 	virtual void update_states(HiddenStates& states) = 0;
 	virtual int length() const = 0;
+	virtual void set_sequence_length(int length) = 0;
 };
 
 struct EpisodicPERBufferOptions

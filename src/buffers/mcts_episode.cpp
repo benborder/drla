@@ -305,3 +305,7 @@ int MCTSEpisode::length() const
 {
 	return episode_length_;
 }
+
+void MCTSEpisode::set_sequence_length([[maybe_unused]] int length)
+{
+}
