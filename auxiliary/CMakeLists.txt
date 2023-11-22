@@ -19,6 +19,7 @@ add_library(drla_aux STATIC
 	src/env_manager.cpp
 	src/metrics_logger.cpp
 	src/serialise_json.cpp
+	src/tensor_to_image.cpp
 )
 add_library(drla::aux ALIAS drla_aux)
 
