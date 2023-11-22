@@ -154,7 +154,7 @@ void TrainingMetricsLogger::add_image(std::string group, std::string name, torch
 		return;
 	}
 	std::string img(std::make_move_iterator(png.begin()), std::make_move_iterator(png.end()));
-	tb_logger_->add_image(group + "/" + name, current_timestep_, img, obs_img.height, obs_img.width, obs_img.channels);
+	tb_logger_->add_image(group + "/" + name, current_timestep_, img, obs_img.height, obs_img.width, 3);
 }
 
 void TrainingMetricsLogger::add_animation(std::string group, std::string name, torch::Tensor images, int speed)
@@ -173,7 +173,7 @@ void TrainingMetricsLogger::add_animation(std::string group, std::string name, t
 	const int c = std::min<int>(sz[2], 3); // channels
 	const int h = sz[3];									 // width
 	const int w = sz[4];									 // height
-	if (gif_enc.open(gif_path_, w, h, 10, true, 0, b * s * c * h * w))
+	if (gif_enc.open(gif_path_, w, h, 10, true, 0, 3 * b * s * h * w))
 	{
 		auto batched_img_seq = images.cpu();
 		for (int i = 0; i < sz[1]; ++i)
@@ -192,7 +192,7 @@ void TrainingMetricsLogger::add_animation(std::string group, std::string name, t
 		std::string img = ss.str();
 		ss.str("");
 		fin.close();
-		tb_logger_->add_image(group + "/" + name, current_timestep_, img, h, w, c);
+		tb_logger_->add_image(group + "/" + name, current_timestep_, img, h, w, 3);
 		std::filesystem::remove(gif_path_);
 	}
 	else
@@ -208,8 +208,7 @@ void TrainingMetricsLogger::add_animation(
 	const auto sz = images.front().sizes();
 	const int w = sz[1];
 	const int h = sz[0];
-	const int c = sz[2];
-	if (gif_enc.open(gif_path_, w, h, 10, true, 0, w * h * c * images.size()))
+	if (gif_enc.open(gif_path_, w, h, 10, true, 0, 3 * w * h * images.size()))
 	{
 		for (auto& image : images)
 		{
@@ -225,7 +224,7 @@ void TrainingMetricsLogger::add_animation(
 		std::string img = ss.str();
 		ss.str("");
 		fin.close();
-		tb_logger_->add_image(group + "/" + name, current_timestep_, img, h, w, c);
+		tb_logger_->add_image(group + "/" + name, current_timestep_, img, h, w, 3);
 		std::filesystem::remove(gif_path_);
 	}
 	else
