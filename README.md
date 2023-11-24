@@ -31,8 +31,11 @@ The library has been designed to have minimal dependencies with the only depende
 Additional auxillary functionality such as config json serialisation and helper classes require the following libraries:
 
 - [nlohmann_json](https://github.com/nlohmann/json) (build)
+- [tensorboard_logger](https://github.com/RustingSword/tensorboard_logger) (build)
+- [lodepng](https://github.com/lvandeve/lodepng) (build)
+- [GifEncoder](https://github.com/xiaozhuai/GifEncoder) (build)
 
-## Installing
+## Building and Using
 
 Install libtorch at `/usr/local/libtorch` and ensure cmake is also installed. There are two methods for including the library in your cmake project.
 
@@ -40,6 +43,8 @@ Install libtorch at `/usr/local/libtorch` and ensure cmake is also installed. Th
 2. Using FetchContent to obtain the library as a subproject.
 
 For both options make sure to add `drla::drla` to your projects `target_link_libraries`. To use the auxillary functionality also add the `drla::aux` target.
+
+Set `BUILD_AUXILIARY=OFF` in cmake to skip building the auxiliary library.
 
 ### 1. Install and find_package
 
