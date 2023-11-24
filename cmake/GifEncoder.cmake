@@ -9,4 +9,7 @@ else()
 		GIT_TAG        master
 	)
 	FetchContent_MakeAvailable(GifEncoder)
+	# Exclude from the ALL target
+	set_target_properties(egif_demo PROPERTIES EXCLUDE_FROM_ALL TRUE)
+	set_target_properties(egif_test PROPERTIES EXCLUDE_FROM_ALL TRUE)
 endif()
