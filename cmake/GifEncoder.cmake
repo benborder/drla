@@ -6,7 +6,7 @@ else()
 	FetchContent_Declare(
 		GifEncoder
 		GIT_REPOSITORY https://github.com/xiaozhuai/GifEncoder.git
-		GIT_TAG        master
+		GIT_TAG        ea3b353b00e6268d7e9cb6650ec8d21369370f02
 	)
 	FetchContent_MakeAvailable(GifEncoder)
 	# Exclude from the ALL target

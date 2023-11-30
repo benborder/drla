@@ -6,7 +6,7 @@ else()
 	FetchContent_Declare(
 		lodepng
 		GIT_REPOSITORY https://github.com/lvandeve/lodepng.git
-		GIT_TAG        master
+		GIT_TAG        d398e0f10d152a5d17fa30463474dc9f56523f9c
 	)
 	FetchContent_MakeAvailable(lodepng)
 
