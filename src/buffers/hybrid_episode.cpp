@@ -13,6 +13,7 @@ HybridEpisode::HybridEpisode(std::vector<StepData> episode_data, HybridEpisodeOp
 		, sequence_length_(options_.unroll_steps)
 {
 	assert(episode_length_ > 0);
+	torch::NoGradGuard no_grad;
 
 	const auto& initial_step_data = episode_data.at(0);
 	std::vector<int64_t> epsz{episode_length_ + 1};
