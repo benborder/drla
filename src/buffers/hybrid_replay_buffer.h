@@ -36,6 +36,15 @@ class HybridReplayBuffer final : public EpisodicPERBuffer
 public:
 	HybridReplayBuffer(std::vector<float> gamma, int n_envs, EpisodicPERBufferOptions options);
 
+	/// @brief Flushes the buffer's cached step data, moving any cached data in new_episodes_ to inprogress_episodes_
+	/// where possible
+	void flush_cache();
+
+	/// @brief Adds an in-progress episode
+	/// @param episode The in-progress hybrid episode to add
+	/// @param env The environment id
+	void add_in_progress_episode(std::shared_ptr<HybridEpisode> episode, int env);
+
 	/// @brief Adds a step to the buffer for its associated env. While the episode is incomplete the all steps reside in a
 	/// temporary location. Episodes with length greater than the unroll/sequence size are also used for training.
 	/// @param step_data The data to add from a policy and env step

@@ -125,6 +125,7 @@ void HybridAgent::train()
 					step_data.predict_result = model->initial();
 					step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
 
+					bool buffer_ready = buffer.get_num_samples() >= train_config.start_buffer_size;
 					auto agent_reset_config = agent_callback_->env_reset(step_data);
 					auto enable_visualisations = agent_reset_config.enable_visualisations;
 					if (enable_visualisations)
@@ -132,7 +133,7 @@ void HybridAgent::train()
 						step_data.visualisation = environment->get_visualisations();
 					}
 					agent_callback_->env_step(step_data);
-					buffer.add(step_data);
+					buffer.add(step_data, !buffer_ready);
 					m_env_stats_.lock();
 					++total_samples_;
 					m_env_stats_.unlock();
@@ -141,7 +142,8 @@ void HybridAgent::train()
 
 					for (int step = 1; step <= max_steps && training_; step++)
 					{
-						if (timestep > 0 || (timestep == 0 && buffer.get_num_samples() > train_config.start_buffer_size))
+						buffer_ready = buffer.get_num_samples() >= train_config.start_buffer_size;
+						if (timestep > 0 || (timestep == 0 && buffer_ready))
 						{
 							// update to the latest model from training (wait for it to be sent)
 							auto new_model = model_sync_reciever->request();
@@ -190,7 +192,7 @@ void HybridAgent::train()
 
 						bool stop = agent_callback_->env_step(step_data) || step_data.env_data.state.episode_end;
 
-						buffer.add(step_data, timestep == 0);
+						buffer.add(step_data, !buffer_ready);
 
 						std::lock_guard lock(m_env_stats_);
 						env_duration_stats_.update(duration.count());
@@ -369,6 +371,8 @@ void HybridAgent::train()
 		spdlog::fmt_lib::print(
 			"\rCompleted {}/{} samples\n", train_config.start_buffer_size, train_config.start_buffer_size);
 	}
+
+	buffer.flush_cache();
 
 	// Run train loop
 	for (; timestep < train_config.total_timesteps; ++timestep)

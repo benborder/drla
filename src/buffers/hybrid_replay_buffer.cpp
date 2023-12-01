@@ -13,6 +13,28 @@ HybridReplayBuffer::HybridReplayBuffer(std::vector<float> gamma, int n_envs, Epi
 	inprogress_episodes_.resize(n_envs);
 }
 
+void HybridReplayBuffer::flush_cache()
+{
+	HybridEpisodeOptions opt = {static_cast<int>(flatten(options_.action_space.shape)), options_.unroll_steps};
+	for (size_t env = 0; env < new_episodes_.size(); ++env)
+	{
+		auto& ep = new_episodes_.at(env);
+		if (static_cast<int>(ep.size()) > options_.unroll_steps)
+		{
+			add_in_progress_episode(std::make_shared<HybridEpisode>(std::move(ep), opt), env);
+		}
+	}
+}
+
+void HybridReplayBuffer::add_in_progress_episode(std::shared_ptr<HybridEpisode> episode, int env)
+{
+	m_episodes_.lock();
+	episode->set_id(total_episodes_++);
+	m_episodes_.unlock();
+	episode->init_priorities(gamma_, options_.per_alpha);
+	inprogress_episodes_.at(env) = std::move(episode);
+}
+
 void HybridReplayBuffer::add(StepData step_data, bool force_cache)
 {
 	int env = step_data.env;
@@ -22,8 +44,7 @@ void HybridReplayBuffer::add(StepData step_data, bool force_cache)
 	// At least a min of 'unroll_steps' must exist before creating a HybridEpisode in inprogress_episodes_
 	if (step <= options_.unroll_steps || force_cache || static_cast<int>(ep.size()) > options_.unroll_steps)
 	{
-		static auto opt =
-			HybridEpisodeOptions{static_cast<int>(flatten(options_.action_space.shape)), options_.unroll_steps};
+		static HybridEpisodeOptions opt = {static_cast<int>(flatten(options_.action_space.shape)), options_.unroll_steps};
 		ep.push_back(std::move(step_data));
 		if (episode_end)
 		{
@@ -31,12 +52,7 @@ void HybridReplayBuffer::add(StepData step_data, bool force_cache)
 		}
 		else if (step >= options_.unroll_steps && !force_cache)
 		{
-			auto episode = std::make_shared<HybridEpisode>(std::move(ep), opt);
-			m_episodes_.lock();
-			episode->set_id(total_episodes_++);
-			m_episodes_.unlock();
-			episode->init_priorities(gamma_, options_.per_alpha);
-			inprogress_episodes_.at(env) = std::move(episode);
+			add_in_progress_episode(std::make_shared<HybridEpisode>(std::move(ep), opt), env);
 		}
 	}
 	else
