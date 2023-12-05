@@ -1,6 +1,7 @@
 #include "episodic_per_buffer.h"
 
 #include "functions.h"
+#include "tensor_storage.h"
 
 #include <spdlog/spdlog.h>
 
@@ -22,6 +23,10 @@ EpisodicPERBuffer::EpisodicPERBuffer(std::vector<float> gamma, EpisodicPERBuffer
 	}
 	gamma_ = torch::from_blob(gamma.data(), {options_.reward_shape}).clone();
 	episodes_.reserve(options_.buffer_size);
+	if (!options_.path.empty())
+	{
+		std::filesystem::create_directories(options_.path);
+	}
 }
 
 void EpisodicPERBuffer::add_episode(std::shared_ptr<Episode> episode)
@@ -30,6 +35,11 @@ void EpisodicPERBuffer::add_episode(std::shared_ptr<Episode> episode)
 	{
 		spdlog::error("Episode length must be non zero. The episode has not been added to the buffer.");
 		return;
+	}
+
+	if (!options_.path.empty() && episode->get_path().empty())
+	{
+		episode->save(options_.path);
 	}
 
 	std::lock_guard lock(m_episodes_);
@@ -138,4 +148,25 @@ int EpisodicPERBuffer::get_reanalysed_count() const
 torch::Tensor EpisodicPERBuffer::get_gamma() const
 {
 	return gamma_;
+}
+
+void EpisodicPERBuffer::load(const std::filesystem::path& path)
+{
+	for (const auto& entry : std::filesystem::directory_iterator(path))
+	{
+		if (entry.is_directory())
+		{
+			std::string directory_name = entry.path().filename().string();
+			// Check if the directory name matches the pattern "episode_*"
+			if (directory_name.compare(0, 8, "episode_") == 0)
+			{
+				add_episode(load_episode(entry.path()));
+			}
+		}
+	}
+}
+
+void EpisodicPERBuffer::set_state_shapes(const StateShapes& shapes)
+{
+	state_shapes_ = shapes;
 }

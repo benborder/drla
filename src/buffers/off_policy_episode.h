@@ -1,7 +1,8 @@
-#include "episodic_per_buffer.h"
+#include "episode.h"
 
 #include <torch/torch.h>
 
+#include <filesystem>
 #include <vector>
 
 namespace drla
@@ -9,6 +10,7 @@ namespace drla
 
 struct OffPolicyEpisodeOptions
 {
+	std::string name;
 	int num_actions;
 };
 
@@ -17,7 +19,7 @@ class OffPolicyEpisode final : public Episode
 {
 public:
 	OffPolicyEpisode(std::vector<StepData> episode_data, OffPolicyEpisodeOptions options);
-	// TODO: add another constructor for loading from file
+	OffPolicyEpisode(const std::filesystem::path& path, const StateShapes& state_shapes, OffPolicyEpisodeOptions options);
 
 	void set_id(int id) override;
 	int get_id() const override;
@@ -33,11 +35,14 @@ public:
 	void update_states(HiddenStates& states) override;
 	int length() const override;
 	void set_sequence_length(int length) override;
+	void save(const std::filesystem::path& path) override;
+	const std::filesystem::path& get_path() const override;
 
 private:
 	const OffPolicyEpisodeOptions options_;
-	const int episode_length_;
+	int episode_length_;
 	int id_ = -1;
+	std::filesystem::path saved_path_;
 
 	mutable std::mutex m_updates_;
 

@@ -1,6 +1,7 @@
 #include "mcts_replay_buffer.h"
 
 #include "functions.h"
+#include "mcts_episode.h"
 #include "utils.h"
 
 using namespace drla;
@@ -98,4 +99,10 @@ void MCTSReplayBuffer::reanalyse(std::shared_ptr<MCTSModelInterface> model)
 	auto prediction = model->predict(input);
 	episode->update_values(model->support_to_scalar(prediction.values));
 	++reanalysed_count_;
+}
+
+std::shared_ptr<Episode> MCTSReplayBuffer::load_episode(const std::filesystem::path& path)
+{
+	MCTSEpisodeOptions opt = {path.stem(), static_cast<int>(flatten(options_.action_space.shape))};
+	return std::make_shared<MCTSEpisode>(path, opt);
 }

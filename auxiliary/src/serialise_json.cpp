@@ -112,6 +112,8 @@ void from_json(const nlohmann::json& json, TrainAlgorithm& train_algorithm)
 	train_algorithm.max_steps << optional_input{json, "max_steps"};
 	train_algorithm.eval_max_steps << optional_input{json, "eval_max_steps"};
 	train_algorithm.eval_determinisic << optional_input{json, "eval_determinisic"};
+	train_algorithm.buffer_load_path << optional_input{json, "buffer_load_path"};
+	train_algorithm.buffer_save_path << optional_input{json, "buffer_save_path"};
 }
 
 void to_json(nlohmann::json& json, const TrainAlgorithm& train_algorithm)
@@ -121,6 +123,8 @@ void to_json(nlohmann::json& json, const TrainAlgorithm& train_algorithm)
 	json["max_steps"] = train_algorithm.max_steps;
 	json["eval_max_steps"] = train_algorithm.eval_max_steps;
 	json["eval_determinisic"] = train_algorithm.eval_determinisic;
+	json["buffer_load_path"] = train_algorithm.buffer_load_path;
+	json["buffer_save_path"] = train_algorithm.buffer_save_path;
 }
 
 void from_json(const nlohmann::json& json, OnPolicyAlgorithm& on_policy_algorithm)

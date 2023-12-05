@@ -9,6 +9,7 @@
 #include "model.h"
 #include "muzero.h"
 #include "muzero_model.h"
+#include "print_time.h"
 #include "random_model.h"
 #include "sender_reciever.h"
 #include "threadpool.h"
@@ -75,8 +76,20 @@ void MCTSAgent::train()
 		train_config.buffer_size,
 		reward_shape,
 		train_config.unroll_steps + 1, // add 1 to include the current step
+		env_config.action_space,
+		train_config.per_alpha > 0.0F,
 		train_config.per_alpha,
-		env_config.action_space};
+	};
+
+	if (!train_config.buffer_save_path.empty())
+	{
+		auto path = std::filesystem::path(train_config.buffer_save_path);
+		if (path.is_relative())
+		{
+			path = data_path_ / path;
+		}
+		buffer_options.path = path;
+	}
 
 	MCTSReplayBuffer buffer(config_.gamma, buffer_options);
 
@@ -207,6 +220,31 @@ void MCTSAgent::train()
 		});
 	}
 
+	// Load episodes into the buffer if requested and they exist
+	if (!train_config.buffer_load_path.empty())
+	{
+		auto path = std::filesystem::path(train_config.buffer_load_path);
+		if (path.is_relative())
+		{
+			path = data_path_ / path;
+		}
+		if (std::filesystem::exists(path))
+		{
+			threadpool.queue_task([&, path = std::move(path)]() {
+				spdlog::info("Loading episodes into replay buffer");
+				buffer.load(path);
+				spdlog::info(
+					"Loaded {} episodes totalling {} samples into replay buffer.",
+					buffer.get_num_episodes(),
+					buffer.get_num_samples());
+			});
+		}
+		else
+		{
+			spdlog::warn("Unable to load episodes into buffer: No episode data exists at '{}'", path.string());
+		}
+	}
+
 	// Setup model for training
 	switch (config_.model_type)
 	{
@@ -310,14 +348,16 @@ void MCTSAgent::train()
 	model_syncer.send(std::dynamic_pointer_cast<MCTSModelInterface>(model_->clone(torch::kCPU)));
 
 	// Wait for the min number of episodes to be available in the buffer
+	if (buffer.get_num_episodes() < train_config.start_buffer_size)
 	{
 		using namespace std::chrono_literals;
-		spdlog::info("Waiting for buffer to reach min required size");
+		spdlog::info("Waiting for replay buffer to reach min required size");
 		while (buffer.get_num_episodes() < train_config.start_buffer_size)
 		{
 			spdlog::fmt_lib::print("\rCompleted {}/{} episodes", buffer.get_num_episodes(), train_config.start_buffer_size);
-			std::this_thread::sleep_for(200ms);
+			std::this_thread::sleep_for(10ms);
 		}
+		spdlog::fmt_lib::print("\rCompleted {}/{} episodes\n", buffer.get_num_episodes(), train_config.start_buffer_size);
 	}
 
 	// Run train loop
@@ -330,6 +370,8 @@ void MCTSAgent::train()
 		auto start = std::chrono::steady_clock::now();
 
 		train_update_data.metrics = algorithm->update(timestep);
+		train_update_data.metrics.add(
+			{"buffer_size", TrainResultType::kBufferStats, static_cast<double>(buffer.get_num_samples())});
 		train_update_data.metrics.add(
 			{"reanalyse_count", TrainResultType::kBufferStats, static_cast<double>(buffer.get_reanalysed_count())});
 		model_syncer.send(std::dynamic_pointer_cast<MCTSModelInterface>(model_->clone(torch::kCPU)));
@@ -433,6 +475,7 @@ std::unique_ptr<MCTSEpisode> MCTSAgent::run_episode(
 
 	auto environment = environment_manager_->get_environment(env);
 	StepData step_data;
+	step_data.name = get_time();
 	step_data.eval_mode = eval_mode;
 	step_data.env = env;
 	step_data.step = 0;
@@ -489,6 +532,7 @@ std::unique_ptr<MCTSEpisode> MCTSAgent::run_episode(
 
 	const auto& train_config = std::get<Config::MuZero::TrainConfig>(config_.train_algorithm);
 	MCTSEpisodeOptions ep_options;
+	ep_options.name = step_data.name;
 	ep_options.num_actions = static_cast<int>(flatten(environment->get_configuration().action_space.shape));
 	ep_options.td_steps = train_config.td_steps;
 	ep_options.unroll_steps = train_config.unroll_steps + 1; // add 1 to include the current step

@@ -1,7 +1,10 @@
 #include "hybrid_episode.h"
 
 #include "functions.h"
+#include "tensor_storage.h"
 #include "utils.h"
+
+#include <spdlog/spdlog.h>
 
 #include <algorithm>
 
@@ -51,6 +54,22 @@ HybridEpisode::HybridEpisode(std::vector<StepData> episode_data, HybridEpisodeOp
 	}
 }
 
+HybridEpisode::HybridEpisode(
+	const std::filesystem::path& path, const StateShapes& state_shapes, HybridEpisodeOptions options)
+		: options_(options)
+		, episode_length_(0)
+		, sequence_length_(options_.unroll_steps)
+		, is_terminal_(true)
+		, saved_path_(path)
+{
+	actions_ = load_tensor(path / "actions.bin");
+	rewards_ = load_tensor(path / "rewards.bin");
+	values_ = load_tensor(path / "values.bin");
+	observations_ = load_tensor_vector(path, "observations");
+	for (auto& shape : state_shapes) { states_.push_back(torch::zeros(std::vector<int64_t>{actions_.size(0)} + shape)); }
+	episode_length_ = static_cast<int>(values_.size(0));
+}
+
 void HybridEpisode::allocate_reserve(torch::Tensor& x)
 {
 	constexpr int kAllocateAhead = 100;
@@ -65,6 +84,7 @@ void HybridEpisode::allocate_reserve(torch::Tensor& x)
 
 void HybridEpisode::add_step(StepData&& data)
 {
+	assert(!is_terminal_);
 	std::lock_guard lock(m_updates_);
 
 	for (auto& obs : observations_) { allocate_reserve(obs); }
@@ -337,4 +357,29 @@ int HybridEpisode::length() const
 void HybridEpisode::set_sequence_length(int length)
 {
 	sequence_length_ = length;
+}
+
+void HybridEpisode::save(const std::filesystem::path& path)
+{
+	if (!std::filesystem::exists(path))
+	{
+		spdlog::error("Unable to save episode data: The path '{}' does not exist.", path.string());
+		return;
+	}
+	auto ep_path = path / ("episode_" + options_.name);
+	std::filesystem::create_directory(ep_path);
+
+	save_tensor(actions_, ep_path / "actions.bin");
+	save_tensor(rewards_, ep_path / "rewards.bin");
+	save_tensor(values_, ep_path / "values.bin");
+	for (size_t i = 0; i < observations_.size(); ++i)
+	{
+		save_tensor(observations_[i], ep_path / (std::string{"observations"} + std::to_string(i) + ".bin"));
+	}
+	saved_path_ = ep_path;
+}
+
+const std::filesystem::path& HybridEpisode::get_path() const
+{
+	return saved_path_;
 }

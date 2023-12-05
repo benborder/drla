@@ -8,6 +8,7 @@
 #include "hybrid_episode.h"
 #include "hybrid_replay_buffer.h"
 #include "model.h"
+#include "print_time.h"
 #include "random_model.h"
 #include "sender_reciever.h"
 #include "threadpool.h"
@@ -70,7 +71,23 @@ void HybridAgent::train()
 	Sender<std::shared_ptr<HybridModelInterface>> model_syncer;
 
 	EpisodicPERBufferOptions buffer_options = {
-		train_config.buffer_size, reward_shape, train_config.unroll_steps, train_config.per_alpha, env_config.action_space};
+		train_config.buffer_size,
+		reward_shape,
+		train_config.unroll_steps,
+		env_config.action_space,
+		train_config.use_per,
+		train_config.per_alpha,
+	};
+
+	if (!train_config.buffer_save_path.empty())
+	{
+		auto path = std::filesystem::path(train_config.buffer_save_path);
+		if (path.is_relative())
+		{
+			path = data_path_ / path;
+		}
+		buffer_options.path = path;
+	}
 
 	HybridReplayBuffer buffer(config_.gamma, config_.env_count, buffer_options);
 
@@ -118,6 +135,7 @@ void HybridAgent::train()
 
 					// Get initial observation and state, running a env_step callback to update externally
 					StepData step_data;
+					step_data.name = get_time();
 					step_data.eval_mode = false;
 					step_data.env = env;
 					step_data.step = 0;
@@ -288,6 +306,32 @@ void HybridAgent::train()
 		model_->to(device);
 	}
 
+	// Load episodes into the buffer if requested and they exist
+	if (!train_config.buffer_load_path.empty())
+	{
+		buffer.set_state_shapes(model_->get_state_shape());
+		auto path = std::filesystem::path(train_config.buffer_load_path);
+		if (path.is_relative())
+		{
+			path = data_path_ / path;
+		}
+		if (std::filesystem::exists(path))
+		{
+			threadpool.queue_task([&, path = std::move(path)]() {
+				spdlog::info("Loading episodes into replay buffer");
+				buffer.load(path);
+				spdlog::info(
+					"Loaded {} episodes totalling {} samples into replay buffer.",
+					buffer.get_num_episodes(),
+					buffer.get_num_samples());
+			});
+		}
+		else
+		{
+			spdlog::warn("Unable to load episodes into buffer: No episode data exists at '{}'", path.string());
+		}
+	}
+
 	// Setup algorithm for training
 	std::unique_ptr<Algorithm> algorithm;
 
@@ -360,9 +404,10 @@ void HybridAgent::train()
 	model_syncer.send(std::dynamic_pointer_cast<HybridModelInterface>(model_->clone(torch::kCPU)));
 
 	// Wait for the min number of episodes to be available in the buffer
+	if (buffer.get_num_samples() < train_config.start_buffer_size)
 	{
 		using namespace std::chrono_literals;
-		spdlog::info("Waiting for buffer to reach min required size");
+		spdlog::info("Waiting for replay buffer to reach min required size");
 		while (buffer.get_num_samples() < train_config.start_buffer_size)
 		{
 			spdlog::fmt_lib::print("\rCompleted {}/{} samples", buffer.get_num_samples(), train_config.start_buffer_size);
@@ -384,6 +429,8 @@ void HybridAgent::train()
 		auto start = std::chrono::steady_clock::now();
 
 		train_update_data.metrics = algorithm->update(timestep);
+		train_update_data.metrics.add(
+			{"buffer_size", TrainResultType::kBufferStats, static_cast<double>(buffer.get_num_samples())});
 		train_update_data.metrics.add(
 			{"reanalyse_count", TrainResultType::kBufferStats, static_cast<double>(buffer.get_reanalysed_count())});
 		train_update_data.update_duration = std::chrono::steady_clock::now() - start;

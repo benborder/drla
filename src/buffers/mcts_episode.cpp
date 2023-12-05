@@ -1,6 +1,9 @@
 #include "mcts_episode.h"
 
+#include "tensor_storage.h"
 #include "utils.h"
+
+#include <spdlog/spdlog.h>
 
 #include <algorithm>
 
@@ -55,6 +58,18 @@ MCTSEpisode::MCTSEpisode(std::vector<StepData> episode_data, MCTSEpisodeOptions 
 			values_[step_data.step - 1] = step_data.predict_result.values;
 		}
 	}
+}
+
+MCTSEpisode::MCTSEpisode(const std::filesystem::path& path, MCTSEpisodeOptions options)
+		: options_(options), episode_length_(0), saved_path_(path)
+{
+	actions_ = load_tensor(path / "actions.bin");
+	rewards_ = load_tensor(path / "rewards.bin");
+	policy_ = load_tensor(path / "policy.bin");
+	values_ = load_tensor(path / "values.bin");
+	observations_ = load_tensor_vector(path, "observations");
+	turn_index_ = load_vector(path / "turn_index.bin");
+	episode_length_ = static_cast<int>(values_.size(0));
 }
 
 void MCTSEpisode::set_id(int id)
@@ -308,4 +323,32 @@ int MCTSEpisode::length() const
 
 void MCTSEpisode::set_sequence_length([[maybe_unused]] int length)
 {
+}
+
+void MCTSEpisode::save(const std::filesystem::path& path)
+{
+	if (!std::filesystem::exists(path))
+	{
+		spdlog::error("Unable to save episode data: The path '{}' does not exist.", path.string());
+		return;
+	}
+	auto ep_path = path / ("episode_" + options_.name);
+	std::filesystem::create_directory(ep_path);
+
+	save_tensor(actions_, ep_path / "actions.bin");
+	save_tensor(rewards_, ep_path / "rewards.bin");
+	save_tensor(policy_, ep_path / "policy.bin");
+	save_tensor(values_, ep_path / "values.bin");
+	save_vector(turn_index_, ep_path / "turn_index.bin");
+
+	for (size_t i = 0; i < observations_.size(); ++i)
+	{
+		save_tensor(observations_[i], ep_path / (std::string{"observations"} + std::to_string(i) + ".bin"));
+	}
+	saved_path_ = ep_path;
+}
+
+const std::filesystem::path& MCTSEpisode::get_path() const
+{
+	return saved_path_;
 }

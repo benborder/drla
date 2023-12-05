@@ -8,6 +8,7 @@
 
 #include <torch/torch.h>
 
+#include <filesystem>
 #include <vector>
 
 namespace drla
@@ -37,7 +38,8 @@ public:
 		StateShapes state_shape,
 		const std::vector<float>& gamma,
 		float per_alpha,
-		torch::Device device);
+		torch::Device device,
+		const std::filesystem::path& path);
 
 	void add(StepData step_data);
 
@@ -56,6 +58,7 @@ public:
 
 protected:
 	void add_episode(std::shared_ptr<Episode> episode) override;
+	std::shared_ptr<Episode> load_episode(const std::filesystem::path& path) override;
 
 private:
 	torch::Device device_;
@@ -63,6 +66,7 @@ private:
 
 	ThreadPool episode_queue_;
 	std::vector<std::vector<StepData>> current_episodes_;
+	std::vector<std::string> current_episode_name_;
 
 	ObservationShapes observation_shape_;
 	std::vector<int64_t> action_shape_;

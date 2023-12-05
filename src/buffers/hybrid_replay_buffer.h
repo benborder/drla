@@ -73,6 +73,9 @@ public:
 	void reanalyse(std::shared_ptr<HybridModelInterface> model);
 
 private:
+	std::shared_ptr<Episode> load_episode(const std::filesystem::path& path) override;
+
+private:
 	std::vector<std::vector<StepData>> new_episodes_;
 	std::vector<std::shared_ptr<HybridEpisode>> inprogress_episodes_;
 };

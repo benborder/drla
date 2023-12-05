@@ -5,6 +5,7 @@
 #include "algorithm.h"
 #include "dqn.h"
 #include "model.h"
+#include "print_time.h"
 #include "qnet_model.h"
 #include "random_model.h"
 #include "replay_buffer.h"
@@ -117,6 +118,17 @@ void OffPolicyAgent::train()
 	}
 	model->to(devices_.front());
 
+	std::string buffer_save_path;
+	if (!train_config.buffer_save_path.empty())
+	{
+		auto path = std::filesystem::path(train_config.buffer_save_path);
+		if (path.is_relative())
+		{
+			path = data_path_ / path;
+		}
+		buffer_save_path = path;
+	}
+
 	ReplayBuffer buffer(
 		train_config.buffer_size,
 		config_.env_count,
@@ -125,7 +137,31 @@ void OffPolicyAgent::train()
 		model->get_state_shape(),
 		config_gamma,
 		train_config.per_alpha,
-		devices_.front());
+		devices_.front(),
+		buffer_save_path);
+
+	if (!train_config.buffer_load_path.empty())
+	{
+		buffer.set_state_shapes(model_->get_state_shape());
+		auto path = std::filesystem::path(train_config.buffer_load_path);
+		if (path.is_relative())
+		{
+			path = data_path_ / path;
+		}
+		if (std::filesystem::exists(path))
+		{
+			spdlog::info("Loading episodes into replay buffer");
+			buffer.load(path);
+			spdlog::info(
+				"Loaded {} episodes totalling {} samples into replay buffer.",
+				buffer.get_num_episodes(),
+				buffer.get_num_samples());
+		}
+		else
+		{
+			spdlog::warn("Unable to load episodes into buffer: No episode data exists at '{}'", path.string());
+		}
+	}
 
 	std::unique_ptr<Algorithm> algorithm;
 
@@ -166,6 +202,7 @@ void OffPolicyAgent::train()
 		threadpool.queue_task(
 			[&, env]() {
 				StepData reset_data;
+				reset_data.name = get_time();
 				reset_data.env = env;
 				reset_data.step = 0;
 				reset_data.env_data = std::move(envs_data[env]);
@@ -223,6 +260,7 @@ void OffPolicyAgent::train()
 							{
 								// If the episode has ended reset the environment and call env_reset
 								StepData reset_data;
+								reset_data.name = get_time();
 								reset_data.env = env;
 								reset_data.env_data = environment->reset(environment_manager_->get_initial_state());
 								reset_data.predict_result = model->initial();
@@ -301,6 +339,7 @@ void OffPolicyAgent::train()
 							{
 								// If the episode has ended reset the environment and call env_reset
 								StepData reset_data;
+								reset_data.name = get_time();
 								reset_data.env = env;
 								reset_data.env_data = environment->reset(environment_manager_->get_initial_state());
 								reset_data.predict_result = model->initial();
@@ -329,6 +368,8 @@ void OffPolicyAgent::train()
 		TrainUpdateData train_update_data;
 		train_update_data.timestep = timestep;
 		train_update_data.env_duration = std::chrono::steady_clock::now() - start;
+		train_update_data.metrics.add(
+			{"buffer_size", TrainResultType::kBufferStats, static_cast<double>(buffer.get_num_samples())});
 		double period = 1.0 / train_update_data.env_duration.count();
 		double env_thread_ratio =
 			config_.env_count <= static_cast<int>(std::thread::hardware_concurrency())

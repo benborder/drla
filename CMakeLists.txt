@@ -43,6 +43,10 @@ add_library(drla STATIC
 	src/buffers/hybrid_replay_buffer.cpp
 	src/buffers/off_policy_episode.cpp
 
+	# Common
+	src/common/tensor_storage.cpp
+	src/common/print_time.cpp
+
 	# Training algorithms
 	src/algorithm/a2c.cpp
 	src/algorithm/dqn.cpp
@@ -96,6 +100,7 @@ target_include_directories(drla
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/distributions>
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/model>
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/mcts>
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/common>
 )
 
 target_link_libraries(drla

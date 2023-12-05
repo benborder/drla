@@ -2,6 +2,7 @@
 
 #include "functions.h"
 #include "off_policy_episode.h"
+#include "tensor_storage.h"
 #include "utils.h"
 
 #include <spdlog/spdlog.h>
@@ -16,8 +17,10 @@ ReplayBuffer::ReplayBuffer(
 	StateShapes state_shape,
 	const std::vector<float>& gamma,
 	float per_alpha,
-	torch::Device device)
-		: EpisodicPERBuffer(gamma, {buffer_size, reward_shape, 1, per_alpha, env_config.action_space})
+	torch::Device device,
+	const std::filesystem::path& path)
+		: EpisodicPERBuffer(
+				gamma, {buffer_size, reward_shape, 1, env_config.action_space, per_alpha > 0.0F, per_alpha, path})
 		, device_(device)
 		, n_envs_(n_envs)
 		, episode_queue_(1)
@@ -25,6 +28,7 @@ ReplayBuffer::ReplayBuffer(
 		, state_shapes_(state_shape)
 {
 	current_episodes_.resize(n_envs);
+	current_episode_name_.resize(n_envs);
 	for (size_t i = 0; i < env_config.observation_shapes.size(); i++)
 	{
 		std::vector<int64_t> observations_shape{n_envs};
@@ -50,6 +54,11 @@ void ReplayBuffer::add_episode(std::shared_ptr<Episode> episode)
 	{
 		spdlog::error("Episode length must be non zero. The episode has not been added to the buffer.");
 		return;
+	}
+
+	if (!options_.path.empty() && episode->get_path().empty())
+	{
+		episode->save(options_.path);
 	}
 
 	std::lock_guard lock(m_episodes_);
@@ -82,12 +91,17 @@ void ReplayBuffer::add(StepData step_data)
 	auto& episode = current_episodes_.at(step_data.env);
 	bool episode_end = step_data.env_data.state.episode_end;
 	episode.push_back(std::move(step_data));
+	if (step_data.step == 0 && !step_data.name.empty())
+	{
+		current_episode_name_.at(step_data.env) = step_data.name;
+	}
 
 	if (episode_end)
 	{
-		episode_queue_.queue_task([this, episode = std::move(episode)]() {
+		episode_queue_.queue_task([this, episode = std::move(episode), name = current_episode_name_.at(step_data.env)]() {
 			add_episode(std::make_shared<OffPolicyEpisode>(
-				std::move(episode), OffPolicyEpisodeOptions{static_cast<int>(flatten(options_.action_space.shape))}));
+				std::move(episode),
+				OffPolicyEpisodeOptions{std::move(name), static_cast<int>(flatten(options_.action_space.shape))}));
 		});
 	}
 }
@@ -206,4 +220,10 @@ ReplayBufferSamples ReplayBuffer::sample(int sample_size)
 torch::Device ReplayBuffer::get_device() const
 {
 	return device_;
+}
+
+std::shared_ptr<Episode> ReplayBuffer::load_episode(const std::filesystem::path& path)
+{
+	OffPolicyEpisodeOptions opt = {path.stem(), static_cast<int>(flatten(options_.action_space.shape))};
+	return std::make_shared<OffPolicyEpisode>(path, state_shapes_, opt);
 }

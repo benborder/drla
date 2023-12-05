@@ -41,5 +41,8 @@ public:
 	/// @brief Reanalyse a random epiosde in the buffer
 	/// @param model The model to use when reanalysing
 	void reanalyse(std::shared_ptr<MCTSModelInterface> model);
+
+private:
+	std::shared_ptr<Episode> load_episode(const std::filesystem::path& path) override;
 };
 } // namespace drla

@@ -112,6 +112,11 @@ struct TrainAlgorithm
 	int eval_max_steps = 0;
 	// Options to run evaluation model deterministically
 	bool eval_determinisic = true;
+
+	// The path to load the buffer from. If empty the buffer is not loaded. Relative pathing is based on the data_path.
+	std::string buffer_load_path;
+	// The path to save the buffer to. If empty the buffer is not saved. Relative pathing is based on the data_path.
+	std::string buffer_save_path;
 };
 
 /// @brief On policy algorithm configuration. This assumes an actor critic based model.

@@ -160,6 +160,8 @@ struct EnvStepData
 /// @brief Output agent/model data from a single step in an environment
 struct StepData
 {
+	// A unique name for the episode
+	std::string name;
 	// The index of environment the step is executed in
 	unsigned int env = 0;
 	// The step number
