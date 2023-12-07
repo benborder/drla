@@ -436,8 +436,11 @@ void HybridAgent::train()
 		train_update_data.update_duration = std::chrono::steady_clock::now() - start;
 		train_update_data.env_duration =
 			std::chrono::duration<double>(env_duration_stats_.get_mean() * env_samples_stats_.get_mean());
-		train_update_data.fps_env = env_samples_stats_.get_mean() / train_update_data.env_duration.count();
-		train_update_data.fps = train_update_data.fps_env * config_.env_count;
+		if (train_update_data.env_duration.count() > 0)
+		{
+			train_update_data.fps_env = env_samples_stats_.get_mean() / train_update_data.env_duration.count();
+			train_update_data.fps = train_update_data.fps_env * config_.env_count;
+		}
 		train_update_data.global_steps = total_samples_;
 
 		threadpool.queue_task([this, train_update_data]() { agent_callback_->train_update(train_update_data); });
