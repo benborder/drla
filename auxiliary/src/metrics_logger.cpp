@@ -39,8 +39,10 @@ inline void print_stats(std::string name, const Stats<double>& stats, int margin
 		stats.get_min());
 }
 
+// The tensorboard file name must have 'tfevents' in it for tensorboard to be able to find and read the file.
 TrainingMetricsLogger::TrainingMetricsLogger(const std::filesystem::path& path, bool resume)
-		: tb_logger_(std::make_unique<TensorBoardLogger>(path.c_str(), TensorBoardLoggerOptions{}.resume(resume)))
+		: tb_logger_(
+				std::make_unique<TensorBoardLogger>((path / "tfevents.pb").c_str(), TensorBoardLoggerOptions{}.resume(resume)))
 		, gif_path_()
 {
 	auto tmp_dir = std::filesystem::temp_directory_path();
