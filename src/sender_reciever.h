@@ -150,6 +150,9 @@ private:
 template <typename T>
 class Sender
 {
+	static_assert(std::is_move_constructible<T>::value, "Type T must be move constructible");
+	static_assert(std::is_move_assignable<T>::value, "Type T must be move assignable");
+
 public:
 	/// @brief Creates recievers that this sender can send to
 	/// @param queue_size The size of the reciever queue.
