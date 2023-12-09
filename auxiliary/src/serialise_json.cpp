@@ -614,7 +614,7 @@ void from_json(const nlohmann::json& json, CNNLayerConfig& cnn_layer_config)
 		case LayerType::kResBlock2d: cnn_layer_config = json.get<ResBlock2dConfig>(); break;
 		default:
 		{
-			spdlog::error("[Config] The CNN layer type is not defined.");
+			spdlog::error("[Config] The CNN layer type '{}' is not defined.", json.find("type").value());
 			throw std::invalid_argument("The CNN layer type is not defined");
 			break;
 		}
