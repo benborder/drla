@@ -257,7 +257,7 @@ void HybridReplayBuffer::reanalyse(std::shared_ptr<HybridModelInterface> model)
 
 	episode->update_values(values);
 	episode->update_states(states);
-	++reanalysed_count_;
+	reanalysed_count_ += len;
 }
 
 std::shared_ptr<Episode> HybridReplayBuffer::load_episode(const std::filesystem::path& path)

@@ -98,7 +98,7 @@ void MCTSReplayBuffer::reanalyse(std::shared_ptr<MCTSModelInterface> model)
 	}
 	auto prediction = model->predict(input);
 	episode->update_values(model->support_to_scalar(prediction.values));
-	++reanalysed_count_;
+	reanalysed_count_ += len;
 }
 
 std::shared_ptr<Episode> MCTSReplayBuffer::load_episode(const std::filesystem::path& path)
