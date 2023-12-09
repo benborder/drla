@@ -1,4 +1,7 @@
-#include "tensor_to_image.h"
+#include "tensor_media.h"
+
+#include <GifEncoder.h>
+#include <spdlog/spdlog.h>
 
 using namespace drla;
 
@@ -80,4 +83,70 @@ TensorImage drla::tile_tensor_images(const torch::Tensor& tensor_image)
 		image.index({Ellipsis, Slice(y, y + sz[2]), Slice(x, x + sz[3])}) = tensor_image[i];
 	}
 	return create_tensor_image(image);
+}
+
+bool drla::save_gif_animation(const std::filesystem::path& path, const torch::Tensor& image_sequence, int speed)
+{
+	// Dims should be [B, S, C, H, W]
+	if (image_sequence.dim() < 5)
+	{
+		spdlog::error("Invalid image dimensions. Expected 5 [B, S, C, H, W], got {}", image_sequence.dim());
+		throw std::runtime_error("Invalid image dimensions.");
+	}
+
+	GifEncoder gif_enc;
+	const auto sz = image_sequence.sizes();
+	const int b = sz[0];									 // batch size
+	const int s = sz[1];									 // sequence size
+	const int c = std::min<int>(sz[2], 3); // channels
+	const int h = sz[3];									 // height
+	const int w = sz[4];									 // width
+	if (gif_enc.open(path, w, h, 10, true, 0, 3 * b * s * h * w))
+	{
+		auto batched_img_seq = image_sequence.cpu();
+		for (int i = 0; i < sz[1]; ++i)
+		{
+			// Tile the batch dim
+			using namespace torch::indexing;
+			auto img = tile_tensor_images(batched_img_seq.index({Slice(), i, Slice(0, c)}));
+			gif_enc.push(GifEncoder::PIXEL_FORMAT_RGB, img.data.data(), img.width, img.height, speed);
+		}
+		gif_enc.close();
+		return true;
+	}
+	else
+	{
+		spdlog::error("gif encoder error: could not create temporary file '{}'\n", path.string());
+		return false;
+	}
+}
+
+bool drla::save_gif_animation(const std::filesystem::path& path, const std::vector<torch::Tensor>& images, int speed)
+{
+	// Dims for should be [C, H, W]
+	if (!images.empty() && images.front().dim() < 3)
+	{
+		spdlog::error("Invalid image dimensions. Expected 3 [C, H, W], got {}", images.front().dim());
+		throw std::runtime_error("Invalid image dimensions.");
+	}
+
+	GifEncoder gif_enc;
+	const auto sz = images.front().sizes();
+	const int w = sz[1];
+	const int h = sz[0];
+	if (gif_enc.open(path, w, h, 10, true, 0, 3 * w * h * images.size()))
+	{
+		for (auto& image : images)
+		{
+			auto img = create_tensor_image(image.cpu());
+			gif_enc.push(GifEncoder::PIXEL_FORMAT_RGB, img.data.data(), img.width, img.height, speed);
+		}
+		gif_enc.close();
+		return true;
+	}
+	else
+	{
+		spdlog::error("gif encoder error: could not create file '{}'\n", path.string());
+		return false;
+	}
 }

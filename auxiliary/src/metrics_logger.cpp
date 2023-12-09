@@ -1,8 +1,7 @@
 #include "metrics_logger.h"
 
-#include "tensor_to_image.h"
+#include "tensor_media.h"
 
-#include <GifEncoder.h>
 #include <lodepng.h>
 #include <spdlog/fmt/bundled/color.h>
 #include <spdlog/fmt/chrono.h>
@@ -161,33 +160,13 @@ void TrainingMetricsLogger::add_image(std::string group, std::string name, torch
 
 void TrainingMetricsLogger::add_animation(std::string group, std::string name, torch::Tensor images, int speed)
 {
-	// Dims should be [B, S, C, H, W]
-	if (images.dim() < 5)
+	if (save_gif_animation(gif_path_, images, speed))
 	{
-		spdlog::error("Invalid image dimensions. Expected 5 [B, S, C, H, W], got {}", images.dim());
-		throw std::runtime_error("Invalid image dimensions.");
-	}
-
-	GifEncoder gif_enc;
-	const auto sz = images.sizes();
-	const int b = sz[0];									 // batch size
-	const int s = sz[1];									 // sequence size
-	const int c = std::min<int>(sz[2], 3); // channels
-	const int h = sz[3];									 // width
-	const int w = sz[4];									 // height
-	if (gif_enc.open(gif_path_, w, h, 10, true, 0, 3 * b * s * h * w))
-	{
-		auto batched_img_seq = images.cpu();
-		for (int i = 0; i < sz[1]; ++i)
-		{
-			// Tile the batch dim
-			using namespace torch::indexing;
-			auto img = tile_tensor_images(batched_img_seq.index({Slice(), i, Slice(0, c)}));
-			gif_enc.push(GifEncoder::PIXEL_FORMAT_RGB, img.data.data(), img.width, img.height, speed);
-		}
-		gif_enc.close();
 		// This is a hacky method of writing the gif to a file then reading it back as the library does not support writing
 		// to a buffer in memory.
+		const auto sz = images.sizes();
+		const int h = sz[3];
+		const int w = sz[4];
 		std::ifstream fin(gif_path_, std::ios::binary);
 		std::ostringstream ss;
 		ss << fin.rdbuf();
@@ -196,30 +175,19 @@ void TrainingMetricsLogger::add_animation(std::string group, std::string name, t
 		fin.close();
 		tb_logger_->add_image(group + "/" + name, current_timestep_, img, h, w, 3);
 		std::filesystem::remove(gif_path_);
-	}
-	else
-	{
-		spdlog::error("gif encoder error: could not create temporary file '{}'\n", gif_path_.string());
 	}
 }
 
 void TrainingMetricsLogger::add_animation(
 	std::string group, std::string name, const std::vector<torch::Tensor>& images, int speed)
 {
-	GifEncoder gif_enc;
-	const auto sz = images.front().sizes();
-	const int w = sz[1];
-	const int h = sz[0];
-	if (gif_enc.open(gif_path_, w, h, 10, true, 0, 3 * w * h * images.size()))
+	if (save_gif_animation(gif_path_, images, speed))
 	{
-		for (auto& image : images)
-		{
-			auto img = create_tensor_image(image.cpu());
-			gif_enc.push(GifEncoder::PIXEL_FORMAT_RGB, img.data.data(), img.width, img.height, speed);
-		}
-		gif_enc.close();
 		// This is a hacky method of writing the gif to a file then reading it back as the library does not support writing
 		// to a buffer in memory.
+		const auto sz = images.front().sizes();
+		const int w = sz[1];
+		const int h = sz[0];
 		std::ifstream fin(gif_path_, std::ios::binary);
 		std::ostringstream ss;
 		ss << fin.rdbuf();
@@ -228,9 +196,5 @@ void TrainingMetricsLogger::add_animation(
 		fin.close();
 		tb_logger_->add_image(group + "/" + name, current_timestep_, img, h, w, 3);
 		std::filesystem::remove(gif_path_);
-	}
-	else
-	{
-		fmt::print("gif encoder error: could not create file '{}'\n", gif_path_.string());
 	}
 }
