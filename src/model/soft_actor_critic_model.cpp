@@ -220,14 +220,14 @@ StateShapes SoftActorCriticModel::get_state_shape() const
 ActorOutput SoftActorCriticModel::action_output(const Observations& observations, const HiddenStates& state)
 {
 	torch::Tensor features = flatten(feature_extractor_actor_(observations));
+	ActorOutput output;
 	if (grucell_)
 	{
 		features = grucell_(features, state.at(0));
+		output.state = {features};
 	}
 	auto dist = actor_(features);
-	ActorOutput output;
 	output.action = dist->sample();
-	output.state = {features};
 	torch::Tensor log_probs;
 	if (is_action_discrete(action_space_))
 	{
