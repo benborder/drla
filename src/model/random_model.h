@@ -30,6 +30,8 @@ public:
 
 	std::shared_ptr<torch::nn::Module> clone(const c10::optional<torch::Device>& device = c10::nullopt) const override;
 
+	void copy(const Model* model) override;
+
 private:
 	const ActionSpace action_space_;
 	int value_shape_;

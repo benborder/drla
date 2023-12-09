@@ -214,3 +214,19 @@ std::shared_ptr<torch::nn::Module> QNetModel::clone(const c10::optional<torch::D
 	torch::NoGradGuard no_grad;
 	return std::make_shared<QNetModel>(static_cast<const QNetModel&>(*this), device);
 }
+
+void QNetModel::copy(const Model* model)
+{
+	if (auto other = dynamic_cast<const QNetModel*>(model))
+	{
+		auto params = parameters();
+		auto other_params = other->parameters();
+		auto device = params.front().device();
+		assert(params.size() == other_params.size());
+		for (size_t i = 0; i < params.size(); ++i) { params[i] = other_params[i].to(device); }
+	}
+	else
+	{
+		spdlog::error("Unable to copy models of different types. Expecting QNetModel.");
+	}
+}

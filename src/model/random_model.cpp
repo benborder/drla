@@ -64,3 +64,7 @@ std::shared_ptr<torch::nn::Module> RandomModel::clone(const c10::optional<torch:
 	torch::NoGradGuard no_grad;
 	return std::make_shared<RandomModel>(static_cast<const RandomModel&>(*this), device);
 }
+
+void RandomModel::copy([[maybe_unused]] const Model* model)
+{
+}

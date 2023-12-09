@@ -106,6 +106,8 @@ public:
 
 	std::shared_ptr<torch::nn::Module> clone(const c10::optional<torch::Device>& device = c10::nullopt) const override;
 
+	void copy(const Model* model) override;
+
 private:
 	const Config::MuZero::ModelConfig config_;
 	const ActionSpace action_space_;

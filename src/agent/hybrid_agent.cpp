@@ -167,14 +167,11 @@ void HybridAgent::train()
 							auto new_model = model_sync_reciever->request();
 							if (device != torch::kCPU)
 							{
-								model.reset(); // delete the old model before allocating the new one
-								// TODO: Ideally copy the weight from the CPU to the existing GPU model to avoid allocating a new model
-								// and destroying the old.
-								model = std::dynamic_pointer_cast<HybridModelInterface>(new_model->clone(device));
+								model->copy(new_model.get());
 							}
 							else
 							{
-								model = new_model;
+								std::swap(model, new_model);
 							}
 							model->eval();
 							if (!training_)

@@ -157,11 +157,11 @@ void MCTSAgent::train()
 				{
 					if (device != torch::kCPU)
 					{
-						model = std::dynamic_pointer_cast<MCTSModelInterface>(new_model.value()->clone(device));
+						model->copy(new_model->get());
 					}
 					else
 					{
-						model = *new_model;
+						std::swap(model, *new_model);
 					}
 					model->eval();
 				}

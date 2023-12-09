@@ -442,3 +442,19 @@ std::shared_ptr<torch::nn::Module> MuZeroModel::clone(const c10::optional<torch:
 	torch::NoGradGuard no_grad;
 	return std::make_shared<MuZeroModel>(static_cast<const MuZeroModel&>(*this), device);
 }
+
+void MuZeroModel::copy(const Model* model)
+{
+	if (auto other = dynamic_cast<const MuZeroModel*>(model))
+	{
+		auto params = parameters();
+		auto other_params = other->parameters();
+		auto device = params.front().device();
+		assert(params.size() == other_params.size());
+		for (size_t i = 0; i < params.size(); ++i) { params[i] = other_params[i].to(device); }
+	}
+	else
+	{
+		spdlog::error("Unable to copy models of different types. Expecting MuZeroModel.");
+	}
+}

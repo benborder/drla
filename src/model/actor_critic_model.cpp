@@ -225,3 +225,19 @@ std::shared_ptr<torch::nn::Module> ActorCriticModel::clone(const c10::optional<t
 	torch::NoGradGuard no_grad;
 	return std::make_shared<ActorCriticModel>(static_cast<const ActorCriticModel&>(*this), device);
 }
+
+void ActorCriticModel::copy(const Model* model)
+{
+	if (auto other = dynamic_cast<const ActorCriticModel*>(model))
+	{
+		auto params = parameters();
+		auto other_params = other->parameters();
+		auto device = params.front().device();
+		assert(params.size() == other_params.size());
+		for (size_t i = 0; i < params.size(); ++i) { params[i] = other_params[i].to(device); }
+	}
+	else
+	{
+		spdlog::error("Unable to copy models of different types. Expecting ActorCriticModel.");
+	}
+}

@@ -30,6 +30,10 @@ public:
 	/// @return The shape of internal hidden state.
 	virtual StateShapes get_state_shape() const = 0;
 
+	/// @brief Copies a models params from the supplied model to this one
+	/// @param model The model to copy params from
+	virtual void copy(const Model* model) = 0;
+
 	/// @brief Save the model to file at the specified directory path
 	/// @param path The full directory path to save the model to
 	virtual void save(const std::filesystem::path& path) = 0;

@@ -208,6 +208,8 @@ public:
 	void save(const std::filesystem::path& path) override;
 	void load(const std::filesystem::path& path) override;
 
+	void copy(const Model* model) override;
+
 protected:
 	/// @brief Registers the models various network modules.
 	void register_modules();

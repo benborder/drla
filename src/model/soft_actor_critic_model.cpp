@@ -437,3 +437,19 @@ std::shared_ptr<torch::nn::Module> SoftActorCriticModel::clone(const c10::option
 	torch::NoGradGuard no_grad;
 	return std::make_shared<SoftActorCriticModel>(static_cast<const SoftActorCriticModel&>(*this), device);
 }
+
+void SoftActorCriticModel::copy(const Model* model)
+{
+	if (auto other = dynamic_cast<const SoftActorCriticModel*>(model))
+	{
+		auto params = parameters();
+		auto other_params = other->parameters();
+		auto device = params.front().device();
+		assert(params.size() == other_params.size());
+		for (size_t i = 0; i < params.size(); ++i) { params[i] = other_params[i].to(device); }
+	}
+	else
+	{
+		spdlog::error("Unable to copy models of different types. Expecting SoftActorCriticModel.");
+	}
+}
