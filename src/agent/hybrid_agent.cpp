@@ -390,7 +390,7 @@ void HybridAgent::train()
 		InitData data;
 		data.env_config = env_config;
 		data.reward_shape = reward_shape;
-		for (int env = 0; env < config_.env_count + 1; ++env)
+		for (int env = 0, num_envs = config_.env_count + static_cast<int>(config_.eval_period > 0); env < num_envs; ++env)
 		{
 			data.env_output.push_back({{}, torch::zeros({reward_shape}), {{}, train_config.start_timestep}});
 		}

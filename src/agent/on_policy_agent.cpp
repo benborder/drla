@@ -94,6 +94,11 @@ void OnPolicyAgent::train()
 	auto env_config = environment_manager_->get_configuration();
 	int reward_shape = config_.rewards.combine_rewards ? 1 : static_cast<int>(env_config.reward_types.size());
 
+	if (config_.eval_period > 0)
+	{
+		// add placeholder env data for the eval env
+		envs_data.push_back(envs_data.front());
+	}
 	agent_callback_->train_init({env_config, reward_shape, envs_data});
 
 	std::shared_ptr<Model> model;
@@ -174,6 +179,8 @@ void OnPolicyAgent::train()
 		enable_visualisations[env] = agent_reset_config.enable_visualisations;
 		buffer.initialise(reset_data);
 	}
+
+	envs_data.clear();
 
 	for (; timestep < train_config.total_timesteps; timestep++)
 	{
