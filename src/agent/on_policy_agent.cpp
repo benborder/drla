@@ -169,18 +169,25 @@ void OnPolicyAgent::train()
 	// Get first observation and state for all envs
 	for (int env = 0; env < config_.env_count; env++)
 	{
-		StepData reset_data;
-		reset_data.env = env;
-		reset_data.step = 0;
-		reset_data.env_data = std::move(envs_data[env]);
-		reset_data.predict_result = model->initial();
-		reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
-		auto agent_reset_config = agent_callback_->env_reset(reset_data);
-		enable_visualisations[env] = agent_reset_config.enable_visualisations;
-		buffer.initialise(reset_data);
+		threadpool.queue_task(
+			[&, env]() {
+				StepData reset_data;
+				reset_data.env = env;
+				reset_data.step = 0;
+				reset_data.env_data = std::move(envs_data[env]);
+				reset_data.predict_result = model->initial();
+				reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
+				auto agent_reset_config = agent_callback_->env_reset(reset_data);
+				enable_visualisations[env] = agent_reset_config.enable_visualisations;
+				if (agent_reset_config.enable_visualisations)
+				{
+					reset_data.visualisation = environment_manager_->get_environment(env)->get_visualisations();
+				}
+				agent_callback_->env_step(reset_data);
+				buffer.initialise(reset_data);
+			},
+			env);
 	}
-
-	envs_data.clear();
 
 	for (; timestep < train_config.total_timesteps; timestep++)
 	{

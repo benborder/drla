@@ -210,6 +210,11 @@ void OffPolicyAgent::train()
 				reset_data.reward = clamp_reward(reset_data.env_data.reward, config_.rewards);
 				auto agent_reset_config = agent_callback_->env_reset(reset_data);
 				enable_visualisations[env] = agent_reset_config.enable_visualisations;
+				if (agent_reset_config.enable_visualisations)
+				{
+					reset_data.visualisation = environment_manager_->get_environment(env)->get_visualisations();
+				}
+				agent_callback_->env_step(reset_data);
 				buffer.add(reset_data);
 			},
 			env);
