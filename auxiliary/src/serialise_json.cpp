@@ -359,6 +359,7 @@ void from_json(const nlohmann::json& json, LinearConfig& linear)
 
 void to_json(nlohmann::json& json, const LinearConfig& linear)
 {
+	json["type"] = FCLayerType::kLinear;
 	json["size"] = linear.size;
 	json["use_bias"] = linear.use_bias;
 	json["init_bias_type"] = linear.init_bias_type;
@@ -418,6 +419,7 @@ void from_json(const nlohmann::json& json, LayerConnectionConfig& layer_connecti
 
 void to_json(nlohmann::json& json, const LayerConnectionConfig& layer_connection)
 {
+	json["type"] = FCLayerType::kLayerConnection;
 	json["layer_connection"] = layer_connection.connection;
 	json["residual"] = layer_connection.residual;
 }
@@ -432,6 +434,7 @@ void from_json(const nlohmann::json& json, LayerRepeatConfig& layer_repeat)
 
 void to_json(nlohmann::json& json, const LayerRepeatConfig& layer_repeat)
 {
+	json["type"] = FCLayerType::kLayerRepeat;
 	json["repeats"] = layer_repeat.repeats;
 	json["layers"] = layer_repeat.layers;
 	json["factor"] = layer_repeat.factor;
