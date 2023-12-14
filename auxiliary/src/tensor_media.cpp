@@ -26,7 +26,7 @@ TensorImage drla::create_tensor_image(const torch::Tensor& tensor_image, bool in
 			rgb_tensor = torch::cat(
 										 {tensor_image[0].unsqueeze(2),
 											tensor_image[1].unsqueeze(2),
-											((tensor_image[0] + tensor_image[1]) / 2).unsqueeze(2)},
+											((tensor_image[0] + tensor_image[1]) / 2.0F).to(tensor_image.scalar_type()).unsqueeze(2)},
 										 -1)
 										 .detach();
 		}
