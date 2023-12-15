@@ -201,13 +201,13 @@ void OnPolicyAgent::train()
 					[&, env]() {
 						auto environment = environment_manager_->get_environment(env);
 
-						StepData step_data;
+						thread_local StepData step_data;
 						step_data.env = env;
 						step_data.env_data.observation = buffer.get_observations(0, env);
 						step_data.predict_result.state = buffer.get_states(0, env);
 						for (int step = 0; step < train_config.horizon_steps; step++)
 						{
-							step_data.step = step;
+							++step_data.step;
 							{
 								torch::NoGradGuard no_grad;
 								auto observations = convert_observations(step_data.env_data.observation, devices_.front());
@@ -219,6 +219,10 @@ void OnPolicyAgent::train()
 							if (enable_visualisations[env])
 							{
 								step_data.visualisation = environment->get_visualisations();
+							}
+							if (train_config.max_steps > 0 && step_data.step >= train_config.max_steps)
+							{
+								step_data.env_data.state.episode_end = true;
 							}
 
 							bool stop = agent_callback_->env_step(step_data);
@@ -247,6 +251,7 @@ void OnPolicyAgent::train()
 								{
 									break;
 								}
+								step_data.step = 0;
 							}
 
 							buffer.add(step_data);
@@ -282,9 +287,9 @@ void OnPolicyAgent::train()
 						[&, env]() {
 							auto environment = environment_manager_->get_environment(env);
 
-							StepData step_data;
+							thread_local StepData step_data;
 							step_data.env = env;
-							step_data.step = step;
+							++step_data.step;
 							step_data.predict_result.action = timestep_data.predict_results.action[env];
 							step_data.predict_result.action_log_probs = timestep_data.predict_results.action_log_probs[env];
 							step_data.predict_result.values = timestep_data.predict_results.values[env];
@@ -292,21 +297,16 @@ void OnPolicyAgent::train()
 							{
 								step_data.predict_result.state.push_back(state[env]);
 							}
-
 							step_data.env_data = environment->step(step_data.predict_result.action);
+							step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
 
-							step_data.reward = step_data.env_data.reward.clone();
-							if (config_.rewards.reward_clamp_min != 0)
-							{
-								step_data.reward.clamp_max_(-config_.rewards.reward_clamp_min);
-							}
-							if (config_.rewards.reward_clamp_max != 0)
-							{
-								step_data.reward.clamp_min_(-config_.rewards.reward_clamp_max);
-							}
 							if (enable_visualisations[env])
 							{
 								step_data.visualisation = environment->get_visualisations();
+							}
+							if (train_config.max_steps > 0 && step_data.step >= train_config.max_steps)
+							{
+								step_data.env_data.state.episode_end = true;
 							}
 
 							stop |= agent_callback_->env_step(step_data);
@@ -331,6 +331,7 @@ void OnPolicyAgent::train()
 								}
 								enable_visualisations[env] = agent_reset_config.enable_visualisations;
 								stop |= agent_reset_config.stop;
+								step_data.step = 0;
 							}
 
 							for (size_t i = 0; i < step_data.env_data.observation.size(); i++)

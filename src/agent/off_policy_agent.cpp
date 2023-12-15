@@ -239,7 +239,7 @@ void OffPolicyAgent::train()
 						step_data.predict_result.state = buffer.get_state_head(env);
 						for (int step = 0; step < train_config.horizon_steps; step++)
 						{
-							step_data.step = step;
+							++step_data.step;
 							{
 								torch::NoGradGuard no_grad;
 								auto observations = convert_observations(step_data.env_data.observation, devices_.front());
@@ -251,6 +251,10 @@ void OffPolicyAgent::train()
 							if (enable_visualisations[env])
 							{
 								step_data.visualisation = environment->get_visualisations();
+							}
+							if (train_config.max_steps > 0 && step_data.step >= train_config.max_steps)
+							{
+								step_data.env_data.state.episode_end = true;
 							}
 
 							bool stop = agent_callback_->env_step(step_data);
@@ -277,6 +281,7 @@ void OffPolicyAgent::train()
 								auto agent_reset_config = agent_callback_->env_reset(reset_data);
 								enable_visualisations[env] = agent_reset_config.enable_visualisations;
 								buffer.add(std::move(reset_data));
+								step_data.step = 0;
 								if (agent_reset_config.stop)
 								{
 									break;
@@ -318,7 +323,7 @@ void OffPolicyAgent::train()
 
 							thread_local StepData step_data;
 							step_data.env = env;
-							step_data.step = step;
+							++step_data.step;
 							step_data.predict_result.action = timestep_data.predict_results.action[env];
 							step_data.predict_result.values = timestep_data.predict_results.values[env];
 
@@ -328,6 +333,10 @@ void OffPolicyAgent::train()
 							if (enable_visualisations[env])
 							{
 								step_data.visualisation = environment->get_visualisations();
+							}
+							if (train_config.max_steps > 0 && step_data.step >= train_config.max_steps)
+							{
+								step_data.env_data.state.episode_end = true;
 							}
 
 							stop |= agent_callback_->env_step(step_data);
@@ -362,6 +371,7 @@ void OffPolicyAgent::train()
 								buffer.add(std::move(reset_data));
 								enable_visualisations[env] = agent_reset_config.enable_visualisations;
 								stop |= agent_reset_config.stop;
+								step_data.step = 0;
 							}
 						},
 						env);
