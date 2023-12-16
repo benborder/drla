@@ -16,6 +16,7 @@ HybridReplayBuffer::HybridReplayBuffer(std::vector<float> gamma, int n_envs, Epi
 void HybridReplayBuffer::flush_cache()
 {
 	HybridEpisodeOptions opt = {{}, static_cast<int>(flatten(options_.action_space.shape)), options_.unroll_steps};
+	std::lock_guard lock(m_flush_);
 	for (size_t env = 0; env < new_episodes_.size(); ++env)
 	{
 		auto& ep = new_episodes_.at(env);
@@ -41,6 +42,7 @@ void HybridReplayBuffer::add(StepData step_data, bool force_cache)
 	int env = step_data.env;
 	int step = step_data.step;
 	bool episode_end = step_data.env_data.state.episode_end;
+	std::lock_guard lock(m_flush_);
 	auto& ep = new_episodes_.at(env);
 	// At least a min of 'unroll_steps' must exist before creating a HybridEpisode in inprogress_episodes_
 	if (step <= options_.unroll_steps || force_cache || static_cast<int>(ep.size()) > options_.unroll_steps)
@@ -94,7 +96,20 @@ HybridReplayBuffer::sample_episodes(int num_samples, bool force_uniform) const
 			}
 			else
 			{
-				episodes.emplace_back(inprogress_episodes_.at(episode_index - episodes_.size()), episode_prob);
+				const size_t index = episode_index - episodes_.size();
+				size_t i = 0;
+				for (auto& ep : inprogress_episodes_)
+				{
+					if (ep == nullptr)
+						continue;
+
+					if (i == index)
+					{
+						episodes.emplace_back(ep, episode_prob);
+						break;
+					}
+					++i;
+				}
 			}
 		}
 	}
@@ -258,6 +273,32 @@ void HybridReplayBuffer::reanalyse(std::shared_ptr<HybridModelInterface> model)
 	episode->update_values(values);
 	episode->update_states(states);
 	reanalysed_count_ += len;
+}
+
+bool HybridReplayBuffer::is_ready(int min_samples) const
+{
+	// Faster path used 99.99% of the time
+	if (!episodes_.empty() && total_steps_ >= min_samples)
+	{
+		return true;
+	}
+
+	int useable_steps = 0;
+	for (auto& ep : new_episodes_)
+	{
+		if (static_cast<int>(ep.size()) > options_.unroll_steps)
+		{
+			useable_steps += ep.size();
+		}
+	}
+	for (auto& ep : inprogress_episodes_)
+	{
+		if (ep != nullptr)
+		{
+			useable_steps += ep->length();
+		}
+	}
+	return (total_steps_ + useable_steps) >= min_samples;
 }
 
 std::shared_ptr<Episode> HybridReplayBuffer::load_episode(const std::filesystem::path& path)

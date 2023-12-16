@@ -72,11 +72,17 @@ public:
 	/// @param model The model to use when reanalysing
 	void reanalyse(std::shared_ptr<HybridModelInterface> model);
 
+	/// @brief Checks if there are the minimum number of useable samples available in the buffer for sampling
+	/// @param min_samples The minimum number of samples to consider the buffer ready to be used
+	/// @return True if the buffer is ready and useable, false otherwise
+	bool is_ready(int min_samples) const;
+
 private:
 	std::shared_ptr<Episode> load_episode(const std::filesystem::path& path) override;
 
 private:
 	std::vector<std::vector<StepData>> new_episodes_;
 	std::vector<std::shared_ptr<HybridEpisode>> inprogress_episodes_;
+	std::mutex m_flush_;
 };
 } // namespace drla

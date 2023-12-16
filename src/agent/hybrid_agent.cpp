@@ -143,7 +143,7 @@ void HybridAgent::train()
 					step_data.predict_result = model->initial();
 					step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
 
-					bool buffer_ready = buffer.get_num_samples() >= train_config.start_buffer_size;
+					bool buffer_ready = buffer.is_ready(train_config.start_buffer_size);
 					auto agent_reset_config = agent_callback_->env_reset(step_data);
 					auto enable_visualisations = agent_reset_config.enable_visualisations;
 					if (enable_visualisations)
@@ -160,7 +160,7 @@ void HybridAgent::train()
 
 					for (int step = 1; step <= max_steps && training_; step++)
 					{
-						buffer_ready = buffer.get_num_samples() >= train_config.start_buffer_size;
+						buffer_ready = buffer.is_ready(train_config.start_buffer_size);
 						if (timestep > 0 || (timestep == 0 && buffer_ready))
 						{
 							// update to the latest model from training (wait for it to be sent)
@@ -400,18 +400,17 @@ void HybridAgent::train()
 	// Synchronise the model
 	model_syncer.send(std::dynamic_pointer_cast<HybridModelInterface>(model_->clone(torch::kCPU)));
 
-	// Wait for the min number of episodes to be available in the buffer
-	if (buffer.get_num_samples() < train_config.start_buffer_size)
+	// Wait for the min number of useable samples to be available in the buffer
+	if (!buffer.is_ready(train_config.start_buffer_size))
 	{
 		using namespace std::chrono_literals;
 		spdlog::info("Waiting for replay buffer to reach min required size");
-		while (buffer.get_num_samples() < train_config.start_buffer_size)
+		while (!buffer.is_ready(train_config.start_buffer_size))
 		{
 			spdlog::fmt_lib::print("\rCompleted {}/{} samples", buffer.get_num_samples(), train_config.start_buffer_size);
 			std::this_thread::sleep_for(10ms);
 		}
-		spdlog::fmt_lib::print(
-			"\rCompleted {}/{} samples\n", train_config.start_buffer_size, train_config.start_buffer_size);
+		spdlog::fmt_lib::print("\rCompleted {}/{} samples\n", buffer.get_num_samples(), train_config.start_buffer_size);
 	}
 
 	buffer.flush_cache();
