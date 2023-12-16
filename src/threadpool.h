@@ -117,7 +117,7 @@ public:
 		}
 		tasks_.push_back({id, std::move(func)});
 		++pending_;
-		cv_tasks_.notify_one();
+		cv_tasks_.notify_all();
 	}
 
 	/// @brief Dispatch a task with a future return value to the queue and notify the pool a task is available. If
