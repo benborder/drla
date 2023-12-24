@@ -579,6 +579,10 @@ ModelOutput MCTSAgent::run_step(
 	for (auto& node : node_visits)
 	{
 		node = std::pow(node, 1.0F / temperature);
+		if (std::isinf(node))
+		{
+			node = std::numeric_limits<float>::max() / nodes.size();
+		}
 		sum_count += node;
 	}
 	for (auto& node : node_visits) { node /= sum_count; }
