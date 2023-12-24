@@ -53,7 +53,7 @@ private:
 	mutable std::mutex m_updates_;
 
 	// The max of priorities_
-	float episode_priority_;
+	float episode_priority_ = 0;
 	// The priority of each step proportional to the loss from a training step
 	std::vector<float> priorities_;
 

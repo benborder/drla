@@ -110,7 +110,10 @@ EpisodicPERBuffer::sample_episodes(int num_samples, bool force_uniform) const
 			probs_sum += episode->get_priority();
 			ep_probs.push_back(episode->get_priority());
 		}
-		for (auto& probs : ep_probs) { probs /= probs_sum; }
+		if (probs_sum > 0)
+		{
+			for (auto& probs : ep_probs) { probs /= probs_sum; }
+		}
 
 		std::discrete_distribution<size_t> episode_dist(ep_probs.begin(), ep_probs.end());
 		for (int s = 0; s < num_samples; ++s)
