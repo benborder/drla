@@ -15,10 +15,11 @@ DynamicsNetworkImpl::DynamicsNetworkImpl(
 	const std::vector<std::vector<int64_t>>& input_shape,
 	const ActionSpace& action_space,
 	int reward_shape)
-		: config_(config), fc_reward_(config_.fc_reward, "reward", flatten(input_shape), Config::LinearConfig{reward_shape})
+		: config_(config), fc_reward_(nullptr)
 {
 	int group = 0;
 	auto action_size = flatten(action_space.shape);
+	std::vector<std::vector<int64_t>> reward_input_shape;
 	for (auto& shape : input_shape)
 	{
 		auto postfix = std::to_string(group);
@@ -39,6 +40,11 @@ DynamicsNetworkImpl::DynamicsNetworkImpl(
 				dyn.resblocks_.emplace_back(config_.num_channels, config_.resblock);
 				register_module("dyn_resblocks_" + postfix + std::to_string(i), dyn.resblocks_.back());
 			}
+			{
+				auto s = shape;
+				s[0] = config_.reduced_channels_reward;
+				reward_input_shape.emplace_back(std::move(s));
+			}
 
 			dynamics_encoding_.emplace_back(std::move(dyn));
 		}
@@ -48,6 +54,7 @@ DynamicsNetworkImpl::DynamicsNetworkImpl(
 			dynamics_encoding_.emplace_back(
 				FCBlock(config_.fc_dynamics, "fc_dyn", encoding_shape + action_size, Config::LinearConfig{encoding_shape}));
 			register_module("dyn_fcblock_" + postfix, std::get<FCBlock>(dynamics_encoding_.back()));
+			reward_input_shape.emplace_back(std::vector<int64_t>{encoding_shape});
 		}
 		else
 		{
@@ -56,6 +63,7 @@ DynamicsNetworkImpl::DynamicsNetworkImpl(
 		}
 		++group;
 	}
+	fc_reward_ = FCBlock(config_.fc_reward, "reward", flatten(reward_input_shape), Config::LinearConfig{reward_shape});
 	register_module("dyn_fc_reward", fc_reward_);
 }
 
@@ -139,14 +147,10 @@ PredictionNetworkImpl::PredictionNetworkImpl(
 	const std::vector<std::vector<int64_t>>& input_shape,
 	const ActionSpace& action_space,
 	int value_shape)
-		: config_(config)
-		, fc_value_(config_.fc_value, "value", flatten(input_shape), Config::LinearConfig{value_shape})
-		, fc_policy_(
-				config_.fc_policy,
-				"policy",
-				flatten(input_shape),
-				Config::LinearConfig{static_cast<int>(flatten(action_space.shape))})
+		: config_(config), fc_value_(nullptr), fc_policy_(nullptr)
 {
+	std::vector<std::vector<int64_t>> value_input_shape;
+	std::vector<std::vector<int64_t>> policy_input_shape;
 	int group = 0;
 	for (auto& shape : input_shape)
 	{
@@ -167,6 +171,17 @@ PredictionNetworkImpl::PredictionNetworkImpl(
 				register_module("pred_resblocks_" + postfix + std::to_string(i), pred.resblocks_.back());
 			}
 
+			{
+				auto s = shape;
+				s[0] = config_.reduced_channels_value;
+				value_input_shape.emplace_back(std::move(s));
+			}
+			{
+				auto s = shape;
+				s[0] = config_.reduced_channels_policy;
+				policy_input_shape.emplace_back(std::move(s));
+			}
+
 			prediction_encoding_.emplace_back(std::move(pred));
 		}
 		else
@@ -175,6 +190,13 @@ PredictionNetworkImpl::PredictionNetworkImpl(
 		}
 		++group;
 	}
+
+	fc_value_ = FCBlock(config_.fc_value, "value", flatten(value_input_shape), Config::LinearConfig{value_shape});
+	fc_policy_ = FCBlock(
+		config_.fc_policy,
+		"policy",
+		flatten(policy_input_shape),
+		Config::LinearConfig{static_cast<int>(flatten(action_space.shape))});
 
 	register_module("pred_fc_value", fc_value_);
 	register_module("pred_fc_policy", fc_policy_);
