@@ -107,7 +107,7 @@ void MCTSAgent::train()
 			c10::Device device{torch::kCPU};
 			{
 				const auto& gpus = train_config.self_play_gpus;
-				const bool use_all_gpus = gpus.back() == -1;
+				const bool use_all_gpus = !gpus.empty() && gpus.back() == -1;
 				const bool is_valid_gpu =
 					use_all_gpus || std::find(gpus.begin(), gpus.end(), env % config_.env_count) != gpus.end();
 				auto dev = std::find_if(
