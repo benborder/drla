@@ -239,7 +239,7 @@ torch::Tensor MCTSEpisode::compute_target_value(int index, torch::Tensor gamma) 
 		value = torch::zeros_like(values_[0]);
 	}
 
-	for (int i = index + 1, n = std::min(bootstrap_index + 1, episode_length_); i < n; ++i)
+	for (int i = index + 1, n = std::min(bootstrap_index, episode_length_) + 1; i < n; ++i)
 	{
 		auto reward = rewards_[i];
 		if (turn_index_[i] != turn_index_[i + 1])
