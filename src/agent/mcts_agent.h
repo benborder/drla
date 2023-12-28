@@ -79,6 +79,7 @@ protected:
 	std::mutex m_env_stats_;
 	Stats<> env_samples_stats_;
 	Stats<> env_duration_stats_;
+	Stats<> env_steps_stats_;
 	int64_t total_samples_ = 0;
 };
 

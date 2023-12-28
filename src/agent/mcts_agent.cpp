@@ -130,6 +130,7 @@ void MCTSAgent::train()
 			options.enable_visualisations = false;
 			options.force_model_reload = false;
 			options.temperature = 1;
+			int last_timestep = 0;
 
 			while (timestep < train_config.total_timesteps)
 			{
@@ -165,6 +166,11 @@ void MCTSAgent::train()
 					}
 					model->eval();
 				}
+				if (timestep > 0)
+				{
+					env_steps_stats_.update(timestep - last_timestep);
+					last_timestep = timestep;
+				}
 			}
 		});
 	}
@@ -196,25 +202,16 @@ void MCTSAgent::train()
 			options.enable_visualisations = true;
 			options.temperature = config_.temperature;
 
-			while (timestep < train_config.total_timesteps)
+			int next_eval_run = config_.eval_period;
+			while (timestep < train_config.total_timesteps && training_)
 			{
 				// update to the latest model from training (if available)
-				if (auto new_model = model_sync_reciever->wait([&] {
-							return !training_ || (timestep % config_.eval_period == 0);
-						}))
+				if (auto new_model = model_sync_reciever->wait([&] { return !training_ || (timestep > next_eval_run); }))
 				{
 					model = *new_model;
 					model->eval();
-				}
-
-				if (timestep % config_.eval_period == 0)
-				{
+					next_eval_run += config_.eval_period;
 					run_episode(model.get(), environment_manager_->get_initial_state(), eval_env, true, options);
-				}
-
-				if (!training_)
-				{
-					break;
 				}
 			}
 		});
@@ -374,7 +371,13 @@ void MCTSAgent::train()
 			{"buffer_size", TrainResultType::kBufferStats, static_cast<double>(buffer.get_num_samples())});
 		train_update_data.metrics.add(
 			{"reanalyse_count", TrainResultType::kBufferStats, static_cast<double>(buffer.get_reanalysed_count())});
-		model_syncer.send(std::dynamic_pointer_cast<MCTSModelInterface>(model_->clone(torch::kCPU)));
+		int model_sync_period = std::min(
+			config_.eval_period > 0 ? config_.eval_period : std::numeric_limits<int>::max(),
+			static_cast<int>(std::ceil(env_steps_stats_.get_mean())));
+		if (env_steps_stats_.get_count() > 1 && (timestep % model_sync_period) == 0)
+		{
+			model_syncer.send(std::dynamic_pointer_cast<MCTSModelInterface>(model_->clone(torch::kCPU)));
+		}
 
 		train_update_data.update_duration = std::chrono::steady_clock::now() - start;
 		train_update_data.env_duration = std::chrono::duration<double>(env_duration_stats_.get_mean());
