@@ -30,7 +30,7 @@ public:
 	/// @brief Returns the unprocessed observations of the environment. This is typically used to return the raw
 	/// unfiltered state observations. For example an rgb or grayscale image.
 	/// @return The visualisations for the environment. The dimensions can differ from observations obtained from a step.
-	virtual Observations get_visualisations() const = 0;
+	virtual Observations get_visualisations() = 0;
 
 	/// @brief Generates an action via the environments expert agent
 	/// @return The action determined by the environments expert agent
