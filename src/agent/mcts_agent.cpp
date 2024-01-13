@@ -519,6 +519,10 @@ std::unique_ptr<MCTSEpisode> MCTSAgent::run_episode(
 		{
 			step_data.visualisation = environment->get_visualisations();
 		}
+		if (step_data.step == options.max_steps)
+		{
+			step_data.env_data.state.episode_end = true;
+		}
 
 		bool stop = agent_callback_->env_step(step_data) || step_data.env_data.state.episode_end;
 
