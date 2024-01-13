@@ -489,11 +489,15 @@ std::unique_ptr<MCTSEpisode> MCTSAgent::run_episode(
 	step_data.predict_result = model->initial();
 	step_data.reward = clamp_reward(step_data.env_data.reward, config_.rewards);
 	auto agent_reset_config = agent_callback_->env_reset(step_data);
+	bool enable_visualisations = agent_reset_config.enable_visualisations || options.enable_visualisations;
+	if (enable_visualisations)
+	{
+		step_data.visualisation = environment->get_visualisations();
+	}
+	agent_callback_->env_step(step_data);
 	episode_data.push_back(step_data);
 
 	torch::NoGradGuard no_grad;
-
-	bool enable_visualisations = agent_reset_config.enable_visualisations || options.enable_visualisations;
 
 	for (int step = 1; step <= options.max_steps; step++)
 	{
