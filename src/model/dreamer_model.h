@@ -175,44 +175,78 @@ public:
 	DreamerModel(const DreamerModel& other, const c10::optional<torch::Device>& device);
 	std::shared_ptr<torch::nn::Module> clone(const c10::optional<torch::Device>& device = c10::nullopt) const override;
 
-	/// @brief Predict a single step
-	/// @param input
-	/// @return
+	/// @brief Performs a single forward pass through the actor model and optionally through the critic if enabled in
+	/// the config.
+	/// @param input The model input, including observations and previous model hidden latent state
+	/// @return The predicted actions, the model hidden latent state and optionally the critic value.
 	ModelOutput predict(const ModelInput& input) override;
 
+	/// @brief Returns the initial model output. Used when an env is reset and the initial state must be set (for
+	/// recurrent models).
+	/// @return The initial model output.
 	ModelOutput initial() override;
 
+	/// @brief Returns the shape of the models internal hidden states
+	/// @return The shape of the hidden states
 	StateShapes get_state_shape() const override;
 
-	/// @brief
-	/// @param observations
-	/// @param actions
-	/// @return
+	/// @brief Evaluates the world model as part of training. Using a sequence of observations, actions and hidden states,
+	/// starting at the first item in the sequence, the world model predicts the next latent state and from that latent
+	/// state it attempts to reproduce the observations.
+	/// @param observations The sequence of observations x_t
+	/// @param actions The sequence of actions a_t
+	/// @param states The sequence of states s_t = {h_t, z_t, logits_t}. Note only h_t is used.
+	/// @return The output from the world model. Predicted observations, rewards, continue pred, hidden latents states,
+	/// etc
 	WorldModelOutput evaluate_world_model(
 		const Observations& observations,
 		const torch::Tensor& actions,
 		const HiddenStates& states,
 		const torch::Tensor& is_first) override;
 
+	/// @brief Imagines ahead into the future a trajectory of actions and hidden latent states from a single (batched)
+	/// initial input observation and hidden latent state.
+	/// @param horizon The number of steps into the future to imagine.
+	/// @param initial_states The initial states to start from when imagining into the future s_t = {h_t, z_t}.
+	/// @return The sequence of predicted actions, hidden latent states and reward (as well as other metrics See
+	/// `ImaginedTrajectory` for details).
 	ImaginedTrajectory imagine_trajectory(int horizon, const WorldModelOutput& initial_states) override;
 
+	/// @brief Evaluates the behavioural model (actor critic) as part of training. Uses the imagined trajectory hidden
+	/// latent states and action sequences.
+	/// @param latents The imagined trajectory hidden latent states sequence s_t = {h_t, z_t}.
+	/// @param actions The imagined trajectory actions sequence a_t.
+	/// @return The output from the behavioural model. Log_probs, entropy, critic value, etc
 	BehaviouralModelOutput
 	evaluate_behavioural_model(const torch::Tensor& latents, const torch::Tensor& actions) override;
 
+	/// @brief Returns the world models params
 	std::vector<torch::Tensor> world_model_parameters() const override;
+	/// @brief Returns the actor models params
 	std::vector<torch::Tensor> actor_parameters() const override;
+	/// @brief Returns the critic models params
 	std::vector<torch::Tensor> critic_parameters() const override;
-
+	/// @brief Updates the slow critic (aka target) params towards the current critic params.
+	/// @param tau Ratio of current critic to update the slow critic (target) with.
 	void update(double tau) override;
 
+	/// @brief Saves a copy of the model to the specified path
+	/// @param path The path to save the model to. Must not include the file name, only the directory.
 	void save(const std::filesystem::path& path) override;
+	/// @brief Loads the model from the specified path.
+	/// @param path The path to load the model from. Must not include the file name, only the directory.
 	void load(const std::filesystem::path& path) override;
-
+	/// @brief Copy the model params to this model.
+	/// @param model The model to copy params from.
 	void copy(const Model* model) override;
 
 protected:
 	/// @brief Registers the models various network modules.
 	void register_modules();
+	/// @brief If the action space is discrete, actions are encoded into one-hot representation. Otherwise actions are
+	/// unchanged.
+	/// @param actions The actions to encode
+	/// @return Encoded actions.
 	torch::Tensor encode_actions(const torch::Tensor& actions);
 
 private:

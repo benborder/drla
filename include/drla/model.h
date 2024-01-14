@@ -70,20 +70,36 @@ public:
 		const Observations& observations, const torch::Tensor& actions, const std::vector<torch::Tensor>& states) = 0;
 };
 
-/// @brief Common actor critic model interface
+/// @brief Common QNetwork model interface
 class QNetModelInterface : public Model
 {
 public:
 	/// @brief Virtual destructor
 	virtual ~QNetModelInterface() = default;
 
+	/// @brief Performs a forward pass through the feature extractor and QNet model to obtain the q values from
+	/// observations. If using recurrent uses the hidden latent state as part of the input.
+	/// @param observations The observations to use as input
+	/// @param state The hidden recurrent states to use as input. Only for recurrent models.
+	/// @return The q values
 	virtual torch::Tensor forward(const Observations& observations, const HiddenStates& state) = 0;
 
+	/// @brief Performs a forward pass through the feature extractor and target QNet model in the same manner as `forward`
+	/// above.
+	/// @param observations The observations to use as input
+	/// @param state The hidden recurrent states to use as input. Only for recurrent models.
+	/// @return The q values
 	virtual torch::Tensor forward_target(const Observations& observations, const HiddenStates& state) = 0;
+
+	/// @brief Updates the target critic params towards the current critic params.
+	/// @param tau Ratio of current critic to update the target critic with.
 	virtual void update(double tau) = 0;
 
+	/// @brief Returns the model params (both the QNetwork and feature extractor)
 	virtual std::vector<torch::Tensor> parameters(bool recursive = true) const = 0;
 
+	/// @brief Sets the exploration ratio. If the model is operating deterministically, this is ignored.
+	/// @param exploration The exploration ratio. A value of 1 is full random exploration, a value of 0 is no exploration.
 	virtual void set_exploration(double exploration) = 0;
 };
 
