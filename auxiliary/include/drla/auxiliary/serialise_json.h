@@ -58,6 +58,13 @@ namespace drla
 {
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
+	AgentType,
+	{
+		{AgentType::kSelf, "Self"},
+		{AgentType::kExpert, "Expert"},
+	})
+
+NLOHMANN_JSON_SERIALIZE_ENUM(
 	TrainAlgorithmType,
 	{
 		{TrainAlgorithmType::kNone, "None"},

@@ -33,6 +33,11 @@ MCTSAgent::MCTSAgent(
 		, config_(std::get<Config::MCTSAgent>(config))
 		, gen_(std::random_device{}())
 {
+	if (config_.agent_types.empty())
+	{
+		spdlog::error("The agent_types must have at least one agent defined!");
+		std::abort();
+	}
 }
 
 MCTSAgent::~MCTSAgent()
@@ -44,6 +49,11 @@ void MCTSAgent::train()
 	if (config_.env_count <= 0)
 	{
 		spdlog::error("The number of environments must be greater than 0!");
+		return;
+	}
+	if (std::find(config_.agent_types.begin(), config_.agent_types.end(), AgentType::kSelf) == config_.agent_types.end())
+	{
+		spdlog::error("The agent_types must have at least one 'Self' in the list when training!");
 		return;
 	}
 
@@ -475,8 +485,6 @@ std::unique_ptr<MCTSEpisode> MCTSAgent::run_episode(
 		options.max_steps = std::numeric_limits<int>::max();
 	}
 
-	OpponentType op_type = eval_mode && env_config.num_actors > 1 ? config_.opponent_type : OpponentType::kSelf;
-
 	std::vector<StepData> episode_data;
 
 	auto environment = environment_manager_->get_environment(env);
@@ -504,17 +512,21 @@ std::unique_ptr<MCTSEpisode> MCTSAgent::run_episode(
 		step_data.step = step;
 
 		auto turn_index = episode_data.back().env_data.turn_index;
-		if (op_type != OpponentType::kSelf && turn_index != config_.actor_index)
+		AgentType agent_type = config_.agent_types.at(turn_index);
+		// Don't use the expert agent when not in eval mode
+		if (agent_type == AgentType::kSelf || !eval_mode)
 		{
 			// TODO: maybe add ability to use other MCTS based agents, or even different versions of the same agent.
-			if (op_type == OpponentType::kExpert)
-			{
-				step_data.predict_result.action = environment->expert_agent();
-			}
+			step_data.predict_result = run_step(model, episode_data, options.deterministic, options.temperature);
+		}
+		else if (agent_type == AgentType::kExpert)
+		{
+			step_data.predict_result.action = environment->expert_agent();
 		}
 		else
 		{
-			step_data.predict_result = run_step(model, episode_data, options.deterministic, options.temperature);
+			spdlog::error("Invalid agent type specified");
+			std::abort();
 		}
 		step_data.env_data = environment->step(step_data.predict_result.action);
 

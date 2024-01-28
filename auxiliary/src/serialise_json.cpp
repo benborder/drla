@@ -961,6 +961,7 @@ void from_json(const nlohmann::json& json, Config::MCTSAgent& agent)
 	agent.pb_c_init << optional_input{json, "pb_c_init"};
 	agent.gamma << optional_input{json, "gamma"};
 	agent.temperature << optional_input{json, "temperature"};
+	agent.agent_types << optional_input{json, "agent_types"};
 }
 
 void to_json(nlohmann::json& json, const Config::MCTSAgent& agent)
@@ -973,6 +974,7 @@ void to_json(nlohmann::json& json, const Config::MCTSAgent& agent)
 	json["pb_c_init"] = agent.pb_c_init;
 	json["gamma"] = agent.gamma;
 	json["temperature"] = agent.temperature;
+	json["agent_types"] = agent.agent_types;
 }
 
 void to_json(nlohmann::json& json, const Config::Agent& agent)

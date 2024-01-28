@@ -11,11 +11,11 @@
 namespace drla
 {
 
-/// @brief The opponent agent to use when running the environment
-enum class OpponentType
+/// @brief The agent to use when running the environment
+enum class AgentType
 {
-	kSelf,	 // The opponent agent uses the same agent
-	kExpert, // The opponent agent uses the environments expert agent
+	kSelf,	 // The latest version of the agent
+	kExpert, // The expert agent provided by the environment (if available)
 };
 
 namespace Config
@@ -108,17 +108,12 @@ struct MCTSAgent : public AgentBase
 	double pb_c_init = 1.25;
 	// The discount factor for value calculation
 	std::vector<float> gamma = {0.997F};
-	// The number of moves before dropping the temperature to 0 (ie selecting the best action). If 0, the provided
-	// temperature is used every time.
-	int temperature_threshold = 0;
 	// Determines how greedy the action selection is for MCTS based agents. 0 is maximally greedy and the larger tha value
 	// the more random.
 	float temperature = 0.0F;
-	// The index for the agent to use in the environment (only relevent for multi actor environments). When < 0 a random
-	// index is assigned.
-	int actor_index = 0;
-	// The opponent agent to use for multi actor environments.
-	OpponentType opponent_type = OpponentType::kExpert;
+	// The agents to use for multi actor environments. The position in the list is the index assigned to the agent. This
+	// list must not be empty.
+	std::vector<AgentType> agent_types = {AgentType::kSelf, AgentType::kExpert};
 };
 
 /// @brief Hybrid agent specific configuration
