@@ -425,6 +425,7 @@ void MCTSAgent::train()
 	}
 
 	training_ = false;
+	model_syncer.send(std::dynamic_pointer_cast<MCTSModelInterface>(model_->clone(torch::kCPU)));
 
 	// Block unitl all other threads are completed
 	threadpool.wait_queue_empty();
