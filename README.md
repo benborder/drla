@@ -26,7 +26,7 @@ The library has been designed to have minimal dependencies with the only depende
 - [libtorch](https://github.com/pytorch/pytorch) (build and runtime)
 - [spdlog](https://github.com/gabime/spdlog) (build)
 - Compiler with C++17 support
-- CMake 3.14 or newer
+- CMake 3.14 or newer (CMake 3.22 is required for using presets)
 
 Additional auxillary functionality such as config json serialisation and helper classes require the following libraries:
 

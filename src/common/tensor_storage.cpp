@@ -12,7 +12,7 @@ torch::Tensor drla::load_tensor(const std::string& filename)
 	std::ifstream in_file(filename, std::ios::binary);
 	if (!in_file.is_open())
 	{
-		spdlog::error("Unable to open file '{}' for writing", filename);
+		spdlog::error("Unable to open file '{}' for reading", filename);
 		return {};
 	}
 	// [ndims, type, dims... , data...]

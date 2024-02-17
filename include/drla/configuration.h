@@ -108,7 +108,7 @@ struct MCTSAgent : public AgentBase
 	double pb_c_init = 1.25;
 	// The discount factor for value calculation
 	std::vector<float> gamma = {0.997F};
-	// Determines how greedy the action selection is for MCTS based agents. 0 is maximally greedy and the larger tha value
+	// Determines how greedy the action selection is for MCTS based agents. 0 is maximally greedy and the larger the value
 	// the more random.
 	float temperature = 0.0F;
 	// The agents to use for multi actor environments. The position in the list is the index assigned to the agent. This
