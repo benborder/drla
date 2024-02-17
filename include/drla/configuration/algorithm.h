@@ -231,8 +231,8 @@ struct MCTSAlgorithm : public TrainAlgorithm
 	int start_buffer_size = 10;
 	// The number of samples to use in a train update step
 	int batch_size = 256;
-	// Don't start reanalysing until the min number of training steps are performed
-	int min_reanalyse_train_steps = 10;
+	// Don't start reanalysing until the min number of training steps are performed. -1 disables reanalyse.
+	int min_reanalyse_train_steps = -1;
 	// Don't start reanalysing until the min size of the buffer is reached
 	int min_reanalyse_buffer_size = 100;
 	// The ammount of prioritised experience replay to use

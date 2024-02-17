@@ -314,31 +314,34 @@ void MCTSAgent::train()
 	}
 
 	// Reanalyse thread
-	threadpool.queue_task([&]() {
-		using namespace std::chrono_literals;
-		auto model_sync_reciever = model_syncer.create_reciever();
+	if (train_config.min_reanalyse_train_steps >= 0)
+	{
+		threadpool.queue_task([&]() {
+			using namespace std::chrono_literals;
+			auto model_sync_reciever = model_syncer.create_reciever();
 
-		// Wait until conditions are met to start reanalyse
-		while (timestep < train_config.min_reanalyse_train_steps &&
-					 buffer.get_num_episodes() < train_config.min_reanalyse_buffer_size)
-		{
-			std::this_thread::sleep_for(1s);
-		}
-
-		auto model = model_sync_reciever->request();
-		model->eval();
-
-		while (training_)
-		{
-			buffer.reanalyse(model);
-			// update to the latest model from training (if available)
-			if (auto new_model = model_sync_reciever->check())
+			// Wait until conditions are met to start reanalyse
+			while (timestep < train_config.min_reanalyse_train_steps &&
+						 buffer.get_num_episodes() < train_config.min_reanalyse_buffer_size)
 			{
-				model = *new_model;
-				model->eval();
+				std::this_thread::sleep_for(1s);
 			}
-		}
-	});
+
+			auto model = model_sync_reciever->request();
+			model->eval();
+
+			while (training_)
+			{
+				buffer.reanalyse(model);
+				// update to the latest model from training (if available)
+				if (auto new_model = model_sync_reciever->check())
+				{
+					model = *new_model;
+					model->eval();
+				}
+			}
+		});
+	}
 
 	{
 		InitData data;
