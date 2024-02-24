@@ -186,6 +186,8 @@ PredictionNetworkImpl::PredictionNetworkImpl(
 		}
 		else
 		{
+			value_input_shape.emplace_back(shape);
+			policy_input_shape.emplace_back(shape);
 			prediction_encoding_.emplace_back(std::monostate());
 		}
 		++group;
