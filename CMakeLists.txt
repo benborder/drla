@@ -24,12 +24,16 @@ find_package(Torch REQUIRED)
 
 # The core drla library
 add_library(drla STATIC
+	# Common
+	src/common/get_time.cpp
+
 	# Agent
 	src/agent/agent.cpp
 	src/agent/on_policy_agent.cpp
 	src/agent/off_policy_agent.cpp
 	src/agent/interactive_agent.cpp
 	src/agent/mcts_agent.cpp
+	src/agent/mcts.cpp
 	src/agent/hybrid_agent.cpp
 
 	# Buffers
@@ -42,10 +46,7 @@ add_library(drla STATIC
 	src/buffers/hybrid_episode.cpp
 	src/buffers/hybrid_replay_buffer.cpp
 	src/buffers/off_policy_episode.cpp
-
-	# Common
-	src/common/tensor_storage.cpp
-	src/common/print_time.cpp
+	src/buffers/tensor_storage.cpp
 
 	# Training algorithms
 	src/algorithm/a2c.cpp
@@ -55,9 +56,6 @@ add_library(drla STATIC
 	src/algorithm/muzero.cpp
 	src/algorithm/dreamer.cpp
 	src/algorithm/optimiser.cpp
-
-	# Monte Carlo Tree Search
-	src/mcts/mcts.cpp
 
 	# Models
 	src/model/utils.cpp
