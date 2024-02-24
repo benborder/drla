@@ -4,7 +4,6 @@
 #include <torch/torch.h>
 
 using namespace drla;
-using namespace torch;
 
 MLPExtractor::MLPExtractor(const Config::MLPConfig& config, const std::vector<int64_t>& observation_shape)
 		: hidden_(nullptr)
@@ -22,7 +21,7 @@ MLPExtractor::MLPExtractor(const MLPExtractor& other, const c10::optional<torch:
 
 torch::Tensor MLPExtractor::forward(const torch::Tensor& observation)
 {
-	return hidden_(observation);
+	return hidden_(torch::flatten(observation, 1));
 }
 
 std::vector<int64_t> MLPExtractor::get_output_shape() const
