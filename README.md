@@ -18,6 +18,7 @@ The DRLA library is a C++ Deep Reinforcement Learning Agent based on libtorch (p
 See the following repositories for examples on how to use this library:
 
 - [drla-atari](https://github.com/benborder/drla-atari)
+- [drla-sim](https://github.com/benborder/drla-sim)
 
 ## Dependencies
 
