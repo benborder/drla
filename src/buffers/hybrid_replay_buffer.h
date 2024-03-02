@@ -8,6 +8,7 @@
 #include <deque>
 #include <mutex>
 #include <random>
+#include <shared_mutex>
 #include <vector>
 
 namespace drla
@@ -81,8 +82,8 @@ private:
 	std::shared_ptr<Episode> load_episode(const std::filesystem::path& path) override;
 
 private:
-	std::vector<std::vector<StepData>> new_episodes_;
+	std::vector<std::vector<StepData>> cached_episodes_;
 	std::vector<std::shared_ptr<HybridEpisode>> inprogress_episodes_;
-	std::mutex m_flush_;
+	std::shared_mutex m_flush_;
 };
 } // namespace drla

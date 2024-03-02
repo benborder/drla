@@ -9,17 +9,17 @@ using namespace drla;
 HybridReplayBuffer::HybridReplayBuffer(std::vector<float> gamma, int n_envs, EpisodicPERBufferOptions options)
 		: EpisodicPERBuffer(gamma, std::move(options))
 {
-	new_episodes_.resize(n_envs);
+	cached_episodes_.resize(n_envs);
 	inprogress_episodes_.resize(n_envs);
 }
 
 void HybridReplayBuffer::flush_cache()
 {
 	HybridEpisodeOptions opt = {{}, static_cast<int>(flatten(options_.action_space.shape)), options_.unroll_steps};
-	std::lock_guard lock(m_flush_);
-	for (size_t env = 0; env < new_episodes_.size(); ++env)
+	std::unique_lock flush_lock(m_flush_);
+	for (size_t env = 0; env < cached_episodes_.size(); ++env)
 	{
-		auto& ep = new_episodes_.at(env);
+		auto& ep = cached_episodes_.at(env);
 		if (static_cast<int>(ep.size()) > options_.unroll_steps)
 		{
 			opt.name = ep.front().name;
@@ -42,10 +42,12 @@ void HybridReplayBuffer::add(StepData step_data, bool force_cache)
 	int env = step_data.env;
 	int step = step_data.step;
 	bool episode_end = step_data.env_data.state.episode_end;
-	std::lock_guard lock(m_flush_);
-	auto& ep = new_episodes_.at(env);
+	std::shared_lock flush_lock(m_flush_);
+	auto& ep = cached_episodes_.at(env);
+	// Caching can't be forced if the number of steps in the step cache is less than the unroll steps.
+	const bool cache_step = force_cache && static_cast<int>(ep.size()) < options_.unroll_steps;
 	// At least a min of 'unroll_steps' must exist before creating a HybridEpisode in inprogress_episodes_
-	if (step <= options_.unroll_steps || force_cache || static_cast<int>(ep.size()) > options_.unroll_steps)
+	if (step <= options_.unroll_steps || cache_step || static_cast<int>(ep.size()) > options_.unroll_steps)
 	{
 		HybridEpisodeOptions opt = {
 			step_data.name, static_cast<int>(flatten(options_.action_space.shape)), options_.unroll_steps};
@@ -234,7 +236,7 @@ HybridBatch HybridReplayBuffer::sample(int batch_size, torch::Device device) con
 int HybridReplayBuffer::get_num_samples() const
 {
 	int in_progress_steps = 0;
-	for (auto& ep : new_episodes_) { in_progress_steps += ep.size(); }
+	for (auto& ep : cached_episodes_) { in_progress_steps += ep.size(); }
 	for (auto& ep : inprogress_episodes_)
 	{
 		if (ep != nullptr)
@@ -284,7 +286,7 @@ bool HybridReplayBuffer::is_ready(int min_samples) const
 	}
 
 	int useable_steps = 0;
-	for (auto& ep : new_episodes_)
+	for (auto& ep : cached_episodes_)
 	{
 		if (static_cast<int>(ep.size()) > options_.unroll_steps)
 		{
