@@ -420,7 +420,7 @@ void from_json(const nlohmann::json& json, LayerConnectionConfig& layer_connecti
 void to_json(nlohmann::json& json, const LayerConnectionConfig& layer_connection)
 {
 	json["type"] = FCLayerType::kLayerConnection;
-	json["layer_connection"] = layer_connection.connection;
+	json["connection"] = layer_connection.connection;
 	json["residual"] = layer_connection.residual;
 }
 
