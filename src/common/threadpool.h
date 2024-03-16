@@ -165,6 +165,9 @@ public:
 	/// @brief returns the number of threads currently in the pool.
 	[[nodiscard]] size_t size() const { return threads_.size(); }
 
+	/// @brief The max queue length when queuing tasks
+	void set_max_queue_length(size_t length) { max_queue_length_ = length; }
+
 private:
 	std::mutex m_tasks_;
 	std::condition_variable cv_tasks_;
@@ -177,7 +180,7 @@ private:
 	std::atomic_bool running_;
 	std::vector<std::thread> threads_;
 
-	const size_t max_queue_length_;
+	size_t max_queue_length_;
 };
 
 } // namespace drla

@@ -46,7 +46,7 @@ void HybridAgent::train()
 
 	// Create enough threads for self play envs, eval env, reanalyse and train update
 	size_t total_threads = config_.env_count + static_cast<int>(config_.eval_period > 0) + 2;
-	ThreadPool threadpool(total_threads, /*clamp_threads=*/false, 10);
+	ThreadPool threadpool(total_threads, /*clamp_threads=*/false, config_.env_count);
 	make_environments(threadpool, config_.env_count);
 
 	// Block and wait for envs to be created
@@ -226,6 +226,7 @@ void HybridAgent::train()
 			},
 			env);
 	}
+	threadpool.set_max_queue_length(10);
 
 	std::future<Environment*> eval_env_future;
 
