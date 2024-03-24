@@ -106,7 +106,8 @@ void WorldModelImpl::register_modules()
 	register_module("seq_norm", seq_norm_);
 	register_module("dyn_logits", dyn_logits_);
 	register_module("reward", reward_);
-	register_module("continue", continue_);
+	// A module cannot be named continue as it seems to be a reserved word in libtorch's serialisation format
+	register_module("non_terminal", continue_);
 }
 
 std::shared_ptr<torch::nn::Module> WorldModelImpl::clone(const c10::optional<torch::Device>& device) const
