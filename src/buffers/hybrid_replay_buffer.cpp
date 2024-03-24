@@ -43,32 +43,33 @@ void HybridReplayBuffer::add(StepData step_data, bool force_cache)
 	int step = step_data.step;
 	bool episode_end = step_data.env_data.state.episode_end;
 	std::shared_lock flush_lock(m_flush_);
-	auto& ep = cached_episodes_.at(env);
+	auto& cached_ep = cached_episodes_.at(env);
+	auto& inprogress_ep = inprogress_episodes_.at(env);
 	// Caching can't be forced if the number of steps in the step cache is less than the unroll steps.
-	const bool cache_step = force_cache && static_cast<int>(ep.size()) < options_.unroll_steps;
+	const bool cache_step =
+		force_cache && static_cast<int>(cached_ep.size()) < options_.unroll_steps && inprogress_ep == nullptr;
 	// At least a min of 'unroll_steps' must exist before creating a HybridEpisode in inprogress_episodes_
-	if (step <= options_.unroll_steps || cache_step || static_cast<int>(ep.size()) > options_.unroll_steps)
+	if (step <= options_.unroll_steps || cache_step || static_cast<int>(cached_ep.size()) > options_.unroll_steps)
 	{
 		HybridEpisodeOptions opt = {
 			step_data.name, static_cast<int>(flatten(options_.action_space.shape)), options_.unroll_steps};
-		ep.push_back(std::move(step_data));
+		cached_ep.push_back(std::move(step_data));
 		if (episode_end)
 		{
-			add_episode(std::make_shared<HybridEpisode>(std::move(ep), opt));
+			add_episode(std::make_shared<HybridEpisode>(std::move(cached_ep), opt));
 		}
 		else if (step >= options_.unroll_steps && !force_cache)
 		{
-			add_in_progress_episode(std::make_shared<HybridEpisode>(std::move(ep), opt), env);
+			add_in_progress_episode(std::make_shared<HybridEpisode>(std::move(cached_ep), opt), env);
 		}
 	}
 	else
 	{
-		auto& episode = inprogress_episodes_.at(env);
-		episode->add_step(std::move(step_data));
-		episode->init_priorities(gamma_, options_.per_alpha);
+		inprogress_ep->add_step(std::move(step_data));
+		inprogress_ep->init_priorities(gamma_, options_.per_alpha);
 		if (episode_end)
 		{
-			add_episode(std::move(inprogress_episodes_.at(env)));
+			add_episode(std::move(inprogress_ep));
 		}
 	}
 }
