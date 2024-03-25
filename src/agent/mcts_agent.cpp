@@ -227,6 +227,8 @@ void MCTSAgent::train()
 		});
 	}
 
+	std::future<bool> buffer_loading_complete;
+
 	// Load episodes into the buffer if requested and they exist
 	if (!train_config.buffer_load_path.empty())
 	{
@@ -237,13 +239,10 @@ void MCTSAgent::train()
 		}
 		if (std::filesystem::exists(path))
 		{
-			threadpool.queue_task([&, path = std::move(path)]() {
+			buffer_loading_complete = threadpool.queue_task([&, path = std::move(path)]() {
 				spdlog::info("Loading episodes into replay buffer");
 				buffer.load(path);
-				spdlog::info(
-					"Loaded {} episodes totalling {} samples into replay buffer.",
-					buffer.get_num_episodes(),
-					buffer.get_num_samples());
+				return true;
 			});
 		}
 		else
@@ -356,6 +355,28 @@ void MCTSAgent::train()
 
 	// Synchronise the model
 	model_syncer.send(std::dynamic_pointer_cast<MCTSModelInterface>(model_->clone(torch::kCPU)));
+
+	// Check if the buffer is loading episodes
+	if (buffer_loading_complete.valid())
+	{
+		using namespace std::chrono_literals;
+		spdlog::info("Waiting for buffer to load episodes");
+
+		while (buffer_loading_complete.wait_for(10ms) != std::future_status::ready)
+		{
+			spdlog::fmt_lib::print(
+				"\rLoaded {} episodes totalling {} samples into replay buffer.",
+				buffer.get_num_episodes(),
+				buffer.get_num_samples());
+		}
+		if (buffer_loading_complete.get())
+		{
+			spdlog::fmt_lib::print(
+				"\rLoaded {} episodes totalling {} samples into replay buffer.\n",
+				buffer.get_num_episodes(),
+				buffer.get_num_samples());
+		}
+	}
 
 	// Wait for the min number of episodes to be available in the buffer
 	if (buffer.get_num_episodes() < train_config.start_buffer_size)
