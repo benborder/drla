@@ -123,7 +123,15 @@ void to_json(nlohmann::json& json, const TrainAlgorithm& train_algorithm)
 	json["max_steps"] = train_algorithm.max_steps;
 	json["eval_max_steps"] = train_algorithm.eval_max_steps;
 	json["eval_determinisic"] = train_algorithm.eval_determinisic;
-	json["buffer_load_path"] = train_algorithm.buffer_load_path;
+	// If the buffer load path is not set use the same path as the save path
+	if (train_algorithm.buffer_load_path.empty())
+	{
+		json["buffer_load_path"] = train_algorithm.buffer_save_path;
+	}
+	else
+	{
+		json["buffer_load_path"] = train_algorithm.buffer_load_path;
+	}
 	json["buffer_save_path"] = train_algorithm.buffer_save_path;
 }
 
