@@ -453,6 +453,16 @@ void MCTSAgent::train()
 
 	// Block unitl all other threads are completed
 	threadpool.wait_queue_empty();
+
+	// If training was stopped early, then move to the next step so when resuming training it starts on the next step.
+	if (timestep < train_config.total_timesteps)
+	{
+		++timestep;
+	}
+	// Save the final model and run an agent_callback to save config
+	auto path = get_save_path();
+	algorithm->save(path);
+	agent_callback_->save(timestep, path);
 }
 
 void MCTSAgent::run(const std::vector<State>& initial_states, RunOptions options)
