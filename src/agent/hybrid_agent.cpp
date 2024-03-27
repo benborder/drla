@@ -10,7 +10,7 @@
 #include "hybrid_replay_buffer.h"
 #include "model.h"
 #include "random_model.h"
-#include "sender_reciever.h"
+#include "sender_receiver.h"
 #include "threadpool.h"
 #include "utils.h"
 
@@ -95,7 +95,7 @@ void HybridAgent::train()
 	{
 		threadpool.queue_task(
 			[&, env]() {
-				auto model_sync_reciever = model_syncer.create_reciever();
+				auto model_sync_receiver = model_syncer.create_receiver();
 
 				torch::Device device{torch::kCPU};
 				{
@@ -113,7 +113,7 @@ void HybridAgent::train()
 				}
 
 				// Wait for the initial model to be sent
-				auto model = model_sync_reciever->request();
+				auto model = model_sync_receiver->wait().value();
 				if (device != torch::kCPU)
 				{
 					model = std::dynamic_pointer_cast<HybridModelInterface>(model->clone(device));
@@ -163,7 +163,7 @@ void HybridAgent::train()
 						if (timestep > 0 || (timestep == 0 && buffer_ready))
 						{
 							// update to the latest model from training (wait for it to be sent)
-							auto new_model = model_sync_reciever->request();
+							auto new_model = model_sync_receiver->wait().value();
 							if (device != torch::kCPU)
 							{
 								model->copy(new_model.get());
@@ -239,10 +239,10 @@ void HybridAgent::train()
 			[&, eval_env]() {
 				std::shared_ptr<HybridModelInterface> model;
 
-				auto model_sync_reciever = model_syncer.create_reciever();
+				auto model_sync_receiver = model_syncer.create_receiver();
 
 				// Wait for the initial model to be sent
-				model = model_sync_reciever->request();
+				model = model_sync_receiver->wait().value();
 				model->eval();
 
 				// This also serves to block the thread until the env has loaded (in case its really slow to load).
@@ -257,7 +257,7 @@ void HybridAgent::train()
 				while (timestep < train_config.total_timesteps && training_)
 				{
 					// update to the latest model from training (if available)
-					if (auto new_model = model_sync_reciever->wait([&] { return !training_ || (timestep > next_eval_run); }))
+					if (auto new_model = model_sync_receiver->wait([&] { return !training_ || (timestep > next_eval_run); }))
 					{
 						model = *new_model;
 						model->eval();
@@ -361,7 +361,7 @@ void HybridAgent::train()
 	// Reanalyse thread
 	threadpool.queue_task([&]() {
 		using namespace std::chrono_literals;
-		auto model_sync_reciever = model_syncer.create_reciever();
+		auto model_sync_receiver = model_syncer.create_receiver();
 
 		// Wait until conditions are met to start reanalyse
 		while (timestep < train_config.min_reanalyse_train_steps &&
@@ -370,14 +370,14 @@ void HybridAgent::train()
 			std::this_thread::sleep_for(1s);
 		}
 
-		auto model = model_sync_reciever->request();
+		auto model = model_sync_receiver->wait().value();
 		model->eval();
 
 		while (training_)
 		{
 			buffer.reanalyse(model);
 			// update to the latest model from training (if available)
-			if (auto new_model = model_sync_reciever->check())
+			if (auto new_model = model_sync_receiver->check())
 			{
 				model = *new_model;
 				model->eval();

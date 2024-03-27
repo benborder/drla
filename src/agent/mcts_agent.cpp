@@ -11,7 +11,7 @@
 #include "muzero.h"
 #include "muzero_model.h"
 #include "random_model.h"
-#include "sender_reciever.h"
+#include "sender_receiver.h"
 #include "threadpool.h"
 #include "utils.h"
 
@@ -109,10 +109,10 @@ void MCTSAgent::train()
 		threadpool.queue_task([&, env]() {
 			std::shared_ptr<MCTSModelInterface> model;
 
-			auto model_sync_reciever = model_syncer.create_reciever();
+			auto model_sync_receiver = model_syncer.create_receiver();
 
 			// Wait for the initial model to be sent
-			model = model_sync_reciever->request();
+			model = model_sync_receiver->wait().value();
 			c10::Device device{torch::kCPU};
 			{
 				const auto& gpus = train_config.self_play_gpus;
@@ -141,7 +141,7 @@ void MCTSAgent::train()
 			options.temperature = 1;
 			int last_timestep = 0;
 
-			while (timestep < train_config.total_timesteps)
+			while (timestep < train_config.total_timesteps && training_)
 			{
 				for (auto [step, temp] : train_config.temperature_step)
 				{
@@ -163,7 +163,7 @@ void MCTSAgent::train()
 				}
 				buffer.add_episode(std::move(episode_data));
 				// update to the latest model from training (if available)
-				if (auto new_model = model_sync_reciever->check())
+				if (auto new_model = model_sync_receiver->check())
 				{
 					if (device != torch::kCPU)
 					{
@@ -194,10 +194,10 @@ void MCTSAgent::train()
 		threadpool.queue_task([&]() {
 			std::shared_ptr<MCTSModelInterface> model;
 
-			auto model_sync_reciever = model_syncer.create_reciever();
+			auto model_sync_receiver = model_syncer.create_receiver();
 
 			// Wait for the initial model to be sent
-			model = model_sync_reciever->request();
+			model = model_sync_receiver->wait().value();
 			model->eval();
 
 			// This also serves to block the thread until the env has loaded (in case its really slow to load).
@@ -215,7 +215,7 @@ void MCTSAgent::train()
 			while (timestep < train_config.total_timesteps && training_)
 			{
 				// update to the latest model from training (if available)
-				if (auto new_model = model_sync_reciever->wait([&] { return !training_ || (timestep > next_eval_run); }))
+				if (auto new_model = model_sync_receiver->wait([&] { return !training_ || (timestep > next_eval_run); }))
 				{
 					model = *new_model;
 					model->eval();
@@ -316,7 +316,7 @@ void MCTSAgent::train()
 	{
 		threadpool.queue_task([&]() {
 			using namespace std::chrono_literals;
-			auto model_sync_reciever = model_syncer.create_reciever();
+			auto model_sync_receiver = model_syncer.create_receiver();
 
 			// Wait until conditions are met to start reanalyse
 			while (timestep < train_config.min_reanalyse_train_steps &&
@@ -325,14 +325,14 @@ void MCTSAgent::train()
 				std::this_thread::sleep_for(1s);
 			}
 
-			auto model = model_sync_reciever->request();
+			auto model = model_sync_receiver->wait().value();
 			model->eval();
 
 			while (training_)
 			{
 				buffer.reanalyse(model);
 				// update to the latest model from training (if available)
-				if (auto new_model = model_sync_reciever->check())
+				if (auto new_model = model_sync_receiver->check())
 				{
 					model = *new_model;
 					model->eval();
