@@ -3,8 +3,8 @@
 #include "distribution.h"
 #include "normal.h"
 
+#include <ATen/core/Tensor.h>
 #include <c10/util/ArrayRef.h>
-#include <torch/torch.h>
 
 namespace drla
 {

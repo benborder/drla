@@ -6,8 +6,6 @@
 #include "optimiser.h"
 #include "rollout_buffer.h"
 
-#include <torch/torch.h>
-
 #include <string>
 #include <vector>
 

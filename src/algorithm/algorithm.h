@@ -3,8 +3,6 @@
 #include "metrics.h"
 #include "types.h"
 
-#include <torch/torch.h>
-
 #include <filesystem>
 #include <string>
 #include <vector>

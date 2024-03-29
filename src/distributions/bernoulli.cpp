@@ -1,5 +1,6 @@
 #include "bernoulli.h"
 
+#include <ATen/ATen.h>
 #include <ATen/core/Reduction.h>
 
 #include <limits>

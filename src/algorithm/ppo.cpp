@@ -5,7 +5,8 @@
 #include "utils.h"
 
 #include <spdlog/spdlog.h>
-#include <torch/torch.h>
+#include <torch/nn/functional.h>
+#include <torch/serialize.h>
 
 #include <chrono>
 #include <filesystem>

@@ -4,6 +4,7 @@
 #include "model/utils.h"
 
 #include <spdlog/spdlog.h>
+#include <torch/serialize.h>
 
 #include <filesystem>
 

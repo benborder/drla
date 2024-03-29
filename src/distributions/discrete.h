@@ -2,7 +2,8 @@
 
 #include "model/utils.h"
 
-#include <torch/torch.h>
+#include <ATen/core/Tensor.h>
+#include <torch/types.h>
 
 #include <vector>
 

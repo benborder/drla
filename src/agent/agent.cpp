@@ -15,7 +15,10 @@
 #include "threadpool.h"
 #include "utils.h"
 
+#include <ATen/Device.h>
 #include <spdlog/spdlog.h>
+#include <torch/cuda.h>
+#include <torch/utils.h>
 
 #include <filesystem>
 

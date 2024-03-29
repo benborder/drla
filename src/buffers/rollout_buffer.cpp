@@ -5,7 +5,6 @@
 #include "utils.h"
 
 #include <c10/util/ArrayRef.h>
-#include <torch/torch.h>
 
 #include <memory>
 #include <vector>

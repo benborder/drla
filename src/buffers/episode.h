@@ -2,7 +2,7 @@
 
 #include "types.h"
 
-#include <torch/torch.h>
+#include <ATen/core/Tensor.h>
 
 #include <filesystem>
 #include <random>

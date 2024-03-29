@@ -3,7 +3,8 @@
 #include "configuration/algorithm.h"
 #include "model/utils.h"
 
-#include <torch/torch.h>
+#include <ATen/core/Tensor.h>
+#include <torch/optim/optimizer.h>
 
 #include <memory>
 

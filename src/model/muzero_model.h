@@ -7,7 +7,7 @@
 #include "res_block.h"
 #include "types.h"
 
-#include <torch/torch.h>
+#include <torch/nn/module.h>
 
 #include <memory>
 #include <variant>

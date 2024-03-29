@@ -1,5 +1,7 @@
 #include "categorical.h"
 
+#include <ATen/ATen.h>
+
 #include <algorithm>
 
 using namespace drla;

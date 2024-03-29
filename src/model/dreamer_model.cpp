@@ -14,6 +14,7 @@
 #include "utils.h"
 
 #include <spdlog/spdlog.h>
+#include <torch/serialize.h>
 
 using namespace drla;
 using namespace dreamer;

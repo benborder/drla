@@ -1,6 +1,6 @@
 #pragma once
 
-#include <torch/torch.h>
+#include <ATen/core/Tensor.h>
 
 #include <vector>
 

@@ -5,7 +5,12 @@
 #include "drla/model/res_block.h"
 #include "drla/types.h"
 
-#include <torch/torch.h>
+#include <ATen/core/Tensor.h>
+#include <torch/nn.h>
+#include <torch/nn/modules/batchnorm.h>
+#include <torch/nn/modules/conv.h>
+#include <torch/nn/modules/normalization.h>
+#include <torch/nn/modules/pooling.h>
 
 #include <functional>
 #include <variant>

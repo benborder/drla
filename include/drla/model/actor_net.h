@@ -4,7 +4,8 @@
 #include "drla/model/fc_block.h"
 #include "drla/types.h"
 
-#include <torch/torch.h>
+#include <ATen/core/Tensor.h>
+#include <torch/nn/module.h>
 
 #include <memory>
 

@@ -7,8 +7,6 @@
 #include "drla/stats.h"
 #include "drla/types.h"
 
-#include <torch/torch.h>
-
 #include <atomic>
 #include <memory>
 #include <random>

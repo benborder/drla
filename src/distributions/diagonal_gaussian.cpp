@@ -2,6 +2,8 @@
 
 #include "normal.h"
 
+#include <ATen/ATen.h>
+
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <limits>

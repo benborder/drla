@@ -3,7 +3,7 @@
 #include "drla/configuration.h"
 #include "drla/types.h"
 
-#include <torch/torch.h>
+#include <ATen/core/Tensor.h>
 
 namespace drla
 {

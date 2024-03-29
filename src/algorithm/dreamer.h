@@ -7,7 +7,7 @@
 #include "optimiser.h"
 #include "utils.h"
 
-#include <torch/torch.h>
+#include <ATen/core/Tensor.h>
 
 #include <string>
 #include <vector>

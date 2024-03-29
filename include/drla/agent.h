@@ -6,8 +6,6 @@
 #include "drla/model.h"
 #include "drla/types.h"
 
-#include <torch/torch.h>
-
 #include <filesystem>
 #include <string>
 #include <vector>

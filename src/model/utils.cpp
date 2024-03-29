@@ -2,6 +2,8 @@
 
 #include "functions.h"
 
+#include <ATen/ATen.h>
+
 namespace drla
 {
 

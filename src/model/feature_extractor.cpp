@@ -4,6 +4,7 @@
 #include "mlp_extractor.h"
 #include "utils.h"
 
+#include <ATen/Parallel.h>
 #include <spdlog/spdlog.h>
 
 using namespace drla;

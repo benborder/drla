@@ -3,7 +3,7 @@
 #include "rollout_buffer.h"
 #include "types.h"
 
-#include <torch/torch.h>
+#include <ATen/core/Tensor.h>
 
 #include <cstddef>
 

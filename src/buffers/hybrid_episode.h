@@ -1,6 +1,6 @@
 #include "episode.h"
 
-#include <torch/torch.h>
+#include <ATen/core/Tensor.h>
 
 #include <filesystem>
 #include <string>

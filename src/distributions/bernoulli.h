@@ -2,8 +2,8 @@
 
 #include "distribution.h"
 
+#include <ATen/core/Tensor.h>
 #include <c10/util/ArrayRef.h>
-#include <torch/torch.h>
 
 #include <optional>
 

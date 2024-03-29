@@ -6,8 +6,6 @@
 #include "drla/environment.h"
 #include "drla/types.h"
 
-#include <torch/torch.h>
-
 #include <memory>
 #include <string>
 

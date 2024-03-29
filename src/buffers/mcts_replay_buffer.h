@@ -2,7 +2,7 @@
 
 #include "episodic_per_buffer.h"
 
-#include <torch/torch.h>
+#include <ATen/core/Tensor.h>
 
 #include <deque>
 #include <mutex>

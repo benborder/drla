@@ -11,7 +11,6 @@
 #include "threadpool.h"
 
 #include <spdlog/spdlog.h>
-#include <torch/torch.h>
 
 using namespace torch;
 using namespace drla;

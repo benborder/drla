@@ -6,8 +6,6 @@
 #include "model.h"
 #include "optimiser.h"
 
-#include <torch/torch.h>
-
 #include <string>
 #include <vector>
 

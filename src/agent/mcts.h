@@ -4,7 +4,7 @@
 #include "model.h"
 #include "types.h"
 
-#include <torch/torch.h>
+#include <ATen/core/Tensor.h>
 
 #include <optional>
 #include <random>

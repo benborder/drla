@@ -3,7 +3,8 @@
 #include "drla/configuration/model.h"
 #include "drla/types.h"
 
-#include <torch/torch.h>
+#include <ATen/core/Tensor.h>
+#include <torch/nn/init.h>
 
 #include <functional>
 #include <string>

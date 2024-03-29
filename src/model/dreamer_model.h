@@ -7,7 +7,7 @@
 #include "model.h"
 #include "types.h"
 
-#include <torch/torch.h>
+#include <torch/nn/module.h>
 
 #include <memory>
 #include <optional>

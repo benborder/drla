@@ -3,7 +3,10 @@
 #include "drla/configuration/model.h"
 #include "drla/types.h"
 
-#include <torch/torch.h>
+#include <ATen/core/Tensor.h>
+#include <torch/nn/module.h>
+#include <torch/nn/modules/batchnorm.h>
+#include <torch/nn/modules/conv.h>
 
 #include <vector>
 

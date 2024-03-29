@@ -1,7 +1,6 @@
 #include "mlp_extractor.h"
 
 #include <spdlog/spdlog.h>
-#include <torch/torch.h>
 
 using namespace drla;
 

@@ -2,8 +2,6 @@
 
 #include "utils.h"
 
-#include <torch/torch.h>
-
 #include <algorithm>
 #include <vector>
 

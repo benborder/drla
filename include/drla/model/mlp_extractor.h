@@ -4,7 +4,7 @@
 #include "drla/model/fc_block.h"
 #include "drla/model/feature_extractor.h"
 
-#include <torch/torch.h>
+#include <ATen/core/Tensor.h>
 
 #include <vector>
 

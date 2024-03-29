@@ -6,7 +6,6 @@
 #include "model/utils.h"
 
 #include <spdlog/spdlog.h>
-#include <torch/torch.h>
 
 #include <memory>
 

@@ -1,5 +1,9 @@
 #include "optimiser.h"
 
+#include <torch/nn/modules/loss.h>
+#include <torch/nn/utils.h>
+#include <torch/optim.h>
+
 using namespace drla;
 
 Optimiser::Optimiser(
