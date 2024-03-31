@@ -235,7 +235,16 @@ void Agent::run_episode(Model* model, const State& initial_state, int env, RunOp
 	}
 }
 
-ModelOutput Agent::predict_action(const std::vector<StepData>& step_history, bool deterministic)
+ModelOutput Agent::initialise(const EnvironmentConfiguration& env_config, bool reload)
+{
+	if (model_ == nullptr || reload)
+	{
+		load_model(env_config);
+	}
+	return model_->initial();
+}
+
+ModelOutput Agent::predict(const std::vector<StepData>& step_history, bool deterministic)
 {
 	if (step_history.empty())
 	{
@@ -277,51 +286,55 @@ void Agent::load_model(bool force_reload)
 	if (force_reload || model_ == nullptr)
 	{
 		// Observation shape and action space are the same for all envs
-		const auto env_config = environment_manager_->get_configuration();
-		int reward_shape = base_config_.rewards.combine_rewards ? 1 : static_cast<int>(env_config.reward_types.size());
-
-		switch (base_config_.model_type)
-		{
-			case AgentPolicyModelType::kRandom:
-			{
-				model_ = std::make_shared<RandomModel>(base_config_.model, env_config.action_space, reward_shape);
-				break;
-			}
-			case AgentPolicyModelType::kActorCritic:
-			{
-				model_ = std::make_shared<ActorCriticModel>(base_config_.model, env_config, reward_shape);
-				break;
-			}
-			case AgentPolicyModelType::kSoftActorCritic:
-			{
-				model_ = std::make_shared<SoftActorCriticModel>(base_config_.model, env_config, reward_shape);
-				break;
-			}
-			case AgentPolicyModelType::kQNet:
-			{
-				model_ = std::make_shared<QNetModel>(base_config_.model, env_config, reward_shape);
-				break;
-			}
-			case AgentPolicyModelType::kMuZero:
-			{
-				model_ = std::make_shared<MuZeroModel>(base_config_.model, env_config, reward_shape);
-				break;
-			}
-			case AgentPolicyModelType::kDreamer:
-			{
-				model_ = std::make_shared<DreamerModel>(base_config_.model, env_config, reward_shape);
-				break;
-			}
-			default:
-			{
-				spdlog::error("Invalid model type selected!");
-				return;
-			}
-		}
-
-		model_->load(data_path_);
-		model_->to(devices_.front());
+		load_model(environment_manager_->get_configuration());
 	}
+}
+
+void Agent::load_model(const EnvironmentConfiguration& env_config)
+{
+	int reward_shape = base_config_.rewards.combine_rewards ? 1 : static_cast<int>(env_config.reward_types.size());
+
+	switch (base_config_.model_type)
+	{
+		case AgentPolicyModelType::kRandom:
+		{
+			model_ = std::make_shared<RandomModel>(base_config_.model, env_config.action_space, reward_shape);
+			break;
+		}
+		case AgentPolicyModelType::kActorCritic:
+		{
+			model_ = std::make_shared<ActorCriticModel>(base_config_.model, env_config, reward_shape);
+			break;
+		}
+		case AgentPolicyModelType::kSoftActorCritic:
+		{
+			model_ = std::make_shared<SoftActorCriticModel>(base_config_.model, env_config, reward_shape);
+			break;
+		}
+		case AgentPolicyModelType::kQNet:
+		{
+			model_ = std::make_shared<QNetModel>(base_config_.model, env_config, reward_shape);
+			break;
+		}
+		case AgentPolicyModelType::kMuZero:
+		{
+			model_ = std::make_shared<MuZeroModel>(base_config_.model, env_config, reward_shape);
+			break;
+		}
+		case AgentPolicyModelType::kDreamer:
+		{
+			model_ = std::make_shared<DreamerModel>(base_config_.model, env_config, reward_shape);
+			break;
+		}
+		default:
+		{
+			spdlog::error("Invalid model type selected!");
+			return;
+		}
+	}
+
+	model_->load(data_path_);
+	model_->to(devices_.front());
 }
 
 std::unique_ptr<Agent> drla::make_agent(

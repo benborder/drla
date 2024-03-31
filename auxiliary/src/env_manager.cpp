@@ -16,9 +16,10 @@ Environment* GenericEnvironmentManager::add_environment()
 
 EnvironmentConfiguration GenericEnvironmentManager::get_configuration()
 {
-	std::lock_guard guard(m_envs_);
+	std::unique_lock lock(m_envs_);
 	if (envs_.empty())
 	{
+		lock.unlock();
 		return add_environment()->get_configuration();
 	}
 	return envs_.front()->get_configuration();

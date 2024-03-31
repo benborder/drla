@@ -45,15 +45,15 @@ public:
 	/// options.
 	void run(const std::vector<State>& initial_states, RunOptions options = {}) override;
 
-	/// @brief Predicts the next action to perform given the input observations. Effectively performs a forward pass
-	/// through the model. **NOTE** 'load_model()' must be called at least once before calling this method.
+	/// @brief Predicts the next action and state to perform given the input observations. Effectively performs a forward
+	/// pass through the model. **NOTE** 'initialise()' must be called at least once before calling this method.
 	/// @param step_history The agent and environment data to pass to the model. This method handles converting to the
-	/// correct device.
+	/// correct device. **NOTE* There must be at least one item.
 	/// @param deterministic Use a deterministic forward pass through the model to determine the action if true. Otherwise
 	/// a stochastic policy gradient is used to determine the action. This option is only relevant for policy gradient
 	/// based models.
 	/// @return The predicted action and/or value from the forward pass through the model.
-	ModelOutput predict_action(const std::vector<StepData>& step_history, bool deterministic = true) override;
+	ModelOutput predict(const std::vector<StepData>& step_history, bool deterministic = true) override;
 
 	/// @brief Initiate training the agent, running for the number of epochs defined in the configuration file
 	void train() override;

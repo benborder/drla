@@ -58,15 +58,23 @@ public:
 	/// options.
 	virtual void run(const std::vector<State>& initial_state, RunOptions options = {});
 
-	/// @brief Predicts the next action to perform given the input observations. Effectively performs a forward pass
-	/// through the model. **NOTE** 'load_model()' must be called at least once before calling this method.
+	/// @brief Initialises the agent, loading the model and returning the initial model output. **NOTE** This is only
+	/// necessary to be used in conjunction with the 'predict()' method where the environment is handled externally.
+	/// @param env_config The environment configuration which the model may use to correctly construct its
+	/// inputs/outputs
+	/// @param reload Reloads the model if another model has already been loaded
+	/// @return The initial model output
+	virtual ModelOutput initialise(const EnvironmentConfiguration& env_config, bool reload = false);
+
+	/// @brief Predicts the next action and state to perform given the input observations. Effectively performs a forward
+	/// pass through the model. **NOTE** 'initialise()' must be called at least once before calling this method.
 	/// @param step_history The agent and environment data to pass to the model. This method handles converting to the
 	/// correct device. **NOTE* There must be at least one item.
 	/// @param deterministic Use a deterministic forward pass through the model to determine the action if true. Otherwise
 	/// a stochastic policy gradient is used to determine the action. This option is only relevant for policy gradient
 	/// based models.
 	/// @return The predicted action and/or value from the forward pass through the model.
-	virtual ModelOutput predict_action(const std::vector<StepData>& step_history, bool deterministic = true);
+	virtual ModelOutput predict(const std::vector<StepData>& step_history, bool deterministic = true);
 
 	/// @brief Clears and resets any loaded models, environments and state
 	virtual void reset();
@@ -88,6 +96,7 @@ protected:
 	std::filesystem::path get_save_path(const std::string& postfix = "") const;
 	void make_environments(ThreadPool& threadpool, int env_count);
 	void run_episode(Model* model, const State& initial_state, int env, RunOptions options);
+	void load_model(const EnvironmentConfiguration& env_config);
 
 	// Common configuration for all agents
 	const Config::AgentBase base_config_;

@@ -499,7 +499,7 @@ void MCTSAgent::run(const std::vector<State>& initial_states, RunOptions options
 	threadpool.wait_queue_empty();
 }
 
-ModelOutput MCTSAgent::predict_action(const std::vector<StepData>& step_history, bool deterministic)
+ModelOutput MCTSAgent::predict(const std::vector<StepData>& step_history, bool deterministic)
 {
 	torch::NoGradGuard no_grad;
 	return run_step(
