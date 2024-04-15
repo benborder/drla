@@ -17,6 +17,7 @@ find_package(Torch REQUIRED)
 # aux drla library
 add_library(drla_aux STATIC
 	src/env_manager.cpp
+	src/episode_saver.cpp
 	src/metrics_logger.cpp
 	src/serialise_json.cpp
 	src/tensor_media.cpp
@@ -32,6 +33,8 @@ target_include_directories(drla_aux
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 	PRIVATE
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/drla/auxiliary>
+		$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/common>
+		$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/buffers>
 		$<BUILD_INTERFACE:${GifEncoder_SOURCE_DIR}/egif>
 		$<BUILD_INTERFACE:${lodepng_SOURCE_DIR}>
 )
