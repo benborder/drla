@@ -1,5 +1,6 @@
 #include "mcts_episode.h"
 
+#include "functions.h"
 #include "tensor_storage.h"
 #include "utils.h"
 
@@ -66,10 +67,10 @@ MCTSEpisode::MCTSEpisode(const std::filesystem::path& path, MCTSEpisodeOptions o
 	actions_ = load_tensor(path / "actions.bin");
 	rewards_ = load_tensor(path / "rewards.bin");
 	policy_ = load_tensor(path / "policy.bin");
-	values_ = load_tensor(path / "values.bin");
 	observations_ = load_tensor_vector(path, "observations");
 	turn_index_ = load_vector(path / "turn_index.bin");
-	episode_length_ = static_cast<int>(values_.size(0));
+	episode_length_ = static_cast<int>(actions_.size(0) - 1);
+	values_ = torch::zeros(std::vector<int64_t>{episode_length_, rewards_.size(1)});
 }
 
 void MCTSEpisode::set_id(int id)
@@ -306,13 +307,13 @@ EpisodeSampleTargets MCTSEpisode::make_target(int index, torch::Tensor gamma) co
 	return target;
 }
 
-void MCTSEpisode::update_values(torch::Tensor values)
+void MCTSEpisode::update_values(const torch::Tensor& values)
 {
 	std::lock_guard lock(m_updates_);
 	reanalysed_values_ = values;
 }
 
-void MCTSEpisode::update_states([[maybe_unused]] HiddenStates& states)
+void MCTSEpisode::update_states([[maybe_unused]] const HiddenStates& states)
 {
 }
 
@@ -338,7 +339,6 @@ void MCTSEpisode::save(const std::filesystem::path& path)
 	save_tensor(actions_, ep_path / "actions.bin");
 	save_tensor(rewards_, ep_path / "rewards.bin");
 	save_tensor(policy_, ep_path / "policy.bin");
-	save_tensor(values_, ep_path / "values.bin");
 	save_vector(turn_index_, ep_path / "turn_index.bin");
 
 	for (size_t i = 0; i < observations_.size(); ++i)

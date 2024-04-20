@@ -71,10 +71,10 @@ OffPolicyEpisode::OffPolicyEpisode(
 {
 	actions_ = load_tensor(path / "actions.bin");
 	rewards_ = load_tensor(path / "rewards.bin");
-	values_ = load_tensor(path / "values.bin");
 	observations_ = load_tensor_vector(path, "observations");
+	episode_length_ = static_cast<int>(actions_.size(0) - 1);
+	values_ = torch::zeros(std::vector<int64_t>{episode_length_, rewards_.size(1)});
 	for (auto& shape : state_shapes) { state_.push_back(torch::zeros(std::vector<int64_t>{actions_.size(0)} + shape)); }
-	episode_length_ = static_cast<int>(values_.size(0));
 }
 
 void OffPolicyEpisode::set_id(int id)
@@ -199,13 +199,13 @@ EpisodeSampleTargets OffPolicyEpisode::make_target(int index, [[maybe_unused]] t
 	return target;
 }
 
-void OffPolicyEpisode::update_values(torch::Tensor values)
+void OffPolicyEpisode::update_values(const torch::Tensor& values)
 {
 	std::lock_guard lock(m_updates_);
 	reanalysed_values_ = values;
 }
 
-void OffPolicyEpisode::update_states(HiddenStates& states)
+void OffPolicyEpisode::update_states(const HiddenStates& states)
 {
 	std::lock_guard lock(m_updates_);
 	reanalysed_state_ = states;
@@ -232,7 +232,6 @@ void OffPolicyEpisode::save(const std::filesystem::path& path)
 
 	save_tensor(actions_, ep_path / "actions.bin");
 	save_tensor(rewards_, ep_path / "rewards.bin");
-	save_tensor(values_, ep_path / "values.bin");
 
 	for (size_t i = 0; i < observations_.size(); ++i)
 	{

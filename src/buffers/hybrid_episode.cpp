@@ -64,10 +64,10 @@ HybridEpisode::HybridEpisode(
 {
 	actions_ = load_tensor(path / "actions.bin");
 	rewards_ = load_tensor(path / "rewards.bin");
-	values_ = load_tensor(path / "values.bin");
 	observations_ = load_tensor_vector(path, "observations");
+	episode_length_ = static_cast<int>(actions_.size(0) - 1);
+	values_ = torch::zeros(std::vector<int64_t>{episode_length_, rewards_.size(1)});
 	for (auto& shape : state_shapes) { states_.push_back(torch::zeros(std::vector<int64_t>{actions_.size(0)} + shape)); }
-	episode_length_ = static_cast<int>(values_.size(0));
 }
 
 void HybridEpisode::allocate_reserve(torch::Tensor& x)
@@ -323,7 +323,7 @@ EpisodeSampleTargets HybridEpisode::make_target(int index, [[maybe_unused]] torc
 	return target;
 }
 
-void HybridEpisode::update_values(torch::Tensor values)
+void HybridEpisode::update_values(const torch::Tensor& values)
 {
 	std::lock_guard lock(m_updates_);
 	if (values_.size(0) <= values.size(0))
@@ -336,7 +336,7 @@ void HybridEpisode::update_values(torch::Tensor values)
 	}
 }
 
-void HybridEpisode::update_states(HiddenStates& states)
+void HybridEpisode::update_states(const HiddenStates& states)
 {
 	std::lock_guard lock(m_updates_);
 	if (states_.front().size(0) == states.front().size(0))
@@ -371,7 +371,6 @@ void HybridEpisode::save(const std::filesystem::path& path)
 
 	save_tensor(actions_, ep_path / "actions.bin");
 	save_tensor(rewards_, ep_path / "rewards.bin");
-	save_tensor(values_, ep_path / "values.bin");
 	for (size_t i = 0; i < observations_.size(); ++i)
 	{
 		save_tensor(observations_[i], ep_path / (std::string{"observations"} + std::to_string(i) + ".bin"));

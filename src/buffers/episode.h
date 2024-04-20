@@ -77,11 +77,11 @@ public:
 
 	/// @brief Updates values when re-analysed
 	/// @param values The new values to use
-	virtual void update_values(torch::Tensor values) = 0;
+	virtual void update_values(const torch::Tensor& values) = 0;
 
 	/// @brief Updates the hidden states when re-analysed
 	/// @param states The new hidden states to use
-	virtual void update_states(HiddenStates& states) = 0;
+	virtual void update_states(const HiddenStates& states) = 0;
 
 	/// @brief The length of the episode in agent steps
 	/// @return The length of the episode

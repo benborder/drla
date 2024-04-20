@@ -38,8 +38,8 @@ public:
 	std::pair<int, float> sample_position(std::mt19937& gen, bool force_uniform = false) const override;
 	torch::Tensor compute_target_value(int index, torch::Tensor gamma) const;
 	EpisodeSampleTargets make_target(int index, torch::Tensor gamma) const override;
-	void update_values(torch::Tensor values) override;
-	void update_states(HiddenStates& states) override;
+	void update_values(const torch::Tensor& values) override;
+	void update_states(const HiddenStates& states) override;
 	int length() const override;
 	void set_sequence_length(int length) override;
 	void save(const std::filesystem::path& path) override;
