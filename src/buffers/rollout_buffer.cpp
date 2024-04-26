@@ -169,7 +169,7 @@ Observations RolloutBuffer::get_observations(int step, int env) const
 	Observations obs;
 	for (const auto& observation_group : observations_)
 	{
-		obs.push_back(convert_observation(observation_group[step][env], device_));
+		obs.push_back(convert_observation(observation_group[step][env], device_, false));
 	}
 	return obs;
 }
